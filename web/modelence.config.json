@@ -9,6 +9,9 @@
     }
   },
   "env": {
+    "NODE_ENV": { "type": "text", "value": "production", "scopes": ["runtime"] },
+    "VIBEGUARD_ATLAS_URI": { "type": "secret", "required": true },
+    "VIBEGUARD_ATLAS_DATABASE": { "type": "text", "value": "vibeguard" },
     "VOYAGE_API_KEY": { "type": "secret", "required": false },
     "VOYAGE_MODEL": { "type": "text", "value": "voyage-code-4", "required": false }
   }

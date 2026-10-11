@@ -1,0 +1,1037 @@
+{
+  "schema_version": 1,
+  "experiment_id": "context-live-20261011T223127Z",
+  "started_at": "2026-10-11T22:31:27.443683+00:00",
+  "frozen_at": "2026-10-11T22:31:27.443691+00:00",
+  "status": "failed",
+  "problem_statements": [
+    1,
+    2
+  ],
+  "example": "memory-recall-cooldown",
+  "evidence_type": "incident_replay_with_live_context_policy_proposal",
+  "fixture_manifest": {
+    "version": "memory-recall-cooldown-v1",
+    "evidence_kind": "incident-derived simulated provider replay",
+    "source_incident": "artifacts/hosted-memory-search-limited.json",
+    "timing_note": "The source records one rate-limit failure, not these follow-up requests or their timing. Timelines, HTTP wrappers and recovery are controlled replay scenarios; the actual incident has no recorded Retry-After or HTTP status.",
+    "cases": [
+      {
+        "id": "train-wrapped-burst",
+        "split": "train",
+        "turns": [
+          {
+            "at": 0,
+            "response": {
+              "status": 400,
+              "detail": "Embedding service rate limit exceeded; retry later"
+            },
+            "oracle": "rate_limited"
+          },
+          {
+            "at": 1,
+            "response": {
+              "status": 400,
+              "detail": "Embedding service rate limit exceeded; retry later"
+            },
+            "oracle": "rate_limited"
+          },
+          {
+            "at": 2,
+            "response": {
+              "status": 400,
+              "detail": "Embedding service rate limit exceeded; retry later"
+            },
+            "oracle": "rate_limited"
+          },
+          {
+            "at": 65,
+            "response": {
+              "status": 200,
+              "facts": [
+                "goal: complete one measured harness improvement"
+              ]
+            },
+            "oracle": "healthy"
+          }
+        ]
+      },
+      {
+        "id": "train-direct-burst",
+        "split": "train",
+        "turns": [
+          {
+            "at": 0,
+            "response": {
+              "status": 429,
+              "detail": "Too many requests"
+            },
+            "oracle": "rate_limited"
+          },
+          {
+            "at": 2,
+            "response": {
+              "status": 429,
+              "detail": "Too many requests"
+            },
+            "oracle": "rate_limited"
+          },
+          {
+            "at": 4,
+            "response": {
+              "status": 429,
+              "detail": "Too many requests"
+            },
+            "oracle": "rate_limited"
+          },
+          {
+            "at": 90,
+            "response": {
+              "status": 200,
+              "facts": [
+                "approved decision: no active harness change yet"
+              ]
+            },
+            "oracle": "healthy"
+          }
+        ]
+      },
+      {
+        "id": "train-unrelated-error",
+        "split": "train",
+        "turns": [
+          {
+            "at": 0,
+            "response": {
+              "status": 503,
+              "detail": "Memory runtime is unavailable"
+            },
+            "oracle": "unrelated_error"
+          },
+          {
+            "at": 2,
+            "response": {
+              "status": 200,
+              "facts": [
+                "project: VibeGuard"
+              ]
+            },
+            "oracle": "healthy"
+          }
+        ]
+      },
+      {
+        "id": "heldout-healthy-control",
+        "split": "heldout",
+        "turns": [
+          {
+            "at": 0,
+            "response": {
+              "status": 200,
+              "facts": [
+                "home airport: Boston"
+              ]
+            },
+            "oracle": "healthy"
+          },
+          {
+            "at": 2,
+            "response": {
+              "status": 200,
+              "facts": [
+                "seat preference: window"
+              ]
+            },
+            "oracle": "healthy"
+          }
+        ]
+      },
+      {
+        "id": "heldout-wrapped-recovery",
+        "split": "heldout",
+        "turns": [
+          {
+            "at": 10,
+            "response": {
+              "status": 502,
+              "detail": "Upstream embedding provider rate limit reached"
+            },
+            "oracle": "rate_limited"
+          },
+          {
+            "at": 11,
+            "response": {
+              "status": 502,
+              "detail": "Upstream embedding provider rate limit reached"
+            },
+            "oracle": "rate_limited"
+          },
+          {
+            "at": 12,
+            "response": {
+              "status": 502,
+              "detail": "Upstream embedding provider rate limit reached"
+            },
+            "oracle": "rate_limited"
+          },
+          {
+            "at": 85,
+            "response": {
+              "status": 200,
+              "facts": [
+                "review: humans activate policy changes"
+              ]
+            },
+            "oracle": "healthy"
+          }
+        ]
+      },
+      {
+        "id": "heldout-scope-isolation",
+        "split": "heldout",
+        "turns": [
+          {
+            "at": 0,
+            "user": "alice",
+            "session": "one",
+            "provider": "voyage",
+            "response": {
+              "status": 429
+            },
+            "oracle": "rate_limited"
+          },
+          {
+            "at": 1,
+            "user": "alice",
+            "session": "two",
+            "provider": "voyage",
+            "response": {
+              "status": 200,
+              "facts": [
+                "session two fact"
+              ]
+            },
+            "oracle": "healthy"
+          },
+          {
+            "at": 2,
+            "user": "bob",
+            "session": "one",
+            "provider": "voyage",
+            "response": {
+              "status": 200,
+              "facts": [
+                "Bob's own fact"
+              ]
+            },
+            "oracle": "healthy"
+          },
+          {
+            "at": 3,
+            "user": "alice",
+            "session": "one",
+            "provider": "other",
+            "response": {
+              "status": 200,
+              "facts": [
+                "other provider fact"
+              ]
+            },
+            "oracle": "healthy"
+          },
+          {
+            "at": 4,
+            "user": "alice",
+            "session": "one",
+            "provider": "voyage",
+            "response": {
+              "status": 429
+            },
+            "oracle": "rate_limited"
+          },
+          {
+            "at": 80,
+            "user": "alice",
+            "session": "one",
+            "provider": "voyage",
+            "response": {
+              "status": 200,
+              "facts": [
+                "Alice's recovered fact"
+              ]
+            },
+            "oracle": "healthy"
+          }
+        ]
+      },
+      {
+        "id": "heldout-bounded-expiry",
+        "split": "heldout",
+        "turns": [
+          {
+            "at": 0,
+            "response": {
+              "status": 429,
+              "detail": "Embedding service rate limit exceeded"
+            },
+            "oracle": "rate_limited"
+          },
+          {
+            "at": 4,
+            "response": {
+              "status": 429,
+              "detail": "Embedding service rate limit exceeded"
+            },
+            "oracle": "rate_limited"
+          },
+          {
+            "at": 61,
+            "response": {
+              "status": 200,
+              "facts": [
+                "goal: finish the review"
+              ]
+            },
+            "oracle": "healthy"
+          },
+          {
+            "at": 62,
+            "response": {
+              "status": 200,
+              "facts": [
+                "new decision: measure the rerun"
+              ]
+            },
+            "oracle": "healthy"
+          }
+        ]
+      }
+    ]
+  },
+  "fixture_sha256": "82c1138cb280cbbc2bfe549180952630752303a5482bf6f6c57da4535f5d7e2b",
+  "judge_source_sha256": "5b12fffcd11bbb0ee0eabfb1ed1f8c02adc29dc3408c40343cc228f51c408703",
+  "source_incident": {
+    "path": "artifacts/hosted-memory-search-limited.json",
+    "sha256": "5e169d4ffd7d5af2f9f564423710114a9e35a5e8550693eaf48bb4889e7c6110",
+    "checked_at": "2026-10-11T21:29:48.711777+00:00",
+    "stage": "search_semantic",
+    "error_type": "MemoryBadRequestError",
+    "error": "Embedding service rate limit exceeded; retry later"
+  },
+  "baseline_source_sha256": {
+    "vibeguard/lib/agent-memory.ts": "561d4de765789d7544a8a834bd37063cf02df1e54cd1c9f12fe18e24929bacad",
+    "vibeguard/lib/model-chat.ts": "7f63f5bf939dbff946a709e64e04b13a3e1efa5196c7d50f007d6a6893d2fa46"
+  },
+  "baseline_description": "Current chat records the user, attempts recall on every message, falls back to current conversation on normalized 429, then records the produced assistant response. It has no cross-message cooldown.",
+  "protocol": {
+    "model_call_limit": 1,
+    "provider_calls_simulated": true,
+    "heldout_used_for_proposal": false,
+    "turn_recording_simulated": true,
+    "automatic_model_retries": 0,
+    "activation": "human review required"
+  },
+  "baseline": {
+    "train": [
+      {
+        "case_id": "train-wrapped-burst",
+        "split": "train",
+        "trace": [
+          {
+            "sequence": 1,
+            "at": 0,
+            "scope": [
+              "operator",
+              "thread",
+              "voyage"
+            ],
+            "user_turn_recorded": true,
+            "recall_called": true,
+            "recall_skipped": false,
+            "assistant_produced": true,
+            "assistant_turn_recorded": true,
+            "context_sources": [
+              "current_thread"
+            ],
+            "retrieved_facts": [],
+            "recall_unavailable_disclosed": true,
+            "do_not_invent_memories": true,
+            "memory_error_status": null,
+            "observed_response": {
+              "status": 400,
+              "detail": "Embedding service rate limit exceeded; retry later"
+            },
+            "outcome": "rate_limit_fallback"
+          },
+          {
+            "sequence": 2,
+            "at": 1,
+            "scope": [
+              "operator",
+              "thread",
+              "voyage"
+            ],
+            "user_turn_recorded": true,
+            "recall_called": true,
+            "recall_skipped": false,
+            "assistant_produced": true,
+            "assistant_turn_recorded": true,
+            "context_sources": [
+              "current_thread"
+            ],
+            "retrieved_facts": [],
+            "recall_unavailable_disclosed": true,
+            "do_not_invent_memories": true,
+            "memory_error_status": null,
+            "observed_response": {
+              "status": 400,
+              "detail": "Embedding service rate limit exceeded; retry later"
+            },
+            "outcome": "rate_limit_fallback"
+          },
+          {
+            "sequence": 3,
+            "at": 2,
+            "scope": [
+              "operator",
+              "thread",
+              "voyage"
+            ],
+            "user_turn_recorded": true,
+            "recall_called": true,
+            "recall_skipped": false,
+            "assistant_produced": true,
+            "assistant_turn_recorded": true,
+            "context_sources": [
+              "current_thread"
+            ],
+            "retrieved_facts": [],
+            "recall_unavailable_disclosed": true,
+            "do_not_invent_memories": true,
+            "memory_error_status": null,
+            "observed_response": {
+              "status": 400,
+              "detail": "Embedding service rate limit exceeded; retry later"
+            },
+            "outcome": "rate_limit_fallback"
+          },
+          {
+            "sequence": 4,
+            "at": 65,
+            "scope": [
+              "operator",
+              "thread",
+              "voyage"
+            ],
+            "user_turn_recorded": true,
+            "recall_called": true,
+            "recall_skipped": false,
+            "assistant_produced": true,
+            "assistant_turn_recorded": true,
+            "context_sources": [
+              "current_thread",
+              "retrieved_memory"
+            ],
+            "retrieved_facts": [
+              "goal: complete one measured harness improvement"
+            ],
+            "recall_unavailable_disclosed": false,
+            "do_not_invent_memories": false,
+            "memory_error_status": null,
+            "observed_response": {
+              "status": 200,
+              "facts": [
+                "goal: complete one measured harness improvement"
+              ]
+            },
+            "outcome": "recalled"
+          }
+        ],
+        "evaluation": {
+          "passed": false,
+          "failures": [
+            "redundant_recall_during_observed_rate_limit"
+          ],
+          "avoidable_recalls": 2,
+          "false_blocks": 0,
+          "recall_calls": 4,
+          "recorded_turns": 8,
+          "produced_turns": 8
+        }
+      },
+      {
+        "case_id": "train-direct-burst",
+        "split": "train",
+        "trace": [
+          {
+            "sequence": 1,
+            "at": 0,
+            "scope": [
+              "operator",
+              "thread",
+              "voyage"
+            ],
+            "user_turn_recorded": true,
+            "recall_called": true,
+            "recall_skipped": false,
+            "assistant_produced": true,
+            "assistant_turn_recorded": true,
+            "context_sources": [
+              "current_thread"
+            ],
+            "retrieved_facts": [],
+            "recall_unavailable_disclosed": true,
+            "do_not_invent_memories": true,
+            "memory_error_status": null,
+            "observed_response": {
+              "status": 429,
+              "detail": "Too many requests"
+            },
+            "outcome": "rate_limit_fallback"
+          },
+          {
+            "sequence": 2,
+            "at": 2,
+            "scope": [
+              "operator",
+              "thread",
+              "voyage"
+            ],
+            "user_turn_recorded": true,
+            "recall_called": true,
+            "recall_skipped": false,
+            "assistant_produced": true,
+            "assistant_turn_recorded": true,
+            "context_sources": [
+              "current_thread"
+            ],
+            "retrieved_facts": [],
+            "recall_unavailable_disclosed": true,
+            "do_not_invent_memories": true,
+            "memory_error_status": null,
+            "observed_response": {
+              "status": 429,
+              "detail": "Too many requests"
+            },
+            "outcome": "rate_limit_fallback"
+          },
+          {
+            "sequence": 3,
+            "at": 4,
+            "scope": [
+              "operator",
+              "thread",
+              "voyage"
+            ],
+            "user_turn_recorded": true,
+            "recall_called": true,
+            "recall_skipped": false,
+            "assistant_produced": true,
+            "assistant_turn_recorded": true,
+            "context_sources": [
+              "current_thread"
+            ],
+            "retrieved_facts": [],
+            "recall_unavailable_disclosed": true,
+            "do_not_invent_memories": true,
+            "memory_error_status": null,
+            "observed_response": {
+              "status": 429,
+              "detail": "Too many requests"
+            },
+            "outcome": "rate_limit_fallback"
+          },
+          {
+            "sequence": 4,
+            "at": 90,
+            "scope": [
+              "operator",
+              "thread",
+              "voyage"
+            ],
+            "user_turn_recorded": true,
+            "recall_called": true,
+            "recall_skipped": false,
+            "assistant_produced": true,
+            "assistant_turn_recorded": true,
+            "context_sources": [
+              "current_thread",
+              "retrieved_memory"
+            ],
+            "retrieved_facts": [
+              "approved decision: no active harness change yet"
+            ],
+            "recall_unavailable_disclosed": false,
+            "do_not_invent_memories": false,
+            "memory_error_status": null,
+            "observed_response": {
+              "status": 200,
+              "facts": [
+                "approved decision: no active harness change yet"
+              ]
+            },
+            "outcome": "recalled"
+          }
+        ],
+        "evaluation": {
+          "passed": false,
+          "failures": [
+            "redundant_recall_during_observed_rate_limit"
+          ],
+          "avoidable_recalls": 2,
+          "false_blocks": 0,
+          "recall_calls": 4,
+          "recorded_turns": 8,
+          "produced_turns": 8
+        }
+      },
+      {
+        "case_id": "train-unrelated-error",
+        "split": "train",
+        "trace": [
+          {
+            "sequence": 1,
+            "at": 0,
+            "scope": [
+              "operator",
+              "thread",
+              "voyage"
+            ],
+            "user_turn_recorded": true,
+            "recall_called": true,
+            "recall_skipped": false,
+            "assistant_produced": false,
+            "assistant_turn_recorded": false,
+            "context_sources": [
+              "current_thread"
+            ],
+            "retrieved_facts": [],
+            "recall_unavailable_disclosed": false,
+            "do_not_invent_memories": false,
+            "memory_error_status": 503,
+            "observed_response": {
+              "status": 503,
+              "detail": "Memory runtime is unavailable"
+            },
+            "outcome": "memory_error"
+          },
+          {
+            "sequence": 2,
+            "at": 2,
+            "scope": [
+              "operator",
+              "thread",
+              "voyage"
+            ],
+            "user_turn_recorded": true,
+            "recall_called": true,
+            "recall_skipped": false,
+            "assistant_produced": true,
+            "assistant_turn_recorded": true,
+            "context_sources": [
+              "current_thread",
+              "retrieved_memory"
+            ],
+            "retrieved_facts": [
+              "project: VibeGuard"
+            ],
+            "recall_unavailable_disclosed": false,
+            "do_not_invent_memories": false,
+            "memory_error_status": null,
+            "observed_response": {
+              "status": 200,
+              "facts": [
+                "project: VibeGuard"
+              ]
+            },
+            "outcome": "recalled"
+          }
+        ],
+        "evaluation": {
+          "passed": true,
+          "failures": [],
+          "avoidable_recalls": 0,
+          "false_blocks": 0,
+          "recall_calls": 2,
+          "recorded_turns": 3,
+          "produced_turns": 3
+        }
+      }
+    ]
+  },
+  "candidate": {},
+  "proposal": null,
+  "model_calls": [
+    {
+      "sequence": 1,
+      "purpose": "train-only-context-policy-proposal",
+      "started_at": "2026-10-11T22:31:27.444655+00:00",
+      "requested_model": "gpt-5.6-luna",
+      "request_sha256": "5129689276cb8e09839629ffba430ebef1836651fffe373ffcbdb7a61c7f0716",
+      "input": {
+        "incident": {
+          "path": "artifacts/hosted-memory-search-limited.json",
+          "sha256": "5e169d4ffd7d5af2f9f564423710114a9e35a5e8550693eaf48bb4889e7c6110",
+          "checked_at": "2026-10-11T21:29:48.711777+00:00",
+          "stage": "search_semantic",
+          "error_type": "MemoryBadRequestError",
+          "error": "Embedding service rate limit exceeded; retry later"
+        },
+        "baseline": "Current chat records the user, attempts recall on every message, falls back to current conversation on normalized 429, then records the produced assistant response. It has no cross-message cooldown.",
+        "training_results": [
+          {
+            "case_id": "train-wrapped-burst",
+            "split": "train",
+            "trace": [
+              {
+                "sequence": 1,
+                "at": 0,
+                "scope": [
+                  "operator",
+                  "thread",
+                  "voyage"
+                ],
+                "user_turn_recorded": true,
+                "recall_called": true,
+                "recall_skipped": false,
+                "assistant_produced": true,
+                "assistant_turn_recorded": true,
+                "context_sources": [
+                  "current_thread"
+                ],
+                "retrieved_facts": [],
+                "recall_unavailable_disclosed": true,
+                "do_not_invent_memories": true,
+                "memory_error_status": null,
+                "observed_response": {
+                  "status": 400,
+                  "detail": "Embedding service rate limit exceeded; retry later"
+                },
+                "outcome": "rate_limit_fallback"
+              },
+              {
+                "sequence": 2,
+                "at": 1,
+                "scope": [
+                  "operator",
+                  "thread",
+                  "voyage"
+                ],
+                "user_turn_recorded": true,
+                "recall_called": true,
+                "recall_skipped": false,
+                "assistant_produced": true,
+                "assistant_turn_recorded": true,
+                "context_sources": [
+                  "current_thread"
+                ],
+                "retrieved_facts": [],
+                "recall_unavailable_disclosed": true,
+                "do_not_invent_memories": true,
+                "memory_error_status": null,
+                "observed_response": {
+                  "status": 400,
+                  "detail": "Embedding service rate limit exceeded; retry later"
+                },
+                "outcome": "rate_limit_fallback"
+              },
+              {
+                "sequence": 3,
+                "at": 2,
+                "scope": [
+                  "operator",
+                  "thread",
+                  "voyage"
+                ],
+                "user_turn_recorded": true,
+                "recall_called": true,
+                "recall_skipped": false,
+                "assistant_produced": true,
+                "assistant_turn_recorded": true,
+                "context_sources": [
+                  "current_thread"
+                ],
+                "retrieved_facts": [],
+                "recall_unavailable_disclosed": true,
+                "do_not_invent_memories": true,
+                "memory_error_status": null,
+                "observed_response": {
+                  "status": 400,
+                  "detail": "Embedding service rate limit exceeded; retry later"
+                },
+                "outcome": "rate_limit_fallback"
+              },
+              {
+                "sequence": 4,
+                "at": 65,
+                "scope": [
+                  "operator",
+                  "thread",
+                  "voyage"
+                ],
+                "user_turn_recorded": true,
+                "recall_called": true,
+                "recall_skipped": false,
+                "assistant_produced": true,
+                "assistant_turn_recorded": true,
+                "context_sources": [
+                  "current_thread",
+                  "retrieved_memory"
+                ],
+                "retrieved_facts": [
+                  "goal: complete one measured harness improvement"
+                ],
+                "recall_unavailable_disclosed": false,
+                "do_not_invent_memories": false,
+                "memory_error_status": null,
+                "observed_response": {
+                  "status": 200,
+                  "facts": [
+                    "goal: complete one measured harness improvement"
+                  ]
+                },
+                "outcome": "recalled"
+              }
+            ],
+            "evaluation": {
+              "passed": false,
+              "failures": [
+                "redundant_recall_during_observed_rate_limit"
+              ],
+              "avoidable_recalls": 2,
+              "false_blocks": 0,
+              "recall_calls": 4,
+              "recorded_turns": 8,
+              "produced_turns": 8
+            }
+          },
+          {
+            "case_id": "train-direct-burst",
+            "split": "train",
+            "trace": [
+              {
+                "sequence": 1,
+                "at": 0,
+                "scope": [
+                  "operator",
+                  "thread",
+                  "voyage"
+                ],
+                "user_turn_recorded": true,
+                "recall_called": true,
+                "recall_skipped": false,
+                "assistant_produced": true,
+                "assistant_turn_recorded": true,
+                "context_sources": [
+                  "current_thread"
+                ],
+                "retrieved_facts": [],
+                "recall_unavailable_disclosed": true,
+                "do_not_invent_memories": true,
+                "memory_error_status": null,
+                "observed_response": {
+                  "status": 429,
+                  "detail": "Too many requests"
+                },
+                "outcome": "rate_limit_fallback"
+              },
+              {
+                "sequence": 2,
+                "at": 2,
+                "scope": [
+                  "operator",
+                  "thread",
+                  "voyage"
+                ],
+                "user_turn_recorded": true,
+                "recall_called": true,
+                "recall_skipped": false,
+                "assistant_produced": true,
+                "assistant_turn_recorded": true,
+                "context_sources": [
+                  "current_thread"
+                ],
+                "retrieved_facts": [],
+                "recall_unavailable_disclosed": true,
+                "do_not_invent_memories": true,
+                "memory_error_status": null,
+                "observed_response": {
+                  "status": 429,
+                  "detail": "Too many requests"
+                },
+                "outcome": "rate_limit_fallback"
+              },
+              {
+                "sequence": 3,
+                "at": 4,
+                "scope": [
+                  "operator",
+                  "thread",
+                  "voyage"
+                ],
+                "user_turn_recorded": true,
+                "recall_called": true,
+                "recall_skipped": false,
+                "assistant_produced": true,
+                "assistant_turn_recorded": true,
+                "context_sources": [
+                  "current_thread"
+                ],
+                "retrieved_facts": [],
+                "recall_unavailable_disclosed": true,
+                "do_not_invent_memories": true,
+                "memory_error_status": null,
+                "observed_response": {
+                  "status": 429,
+                  "detail": "Too many requests"
+                },
+                "outcome": "rate_limit_fallback"
+              },
+              {
+                "sequence": 4,
+                "at": 90,
+                "scope": [
+                  "operator",
+                  "thread",
+                  "voyage"
+                ],
+                "user_turn_recorded": true,
+                "recall_called": true,
+                "recall_skipped": false,
+                "assistant_produced": true,
+                "assistant_turn_recorded": true,
+                "context_sources": [
+                  "current_thread",
+                  "retrieved_memory"
+                ],
+                "retrieved_facts": [
+                  "approved decision: no active harness change yet"
+                ],
+                "recall_unavailable_disclosed": false,
+                "do_not_invent_memories": false,
+                "memory_error_status": null,
+                "observed_response": {
+                  "status": 200,
+                  "facts": [
+                    "approved decision: no active harness change yet"
+                  ]
+                },
+                "outcome": "recalled"
+              }
+            ],
+            "evaluation": {
+              "passed": false,
+              "failures": [
+                "redundant_recall_during_observed_rate_limit"
+              ],
+              "avoidable_recalls": 2,
+              "false_blocks": 0,
+              "recall_calls": 4,
+              "recorded_turns": 8,
+              "produced_turns": 8
+            }
+          },
+          {
+            "case_id": "train-unrelated-error",
+            "split": "train",
+            "trace": [
+              {
+                "sequence": 1,
+                "at": 0,
+                "scope": [
+                  "operator",
+                  "thread",
+                  "voyage"
+                ],
+                "user_turn_recorded": true,
+                "recall_called": true,
+                "recall_skipped": false,
+                "assistant_produced": false,
+                "assistant_turn_recorded": false,
+                "context_sources": [
+                  "current_thread"
+                ],
+                "retrieved_facts": [],
+                "recall_unavailable_disclosed": false,
+                "do_not_invent_memories": false,
+                "memory_error_status": 503,
+                "observed_response": {
+                  "status": 503,
+                  "detail": "Memory runtime is unavailable"
+                },
+                "outcome": "memory_error"
+              },
+              {
+                "sequence": 2,
+                "at": 2,
+                "scope": [
+                  "operator",
+                  "thread",
+                  "voyage"
+                ],
+                "user_turn_recorded": true,
+                "recall_called": true,
+                "recall_skipped": false,
+                "assistant_produced": true,
+                "assistant_turn_recorded": true,
+                "context_sources": [
+                  "current_thread",
+                  "retrieved_memory"
+                ],
+                "retrieved_facts": [
+                  "project: VibeGuard"
+                ],
+                "recall_unavailable_disclosed": false,
+                "do_not_invent_memories": false,
+                "memory_error_status": null,
+                "observed_response": {
+                  "status": 200,
+                  "facts": [
+                    "project: VibeGuard"
+                  ]
+                },
+                "outcome": "recalled"
+              }
+            ],
+            "evaluation": {
+              "passed": true,
+              "failures": [],
+              "avoidable_recalls": 0,
+              "false_blocks": 0,
+              "recall_calls": 2,
+              "recorded_turns": 3,
+              "produced_turns": 3
+            }
+          }
+        ],
+        "constraints": {
+          "cooldown_min_seconds": 5,
+          "cooldown_max_seconds": 60
+        }
+      },
+      "instructions": "You propose a bounded context policy from the supplied training evidence. Current chat ALREADY replies using the current thread on embedding rate limits; do not claim replies are lost. The measured target is avoiding repeated recall requests to the same user/session/provider during an observed rate-limit burst. Choose a cooldown from 5 to 60 seconds, preserving turn recording and disclosure that long-term recall is unavailable. Recognize direct 429 and wrapped embedding-rate-limit errors. Unrelated failures must remain errors and must not start a cooldown. Recall must resume after expiry. Source only the supplied failing training cases. This is a proposed policy, never authorization or deployment. No held-out inputs are available. Timings are simulated; no real provider recovery bound or financial saving is established.",
+      "max_output_tokens": 2048,
+      "automatic_retries": 0,
+      "status": "transport_error",
+      "finished_at": "2026-10-11T22:31:38.942291+00:00",
+      "duration_ms": 11498
+    }
+  ],
+  "activation": {
+    "status": "not_activated",
+    "human_decision": null,
+    "receipt": null
+  },
+  "updated_at": "2026-10-11T22:31:38.942367+00:00",
+  "error": {
+    "type": "ModelCallError",
+    "message": "The bounded policy experiment did not complete; no success is claimed."
+  },
+  "actual_model_request_count": 1,
+  "usage": {
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "total_tokens": 0
+  },
+  "finished_at": "2026-10-11T22:31:38.942360+00:00"
+}

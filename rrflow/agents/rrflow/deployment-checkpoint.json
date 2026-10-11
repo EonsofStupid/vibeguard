@@ -1,0 +1,34 @@
+{
+  "checked_at": "2026-10-11T22:25:03.236Z",
+  "statement": 1,
+  "example": "retry-budget human review service",
+  "workspace_id": "ws-6acc09b7f638d6502445e5d5",
+  "build_id": "bld_01M4PGFQ7V23QNSPPH2MDJEG4V",
+  "deployment_id": "deploy-915b6607",
+  "deployment_status": "succeeded",
+  "all_components_serving": true,
+  "rollout_complete": true,
+  "readiness": {
+    "orchestration_engine": "2/2",
+    "agent_sandbox": "4/4",
+    "tool_sandbox": "4/4"
+  },
+  "pending_reviews": {
+    "checked_at": "2026-10-11T22:24:37.854Z",
+    "http_status": 200,
+    "count": 0
+  },
+  "invoke_url": "https://agentengine.mongodb.com/api/v1/projects/6acbc84c07e49c5b0f33c510/workspaces/ws-6acc09b7f638d6502445e5d5/invoke",
+  "isolated_transaction_tests": {
+    "passed": 6,
+    "failed": 0,
+    "real_atlas_decisions_written": 0
+  },
+  "live_human_decision_verified": false,
+  "reason": "No measured eligible proposal exists; no proposal or human approval was fabricated.",
+  "source_sha256": {
+    "agent.yaml": "27c94c33543f0408eb94a72a229f707f7883316a820f2079d633afff9752af34",
+    "src/agent_rrflow/main.ts": "59e63a9a1a89100eb1213616203892fbd37775f81081048e703f1b5db18eb493",
+    "src/agent_rrflow/harnessReview.ts": "4ff1171848a8c8dfc67c852cdac95032c139313952f6a1357e25553d6d664772"
+  }
+}

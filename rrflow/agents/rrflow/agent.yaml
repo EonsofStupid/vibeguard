@@ -15,33 +15,17 @@ language: typescript
 #               deep agents rely on. Required for App.deepAgent().
 features:
     memory: true
-    deep_agent: true
+    deep_agent: false
     durable_workflow: true
 # Tool placement and pass-through secrets. Interrupt tools must stay on the agent.
 sandboxes:
     agent:
-        secrets: ["*"]
+        secrets: ["MONGODB_URI"]
         tools:
             - human_review
-            - send_notification
     tool:
-        secrets: ["*"]
-        tools:
-            - lookup_policy
-            - get_quote
-            - create_policy
-            - list_customer_policies
-            - file_claim
-            - analyze_claim_risk
-            - check_claim_status
-            - list_customer_claims
-            - resolve_claim
-            - save_customer_info
-            - recall_customer_info
-            - save_conversation_summary
-            - recall_past_conversations
-            - explain_insurance_term
-            - get_coverage_options
-version: 0.1.0
+        secrets: []
+        tools: []
+version: 0.1.1
 network:
     egress_mode: allow_all

@@ -5,9 +5,11 @@
 import { useCallback, useMemo, useState, type ButtonHTMLAttributes, type CSSProperties, type ReactNode } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { modelenceMutation, modelenceQuery } from '@modelence/react-query';
-import { useSession } from 'modelence/client';
 import { toast } from 'react-hot-toast';
 import Page from '@/client/components/Page';
+import LiveImprovement from '@/client/components/improvement/LiveImprovement';
+import { KnowledgeDrop } from '@/client/components/improvement/KnowledgeDrop';
+import ChatPanel from '@/client/components/chat/ChatPanel';
 import { cn } from '@/client/lib/utils';
 
 // ---- wire types (mirror src/server/harness/schemas.ts) ----
@@ -22,7 +24,7 @@ type Rule = {
   origin: { run_id: string; task_id: string; failure_category: string }; proposed_by: string;
   approved_by?: string | null; created_at: string; updated_at: string;
 };
-type Audit = { at: string; event: string; rule_id: string; version: number; status: string; actor: string; reason?: string };
+type Audit = { at: string; event: string; rule_id?: string; experiment_id?: string; run_id?: string; version?: number; status?: string; actor?: string; reason?: string };
 type Summary = { runs: Run[]; rules: Rule[]; audit: Audit[] };
 type MemoryTypes = { procedural: number; episodic: number; semantic: number; taxonomic: number; receipts: number };
 type Costar = {
@@ -66,8 +68,6 @@ function Btn({ className, tone = 'neutral', ...props }: ButtonHTMLAttributes<HTM
 
 export default function HomePage() {
   const qc = useQueryClient();
-  const { user } = useSession();
-  const actor = user ? `human:${user.handle}` : 'human:judge';
   const refresh = useCallback(() => qc.invalidateQueries({ predicate: (q) => String(q.queryKey[0]).startsWith('harness.') }), [qc]);
 
   const summary = useQuery({ ...modelenceQuery<Summary>('harness.summary'), refetchInterval: 6000 });
@@ -75,10 +75,6 @@ export default function HomePage() {
 
   const runEval = useMutation({ ...modelenceMutation<Run>('harness.runEvaluation'), onSuccess: (r) => { toast.success(`${r.run_id}: held-out ${r.heldout.passed}/${r.heldout.total}`); refresh(); } });
   const seed = useMutation({ ...modelenceMutation<{ failures: number; lexiconEmbedded: number }>('harness.seed'), onSuccess: (r) => { toast.success(`seeded ${r.failures} failure categories, embedded ${r.lexiconEmbedded} lexicon entries`); refresh(); } });
-  const reset = useMutation({ ...modelenceMutation('harness.reset'), onSuccess: () => { toast('rules, runs, receipts cleared'); setArmed(false); refresh(); } });
-  const approve = useMutation({ ...modelenceMutation<Rule>('harness.approveRule'), onSuccess: (r) => { toast.success(`${r.rule_id} approved by ${actor} (v${r.version})`); refresh(); } });
-  const revert = useMutation({ ...modelenceMutation<Rule>('harness.revertRule'), onSuccess: (r) => { toast(`${r.rule_id} reverted (v${r.version})`); refresh(); } });
-  const [armed, setArmed] = useState(false);
 
   const runs = summary.data?.runs ?? [];
   const rules = summary.data?.rules ?? [];
@@ -88,42 +84,43 @@ export default function HomePage() {
   const proposedCount = rules.filter((r) => r.status === 'proposed').length;
 
   return (
-    <Page seo={{ title: 'Harness' }}>
+    <Page seo={{ title: 'Build, learn, improve' }}>
+      <LiveImprovement />
+      <ChatPanel />
+
       {/* headline */}
       <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
-          <h1 className="font-display text-2xl font-bold tracking-tight md:text-3xl">Recursive harness, governed.</h1>
+          <h2 className="font-display text-xl font-semibold md:text-2xl">Recorded examples</h2>
           <p className="mt-1 max-w-2xl text-sm text-muted">
-            The agent attempts coding tasks → a deterministic judge scores them → each failure category writes a <em>proposed</em> guardrail →
-            a human approves or reverts → the next run loads the approved rules. Agents may tighten their own leash; only humans loosen it.
+            Replay saved answers to see how a failure becomes a proposed boundary. These examples demonstrate the workflow;
+            their simulated attempts do not measure a live model improving.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Btn tone="accent" onClick={() => runEval.mutate({})} disabled={runEval.isPending}>
-            {runEval.isPending ? <span className="animate-pulse-soft">running…</span> : '▶ Run evaluation'}
+            {runEval.isPending ? <span className="animate-pulse-soft">Replaying examples…</span> : 'Replay recorded examples'}
           </Btn>
-          <Btn onClick={() => seed.mutate({})} disabled={seed.isPending}>Seed memory</Btn>
-          {armed ? (
-            <Btn tone="stop" onClick={() => reset.mutate({})} disabled={reset.isPending}>Confirm reset</Btn>
-          ) : (
-            <Btn onClick={() => setArmed(true)}>Reset</Btn>
-          )}
+          <Btn onClick={() => seed.mutate({})} disabled={seed.isPending}>Add example terminology</Btn>
         </div>
       </div>
 
+      {runEval.isPending && <KnowledgeDrop title="A replay lets you inspect the steps." explanation="These answers were recorded in advance. Replaying them helps explain a rule and its effects without making a new model request." term="Deterministic replay" whyNow="The recorded examples are running. Their attempt count is simulated." source="Recorded example runner · scripted candidate list" />}
+      {(summary.isError || memory.isError || runEval.isError || seed.isError) && <p role="alert" className="rounded-lg border border-ember/40 bg-ember/10 p-3 text-sm">{[summary.error, memory.error, runEval.error, seed.error].filter(Boolean).map(error => error instanceof Error ? error.message : 'The example request failed.').join(' ')}</p>}
+
       {/* KPIs */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Kpi label="Held-out pass rate" value={latest ? pct(latest.heldout.pass_rate) : '—'} sub={latest ? `${latest.heldout.passed}/${latest.heldout.total} · CI ${pct(latest.heldout.ci95[0])}–${pct(latest.heldout.ci95[1])}` : 'no runs yet'} tone="cobalt" />
-        <Kpi label="Improvement" value={latest && first && runs.length > 1 ? `${latest.heldout.pass_rate >= first.heldout.pass_rate ? '+' : ''}${Math.round((latest.heldout.pass_rate - first.heldout.pass_rate) * 100)} pts` : '—'} sub={runs.length > 1 ? `${first.run_id} → ${latest.run_id}` : 'needs ≥2 runs'} tone="verdant" />
-        <Kpi label="False blocks" value={latest ? String(latest.false_blocks) : '—'} sub={latest ? `${latest.blocks} blocks · ${latest.paid_attempts} paid attempts` : ''} tone={latest && latest.false_blocks > 0 ? 'ember' : 'verdant'} />
-        <Kpi label="Rules" value={`${rules.filter((r) => r.status === 'approved').length} live`} sub={`${proposedCount} proposed · ${rules.filter((r) => r.status === 'reverted').length} reverted`} tone="signal" />
+        <Kpi label="Replay pass rate" value={latest ? pct(latest.heldout.pass_rate) : '—'} sub={latest ? `${latest.heldout.passed}/${latest.heldout.total} · CI ${pct(latest.heldout.ci95[0])}–${pct(latest.heldout.ci95[1])}` : 'no recorded runs yet'} tone="cobalt" />
+        <Kpi label="Replay score change" value={latest && first && runs.length > 1 ? `${latest.heldout.pass_rate >= first.heldout.pass_rate ? '+' : ''}${Math.round((latest.heldout.pass_rate - first.heldout.pass_rate) * 100)} pts` : '—'} sub={runs.length > 1 ? `${first.run_id} → ${latest.run_id}` : 'needs ≥2 recorded runs'} tone="cobalt" />
+        <Kpi label="Useful answers blocked" value={latest ? String(latest.false_blocks) : '—'} sub={latest ? `${latest.blocks} blocks · ${latest.paid_attempts} simulated attempts` : ''} tone={latest && latest.false_blocks > 0 ? 'ember' : 'verdant'} />
+        <Kpi label="Recorded rules" value={`${rules.filter((r) => r.status === 'approved').length} approved`} sub={`${proposedCount} proposed · ${rules.filter((r) => r.status === 'reverted').length} reverted`} tone="signal" />
       </div>
 
       {/* chart + memory */}
       <div className="grid gap-3 lg:grid-cols-[2fr_1fr]">
         <Card>
           <div className="flex items-baseline justify-between">
-            <Label>Pass rate over runs · Wilson 95% CI</Label>
+            <Label>Recorded example scores · Wilson 95% CI</Label>
             <div className="flex gap-3 text-xs text-muted">
               <span><i className="mr-1 inline-block h-2 w-3 bg-cobalt align-middle" />held-out</span>
               <span><i className="mr-1 inline-block h-2 w-3 bg-muted align-middle" />train</span>
@@ -133,19 +130,18 @@ export default function HomePage() {
           <PassRateChart runs={runs} />
         </Card>
         <Card>
-          <Label>Memory types · Atlas collections</Label>
+          <Label>What the workbench remembers</Label>
           <MemoryStrip m={memory.data} />
-          <p className="mt-3 text-xs text-muted">
-            procedural = versioned rules · episodic = run traces · semantic = lexicon (Voyage <span className="font-mono">voyage-code-4</span>, 1024-d, <span className="font-mono">$vectorSearch</span>) · taxonomic = failure categories · receipts = audit log
-          </p>
+          <p className="mt-3 text-xs leading-relaxed text-muted">These counts describe application records in Atlas. A saved record alone does not prove that the agent recalled it or improved.</p>
+          <details className="mt-2 text-xs text-muted"><summary className="cursor-pointer text-cobalt">Learn the memory types</summary><p className="mt-2">Procedural: how to act. Episodic: what happened. Semantic: facts and meanings. Taxonomic: how failures are grouped. Receipts preserve the decision trail.</p></details>
         </Card>
       </div>
 
       {/* rule queue */}
       <Card>
         <div className="flex items-center justify-between">
-          <Label>Rule queue · the human gate</Label>
-          <span className="text-xs text-muted">acting as <span className="font-mono text-verdant">{actor}</span></span>
+          <Label>Recorded boundaries · review history</Label>
+          <span className="text-xs text-muted">Read-only history · real decisions go through RRFlow</span>
         </div>
         {rules.length === 0 ? (
           <p className="mt-3 text-sm text-muted">No rules yet. Run an evaluation — failures on the train split propose the first one.</p>
@@ -157,25 +153,17 @@ export default function HomePage() {
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-mono text-sm">{r.rule_id}</span>
                     <span className={cn('rounded-full border px-2 py-0.5 text-[11px] font-medium', STATUS_CLASS[r.status])}>{r.status}</span>
-                    <span className="font-mono text-xs text-muted">v{r.version} · {r.direction} · {r.action}</span>
-                    <span className="rounded bg-raised px-1.5 py-0.5 font-mono text-[11px] text-muted">{r.category}</span>
+                    <span className="font-mono text-xs text-muted">v{r.version}</span>
                   </div>
                   <p className="mt-1 text-sm">{r.user_message}</p>
-                  <div className="mt-1 truncate font-mono text-[11px] text-muted" title={r.trigger.pattern}>
-                    {r.trigger.type}: {r.trigger.pattern}
-                  </div>
-                  <div className="mt-0.5 text-[11px] text-muted">
-                    origin {r.origin.run_id} / {r.origin.task_id} · proposed by <span className="font-mono">{r.proposed_by}</span>
-                    {r.approved_by ? <> · approved by <span className="font-mono text-verdant">{r.approved_by}</span></> : null}
-                  </div>
-                </div>
-                <div className="flex shrink-0 gap-2">
-                  {r.status === 'proposed' && (
-                    <Btn tone="go" onClick={() => approve.mutate({ ruleId: r.rule_id, actor })} disabled={approve.isPending}>Approve</Btn>
-                  )}
-                  {r.status !== 'reverted' && (
-                    <Btn tone="stop" onClick={() => revert.mutate({ ruleId: r.rule_id, actor, reason: 'reverted from dashboard' })} disabled={revert.isPending}>Revert</Btn>
-                  )}
+                  <details className="mt-2 text-xs text-muted">
+                    <summary className="cursor-pointer text-cobalt focus-visible:ring-2 focus-visible:ring-cobalt">Technical details</summary>
+                    <p className="mt-2 font-mono">{r.category} · {r.direction} · {r.action}</p>
+                    <pre className="mt-2 whitespace-pre-wrap break-words rounded-md bg-ink p-3 font-mono text-[11px]">{r.trigger.type}: {r.trigger.pattern}</pre>
+                    <p className="mt-2 break-words">Origin {r.origin.run_id} / {r.origin.task_id} · proposed by <span className="font-mono">{r.proposed_by}</span>
+                      {r.approved_by ? <> · approved by <span className="font-mono text-verdant">{r.approved_by}</span></> : null}
+                    </p>
+                  </details>
                 </div>
               </li>
             ))}
@@ -196,9 +184,12 @@ export default function HomePage() {
                 <li key={`${a.at}-${i}`} className="flex flex-wrap gap-x-2 border-b border-line/60 py-1">
                   <span className="text-muted">{a.at.replace('T', ' ').slice(0, 19)}</span>
                   <span className={cn(a.event === 'approve' ? 'text-verdant' : a.event === 'revert' ? 'text-ember' : 'text-signal')}>{a.event}</span>
-                  <span>{a.rule_id}</span>
-                  <span className="text-muted">v{a.version} → {a.status}</span>
-                  <span className="text-muted">{a.actor}</span>
+                  {a.rule_id && <span>{a.rule_id}</span>}
+                  {a.experiment_id && <span className="break-all">{a.experiment_id}</span>}
+                  {a.run_id && a.run_id !== a.experiment_id && <span className="break-all">{a.run_id}</span>}
+                  {typeof a.version === 'number' && <span className="text-muted">v{a.version}{a.status ? ` → ${a.status}` : ''}</span>}
+                  {a.status && typeof a.version !== 'number' && <span className="text-muted">{a.status}</span>}
+                  {a.actor && <span className="text-muted">{a.actor}</span>}
                   {a.reason ? <span className="text-muted">“{a.reason}”</span> : null}
                 </li>
               ))}
@@ -209,7 +200,7 @@ export default function HomePage() {
 
       {/* runs table */}
       <Card>
-        <Label>Episodic memory · runs</Label>
+        <Label>Recorded run history</Label>
         {runs.length === 0 ? (
           <p className="mt-3 text-sm text-muted">No runs recorded.</p>
         ) : (
@@ -239,9 +230,9 @@ export default function HomePage() {
       </Card>
 
       <p className="pb-6 text-xs text-muted">
-        Honest limits: the judge and the rule writer share the same regex detectors (the loop proves the governance ratchet and
-        held-out generalisation, not detector discovery); the agent is a scripted replay, not a live model; N is small, so every
-        pass rate carries a Wilson interval. Governance pattern cites RRFlow ADR-0002 (governed durable effects).
+        About the recorded examples: the judge and rule writer share regex detectors, and answers are scripted.
+        Replay scores explain the harness mechanics; they do not establish live model improvement. Small samples carry a Wilson interval.
+        The review pattern applies RRFlow ADR-0002: a durable change needs a decision, a check and a receipt.
       </p>
     </Page>
   );
@@ -260,13 +251,13 @@ function Kpi({ label, value, sub, tone }: { label: string; value: string; sub?: 
 
 function MemoryStrip({ m }: { m?: MemoryTypes }) {
   const rows: [keyof MemoryTypes, string][] = [
-    ['procedural', 'rules'], ['episodic', 'runs'], ['semantic', 'lexicon'], ['taxonomic', 'failures'], ['receipts', 'audit'],
+    ['procedural', 'Boundaries'], ['episodic', 'Past attempts'], ['semantic', 'Facts and terminology'], ['taxonomic', 'Failure types'], ['receipts', 'Decision trail'],
   ];
   return (
     <ul className="mt-3 space-y-1.5">
       {rows.map(([k, coll]) => (
         <li key={k} className="flex items-center justify-between rounded-md bg-raised px-3 py-1.5 text-sm">
-          <span>{k} <span className="font-mono text-xs text-muted">· {coll}</span></span>
+          <span>{coll} <span className="font-mono text-[10px] text-muted">· {k}</span></span>
           <span className="font-mono">{m ? m[k] : '…'}</span>
         </li>
       ))}
@@ -325,18 +316,21 @@ function CostarPanel() {
   const d = q.data;
   return (
     <Card>
-      <Label>COSTAR completeness · side-conversation + semantic recall</Label>
+      <Label>Give the agent a clearer starting point</Label>
+      <p className="mt-2 text-sm text-muted">Describe what you want to build. We will suggest up to two useful details and explain relevant terminology.</p>
       <textarea
+        aria-label="What you want to build"
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
         rows={2}
         className="mt-3 w-full resize-y rounded-md border border-line bg-raised p-2.5 font-mono text-sm text-text placeholder:text-muted focus:border-cobalt focus:outline-none"
-        placeholder="paste the vibecoder's prompt…"
+        placeholder="What would you like to make?"
       />
       <div className="mt-2 flex items-center gap-2">
         <Btn tone="accent" onClick={() => setPrompt(draft.trim())} disabled={!draft.trim() || q.isFetching}>{q.isFetching ? 'scoring…' : 'Check prompt'}</Btn>
-        {d ? <span className="truncate font-mono text-[11px] text-muted">resolver: {d.resolver}</span> : null}
+        {d ? <details className="text-xs text-muted"><summary className="cursor-pointer">Recall source</summary><p className="mt-1 break-words">{d.resolver}</p></details> : null}
       </div>
+      {q.isError && <p role="alert" className="mt-3 text-sm text-ember">{q.error instanceof Error ? q.error.message : 'The prompt check could not be completed.'}</p>}
       {d && (
         <div className="mt-3 space-y-3">
           <ul className="grid grid-cols-2 gap-x-4 gap-y-1.5 md:grid-cols-3">
@@ -349,26 +343,27 @@ function CostarPanel() {
           </ul>
           {d.ask.length > 0 ? (
             <div>
-              <Label>Asks (max 2, by priority)</Label>
+              <Label>A couple of details that would help</Label>
               <ul className="mt-1 space-y-1 text-sm">{d.ask.map((a) => <li key={a} className="rounded-md border border-line bg-raised px-2.5 py-1.5">{a}</li>)}</ul>
             </div>
           ) : <p className="text-sm text-verdant">Complete enough to start. No side-conversation needed.</p>}
           {d.lexicon.length > 0 && (
             <div>
-              <Label>Lexicon hits · canonical labels</Label>
+              <Label>Words for what you are building</Label>
               <ul className="mt-1 space-y-1 text-xs">
                 {d.lexicon.map((l) => (
                   <li key={l.entry_id} className="flex flex-wrap items-center gap-x-2 rounded-md bg-raised px-2.5 py-1.5">
                     <span className="text-muted">“{l.phrase}”</span><span>→</span>
                     <span className="font-mono text-cobalt">{l.canonical_label}</span>
                     {l.stack ? <span className="font-mono text-muted">[{l.stack}]</span> : null}
-                    <span className="ml-auto font-mono text-muted">{l.score.toFixed(3)}</span>
                     {l.teach ? <span className="basis-full text-muted">{l.teach}</span> : null}
+                    <details className="basis-full text-[11px] text-muted"><summary className="cursor-pointer">Why this appeared</summary><p className="mt-1">Retrieved for your prompt · terminology entry {l.entry_id} · match score {l.score.toFixed(3)}. This is a reference explanation, not a newly verified project fact.</p></details>
                   </li>
                 ))}
               </ul>
             </div>
           )}
+          <KnowledgeDrop title="A useful prompt tells the agent what success looks like." explanation="A few details about the goal, audience and desired result can prevent a confident answer to the wrong question." term="COSTAR" whyNow={d.ask.length > 0 ? 'The prompt check found gaps and selected up to two follow-up questions.' : 'The prompt check found enough information to begin.'} source="Curated prompt guide · Context, Objective, Style, Tone, Audience, Response format" />
         </div>
       )}
     </Card>

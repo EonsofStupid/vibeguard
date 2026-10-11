@@ -1,0 +1,69 @@
+{
+  "version": "memory-recall-cooldown-v1",
+  "evidence_kind": "incident-derived simulated provider replay",
+  "source_incident": "artifacts/hosted-memory-search-limited.json",
+  "timing_note": "The source records one rate-limit failure, not these follow-up requests or their timing. Timelines, HTTP wrappers and recovery are controlled replay scenarios; the actual incident has no recorded Retry-After or HTTP status.",
+  "cases": [
+    {
+      "id": "train-wrapped-burst", "split": "train",
+      "turns": [
+        {"at": 0, "response": {"status": 400, "detail": "Embedding service rate limit exceeded; retry later"}, "oracle": "rate_limited"},
+        {"at": 1, "response": {"status": 400, "detail": "Embedding service rate limit exceeded; retry later"}, "oracle": "rate_limited"},
+        {"at": 2, "response": {"status": 400, "detail": "Embedding service rate limit exceeded; retry later"}, "oracle": "rate_limited"},
+        {"at": 65, "response": {"status": 200, "facts": ["goal: complete one measured harness improvement"]}, "oracle": "healthy"}
+      ]
+    },
+    {
+      "id": "train-direct-burst", "split": "train",
+      "turns": [
+        {"at": 0, "response": {"status": 429, "detail": "Too many requests"}, "oracle": "rate_limited"},
+        {"at": 2, "response": {"status": 429, "detail": "Too many requests"}, "oracle": "rate_limited"},
+        {"at": 4, "response": {"status": 429, "detail": "Too many requests"}, "oracle": "rate_limited"},
+        {"at": 90, "response": {"status": 200, "facts": ["approved decision: no active harness change yet"]}, "oracle": "healthy"}
+      ]
+    },
+    {
+      "id": "train-unrelated-error", "split": "train",
+      "turns": [
+        {"at": 0, "response": {"status": 503, "detail": "Memory runtime is unavailable"}, "oracle": "unrelated_error"},
+        {"at": 2, "response": {"status": 200, "facts": ["project: VibeGuard"]}, "oracle": "healthy"}
+      ]
+    },
+    {
+      "id": "heldout-healthy-control", "split": "heldout",
+      "turns": [
+        {"at": 0, "response": {"status": 200, "facts": ["home airport: Boston"]}, "oracle": "healthy"},
+        {"at": 2, "response": {"status": 200, "facts": ["seat preference: window"]}, "oracle": "healthy"}
+      ]
+    },
+    {
+      "id": "heldout-wrapped-recovery", "split": "heldout",
+      "turns": [
+        {"at": 10, "response": {"status": 502, "detail": "Upstream embedding provider rate limit reached"}, "oracle": "rate_limited"},
+        {"at": 11, "response": {"status": 502, "detail": "Upstream embedding provider rate limit reached"}, "oracle": "rate_limited"},
+        {"at": 12, "response": {"status": 502, "detail": "Upstream embedding provider rate limit reached"}, "oracle": "rate_limited"},
+        {"at": 85, "response": {"status": 200, "facts": ["review: humans activate policy changes"]}, "oracle": "healthy"}
+      ]
+    },
+    {
+      "id": "heldout-scope-isolation", "split": "heldout",
+      "turns": [
+        {"at": 0, "user": "alice", "session": "one", "provider": "voyage", "response": {"status": 429}, "oracle": "rate_limited"},
+        {"at": 1, "user": "alice", "session": "two", "provider": "voyage", "response": {"status": 200, "facts": ["session two fact"]}, "oracle": "healthy"},
+        {"at": 2, "user": "bob", "session": "one", "provider": "voyage", "response": {"status": 200, "facts": ["Bob's own fact"]}, "oracle": "healthy"},
+        {"at": 3, "user": "alice", "session": "one", "provider": "other", "response": {"status": 200, "facts": ["other provider fact"]}, "oracle": "healthy"},
+        {"at": 4, "user": "alice", "session": "one", "provider": "voyage", "response": {"status": 429}, "oracle": "rate_limited"},
+        {"at": 80, "user": "alice", "session": "one", "provider": "voyage", "response": {"status": 200, "facts": ["Alice's recovered fact"]}, "oracle": "healthy"}
+      ]
+    },
+    {
+      "id": "heldout-bounded-expiry", "split": "heldout",
+      "turns": [
+        {"at": 0, "response": {"status": 429, "detail": "Embedding service rate limit exceeded"}, "oracle": "rate_limited"},
+        {"at": 4, "response": {"status": 429, "detail": "Embedding service rate limit exceeded"}, "oracle": "rate_limited"},
+        {"at": 61, "response": {"status": 200, "facts": ["goal: finish the review"]}, "oracle": "healthy"},
+        {"at": 62, "response": {"status": 200, "facts": ["new decision: measure the rerun"]}, "oracle": "healthy"}
+      ]
+    }
+  ]
+}

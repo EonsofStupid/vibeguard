@@ -22,7 +22,7 @@ A working harness that learns guardrails from failures, measures their effect, a
 After each checkpoint, report what is built, what was tested, and outstanding decisions. A requested confirmation is a phase boundary, not a claim that untested work is complete.
 
 ## RSI claims
-The eval agent is ScriptedAgent: deterministic recorded candidate replay. No live model improvement, financial savings, or model training is demonstrated by this fixture run. Candidate attempts are simulated attempts. The current judge and rule compiler share regex detectors; this is harness validation, not an independent assessment of general model quality. Live chat model calls now work, but they are separate from a measured RSI experiment. Held-out tasks never write rules. Any quoted scores must come from executed runs in the current checkout, not earlier notes.
+The original eval agent is ScriptedAgent: deterministic recorded candidate replay. Its judge and rule compiler share regex detectors, so those scores explain harness mechanics. The separate live experiment `retry-live-20261011T220933Z` made seven successful model requests and evaluated the resulting plans against frozen simulated tool responses. Its baseline passed 3/3 training and 4/4 held-out cases, with zero false blocks. No proposal was generated, no policy was activated, and no improvement or financial savings are claimed. Held-out tasks never write rules. Any quoted scores must come from executed runs in the current checkout, not earlier notes.
 
 ## Governance
 Agents can propose tighter rules. Human approval activates them. Agents cannot loosen or revert rules. A reverted rule remains present with an audit entry. Local prototype actors are labels, not production identity verification. Durable effects in Atlas should carry an authorization decision, a check and an audit receipt.
@@ -44,6 +44,8 @@ Latest user direction: VibeGuard is the chat engine and RRFlow presents human re
 - The two old restricted Next servers were stopped after process ownership verification. The supervised launcher selected an available port automatically. The actual /api/chat request returned HTTP 200 with a completed model reply. Use node tools/start-chat.mjs status for the current URL; no fixed port is required.
 - Prisma 6.19.3 is installed and generated. Standalone memory and Prisma are separate services.
 - The deterministic eval replay remains fixture evidence, not live RSI. No rules have been activated by the memory setup.
+- The live retry baseline is saved in Atlas `harness_experiments` with an atomic `harness_experiment_recorded` audit receipt and an independent majority read-back. Re-importing the same artifact creates no duplicates. Evidence: `artifacts/improvement/retry-live-20261011T220933Z.json`.
+- The Modelence app now compiles and builds locally, starts in production mode on an available port, returns HTTP 200, and renders the actual Atlas baseline plus contextual learning cards. The copied dependency tree was repaired with `npm ci`; the missing `harness.liveImprovement` server query is connected. Existing fixture approval/revert/reset controls are disabled, preserving rules and receipts. Cloud deployment is a separate checkpoint, pending target authorization and required runtime configuration.
 
 ## Active checkpoint
 
