@@ -3,7 +3,8 @@
 Storage is chosen by environment so the Atlas backend can drop in without touching this file:
   VIBEGUARD_STORE=flatfile (default) | atlas
   VIBEGUARD_WIKI=<dir>            flat-file root (default: ./wiki)
-The Atlas backend must expose the same interface as FlatFileStore at vibeguard.storage.atlas.AtlasStore.
+Atlas: VIBEGUARD_STORE=atlas, MONGODB_URI, optional VIBEGUARD_DB (default vibeguard).
+Auditing on Atlas needs AtlasStore.read_log(kind); without it the audit panel stays empty.
 """
 from __future__ import annotations
 
@@ -35,7 +36,9 @@ def make_store():
     if kind == "atlas":
         from vibeguard.storage.atlas import AtlasStore  # provided by the Atlas checkpoint
 
-        return AtlasStore.from_env()
+        if hasattr(AtlasStore, "from_env"):
+            return AtlasStore.from_env()
+        return AtlasStore(os.environ["MONGODB_URI"], os.environ.get("VIBEGUARD_DB", "vibeguard"))
     return FlatFileStore(Path(os.environ.get("VIBEGUARD_WIKI", "wiki")))
 
 
@@ -61,7 +64,10 @@ def _audit(store, limit: int = 50) -> list[dict]:
     reader = getattr(store, "read_log", None)
     if callable(reader):
         return list(reader("audit"))[-limit:]
-    p = Path(getattr(store, "root", "wiki")) / "audit" / "log.jsonl"
+    root = getattr(store, "root", None)
+    if root is None:  # backend without a log reader: show nothing rather than stale local files
+        return []
+    p = Path(root) / "audit" / "log.jsonl"
     if not p.exists():
         return []
     return [json.loads(line) for line in p.read_text(encoding="utf-8").splitlines() if line.strip()][-limit:]
