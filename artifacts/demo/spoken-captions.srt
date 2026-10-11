@@ -1,6 +1,6 @@
 1
 00:00:00,000 --> 00:00:13,000
-VibeGuard combines chat, durable memory, and measured harness improvement. This real chat recalls our project goal from Atlas, and both conversation turns have independently verified records.
+VibeGuard combines chat, durable memory, and measured harness improvement. Atlas stores scoped conversation turns; an independently checked chat also recalled the project's saved goal.
 
 2
 00:00:13,000 --> 00:00:21,000
@@ -12,8 +12,8 @@ A live model proposed a sixty-second recall cooldown. Across seven frozen incide
 
 4
 00:00:37,000 --> 00:00:52,000
-RRFlow opens the exact policy for human review. The user chooses a decision and submits it explicitly. This proposal is still pending. Activation and a rerun tied to the approved version remain next.
+A human reviews the exact policy before it can change future chats. Our approval record needs its matching audit receipt before activation is verified. The approved-version rerun remains next.
 
 5
 00:00:52,000 --> 00:00:58,000
-The goal is a harness that improves while preserving continuity and human control.
+Raindrop acknowledged the historical replay event and signal, keeping evidence connected to the experiment.

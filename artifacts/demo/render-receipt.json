@@ -2,14 +2,14 @@
   "target_seconds": 58,
   "rendered": false,
   "evidence_environment": "local Modelence production build with real hosted Atlas and Agent Engine services",
-  "policy_status": "proposed; human decision and approved-version rerun pending",
+  "policy_status": "human approval recorded on proposal; matching audit receipt missing, activation unverified, approved-version rerun pending",
   "synthesized_narration": true,
   "scenes": [
     {
       "scene": "chat",
       "seconds": 13,
-      "voice_seconds": 13.442,
-      "tempo": 1.058428
+      "voice_seconds": 13.042,
+      "tempo": 1.026943
     },
     {
       "scene": "learning",
@@ -26,14 +26,14 @@
     {
       "scene": "review",
       "seconds": 15,
-      "voice_seconds": 14.697,
+      "voice_seconds": 13.222,
       "tempo": 1.0
     },
     {
       "scene": "trace",
       "seconds": 6,
-      "voice_seconds": 5.203,
-      "tempo": 1.0
+      "voice_seconds": 6.728,
+      "tempo": 1.180348
     }
   ]
 }

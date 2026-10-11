@@ -12,8 +12,8 @@ INCIDENT REPLAY · Avoidable recalls 8 → 0 · Simulated turns retained 51 → 
 
 4
 00:00:37,000 --> 00:00:52,000
-HUMAN REVIEW PENDING · Opening the dialog does not activate a policy
+HUMAN APPROVAL RECORDED | Matching audit receipt missing; activation unverified
 
 5
 00:00:52,000 --> 00:00:58,000
-LOCAL PRODUCTION WALKTHROUGH · Human approval and the approved-version rerun remain pending
+RAINDROP | Historical replay import acknowledged; not a new live run

@@ -1,7 +1,7 @@
 {
   "title": "VibeGuard — chat, memory and a governed improvement",
   "capture_environment": "local Modelence production build with real hosted Atlas and Agent Engine services",
-  "policy_status": "proposed; human decision and approved-version rerun pending",
+  "policy_status": "human approval recorded on proposal; matching audit receipt missing, activation unverified, approved-version rerun pending",
   "target_seconds": 58,
   "final_captures_ready": false,
   "scenes": [
@@ -10,7 +10,7 @@
       "seconds": 13,
       "image": "01-chat-memory.png",
       "caption": "REAL CHAT · Atlas goal recall and independently verified saved turns",
-      "narration": "VibeGuard combines chat, durable memory, and measured harness improvement. This real chat recalls our project goal from Atlas, and both conversation turns have independently verified records."
+      "narration": "VibeGuard combines chat, durable memory, and measured harness improvement. Atlas stores scoped conversation turns; an independently checked chat also recalled the project's saved goal."
     },
     {
       "id": "learning",
@@ -30,16 +30,16 @@
       "id": "review",
       "seconds": 15,
       "image": "05-review-popup.png",
-      "caption": "HUMAN REVIEW PENDING · Opening the dialog does not activate a policy",
-      "narration": "RRFlow opens the exact policy for human review. The user chooses a decision and submits it explicitly. This proposal is still pending. Activation and a rerun tied to the approved version remain next."
+      "caption": "HUMAN APPROVAL RECORDED | Matching audit receipt missing; activation unverified",
+      "narration": "A human reviews the exact policy before it can change future chats. Our approval record needs its matching audit receipt before activation is verified. The approved-version rerun remains next."
     },
     {
       "id": "trace",
       "seconds": 6,
       "image": "06-raindrop-trace.png",
-      "caption": "LOCAL PRODUCTION WALKTHROUGH · Human approval and the approved-version rerun remain pending",
-      "narration": "The goal is a harness that improves while preserving continuity and human control.",
-      "note": "Await actual Raindrop capture and verified behavior before adding any trace claim."
+      "caption": "RAINDROP | Historical replay import acknowledged; not a new live run",
+      "narration": "Raindrop acknowledged the historical replay event and signal, keeping evidence connected to the experiment.",
+      "note": "Verified from artifacts/raindrop-capture-checkpoint.json: event HTTP 200 with matching event id, signal HTTP 204. Dashboard inspection not claimed."
     }
   ]
 }

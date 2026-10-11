@@ -9,9 +9,11 @@ single source. The narration is synthesized locally; the longest required speed
 adjustment is currently 1.11x, and speech is never cut off to meet the time limit.
 
 Final rendering is deliberately held until the new popup and runtime captures
-are supplied. `final_captures_ready` is false. The final runtime scene has no
-Raindrop success claim pending actual trace evidence. Human review remains
-pending in both the narration and captions. The evaluation explicitly describes
+are supplied. `final_captures_ready` is false. Raindrop acknowledged an import of
+the historical replay event and signal; this is not a new live evaluation or
+proof that its dashboard was inspected. The latest review status is a human
+approval on the proposal with its matching audit receipt missing. Activation
+is unverified, and the approved-version rerun remains pending. The evaluation explicitly describes
 8 -> 0 avoidable recalls and 51 retained turns as incident-derived simulation.
 
 From the repository root:
