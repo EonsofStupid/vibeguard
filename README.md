@@ -2,6 +2,10 @@
 
 **An agent harness that learns from failures, measures changes, and remembers the decisions.**
 
+**Live:** https://vibeguard.shippin.ai (= https://vibeguard-mv4df1w6qok-prod.cloud.modelence.app) — deployed on Modelence Cloud, data in MongoDB Atlas. The deployed build is branch [`live`](https://github.com/EonsofStupid/vibeguard/tree/live) (dashboard gate + provenance); `main` additionally carries the chat panel and the RRFlow review gate (`web/src/server/review/`), merged late on the day and not yet deployed.
+
+**Demo video:** `docs/demo/vibeguard-demo.mp4` (55 s screen recording of the live loop) with `docs/demo/vibeguard-demo.srt` captions.
+
 [Demo](https://vibeguard.shippin.ai) · [Walkthrough](docs/DEMO.md) · [Problem statements](docs/FOCUS.md) · [Delivery evidence](SCOPE.md) · [Contributing](CONTRIBUTING.md)
 
 VibeGuard brings a working conversation, MongoDB Atlas memory, measured harness improvements, and RRFlow human review into one workbench. Contextual knowledge drops explain recall cooldowns and approval receipts while the user builds.

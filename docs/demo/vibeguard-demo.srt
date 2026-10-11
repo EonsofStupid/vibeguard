@@ -1,0 +1,40 @@
+1
+00:00:00,986 --> 00:00:08,878
+VibeGuard: a harness that learns its own guardrails. They protect the vibecoder's money and time; only a human can loosen them.
+
+2
+00:00:09,078 --> 00:00:12,497
+Memory seeded into Atlas: failure taxonomy and the vibecoder lexicon, embedded with Voyage for vector search.
+
+3
+00:00:12,697 --> 00:00:14,800
+Run 1, no rules: the agent fails most tasks. Each failure category becomes a proposed rule, nothing is enforced yet.
+
+4
+00:00:15,000 --> 00:00:18,484
+A human approves. Agents propose, humans approve; every transition writes a receipt and nothing is ever deleted.
+
+5
+00:00:18,684 --> 00:00:26,773
+Held-out tasks only get measured, never used to write rules. Wilson intervals because N is small.
+
+6
+00:00:26,973 --> 00:00:34,997
+Three rules live: runaway paid calls, hardcoded secrets, destructive commands. Zero false blocks.
+
+7
+00:00:35,197 --> 00:00:37,036
+Held-out pass rate 1 of 6 to 6 of 6 over five runs. The next run loads the approved rules automatically.
+
+8
+00:00:37,236 --> 00:00:40,392
+Every run is episodic memory with per-task traces: which rule blocked what, and whether it ever blocked a correct answer.
+
+9
+00:00:40,592 --> 00:00:47,036
+COSTAR: the harness scores the prompt and emits a form, which questions to ask, in priority order, before any money is spent. The lexicon maps 'take payments' to payment integration via Atlas Vector Search.
+
+10
+00:00:47,236 --> 00:00:53,236
+Each answer re-scores live. Four memory types in MongoDB Atlas, mirrored into Agent Engine memory, deployed on Modelence. Agents tighten their own leash; only humans loosen it.
+
