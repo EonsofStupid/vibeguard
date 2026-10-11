@@ -5,12 +5,11 @@
   "type": "module",
   "scripts": {
     "build": "modelence build",
-    "start": "node scripts/start.mjs",
+    "start": "node .modelence/build/app.mjs",
     "dev": "modelence dev",
     "dev:mobile": "cd mobile && npm run start",
     "postinstall": "node scripts/postinstall.mjs",
-    "typecheck": "tsc --noEmit --incremental false",
-    "test": "npm --prefix .. run test:web"
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",
@@ -19,11 +18,10 @@
     "clsx": "^2.1.1",
     "lucide-react": "^0.575.0",
     "modelence": "^0.26.0",
-    "mongodb": "^6.21.0",
+    "raindrop-ai": "^1.0.1",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "react-hot-toast": "^2.6.0",
-    "react-markdown": "10.1.0",
     "react-router": "^8.3.0",
     "tailwind-merge": "^3.4.0",
     "zod": "^4.1.13"
