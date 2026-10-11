@@ -24,7 +24,7 @@ export function chatStatus(): ChatStatus {
   return { configured: !missing.length, memoryMode, memoryUser: process.env.VIBEGUARD_MEMORY_USER_ID?.trim() || 'vibeguard-operator', model: process.env.VIBEGUARD_MODEL || 'gpt-5.6-luna', missing };
 }
 
-function knowledgeFor(input: ChatInput, context: MemoryContext | null, recallLimited: boolean, userReceiptId: string, policy: ChatReply['memory']['policy']): ChatKnowledge[] {
+function knowledgeFor(input: ChatInput, context: MemoryContext | null, recallLimited: boolean, userReceiptId: string, policy: ChatReply['memory']['policy'], policyWarning?: string | null): ChatKnowledge[] {
   const latest = input.messages[input.messages.length - 1].content;
   const notes: ChatKnowledge[] = [];
   if (/\b(retr(?:y|ies)|attempt|paid|budget|rate limit)\b/i.test(latest)) notes.push({
@@ -32,7 +32,12 @@ function knowledgeFor(input: ChatInput, context: MemoryContext | null, recallLim
     explanation: 'Three total attempts means the first call plus at most two retries. A smaller limit you choose should still win.',
     term: 'Retry budget', whyNow: 'Your latest message mentions retries, attempts or a budget.', source: `Curated budget guide · triggered by user turn ${userReceiptId}`,
   });
-  if (recallLimited) notes.push({
+  if (policyWarning) notes.unshift({
+    title: 'An approval needs a receipt we can verify.',
+    explanation: 'The saved policy could not be verified against its human receipt. This reply uses the current conversation and keeps recording turns while review integrity is restored.',
+    term: 'Review integrity', whyNow: 'Atlas did not return matching approval evidence for the saved context policy.', source: `Atlas policy verification · session ${input.sessionId}`,
+  });
+  else if (recallLimited) notes.push({
     title: 'Recall can pause while the conversation continues.',
     explanation: policy?.decision === 'cooldown' ? 'An approved policy is pausing another recall request after a rate limit. This reply uses the current conversation; unavailable memories must not be guessed.' : 'The memory service reported a rate limit. This reply uses the messages in this conversation; unavailable memories must not be guessed.',
     term: policy?.decision === 'cooldown' ? 'Recall cooldown' : 'Rate limit', whyNow: policy?.decision === 'cooldown' ? 'The policy chose a cooldown for this turn.' : 'This request received a memory recall rate-limit response.', source: policy ? `Approved policy ${policy.id} v${policy.version} · event ${policy.eventId}` : `Memory context response · session ${input.sessionId}`,
@@ -71,7 +76,7 @@ async function generateReply(input: ChatInput): Promise<ChatReply> {
     ai: { model: status.model, input: JSON.stringify(modelRequest), output, convoId: input.sessionId },
     properties: { evidence_type: 'live_chat', turn_key: turnKey, model_attempt_id: modelAttemptId, user_turn_id: userReceipt.id, session_id: input.sessionId,
       policy_id: recall.policy?.id ?? null, policy_version: recall.policy?.version ?? null, policy_hash: recall.policy?.hash ?? null,
-      policy_event_id: recall.policy?.eventId ?? null, recall_decision: recall.policy?.decision ?? (recallLimited ? 'rate_limited' : 'recalled'), ...properties },
+      policy_event_id: recall.policy?.eventId ?? null, recall_decision: recall.policyWarning ? 'integrity_fallback' : recall.policy?.decision ?? (recallLimited ? 'rate_limited' : 'recalled'), ...properties },
   });
   let response: Response;
   try {
@@ -95,15 +100,15 @@ async function generateReply(input: ChatInput): Promise<ChatReply> {
   if (!assistantReceipt && !memoryError) memoryError = 'The reply did not receive an acknowledged memory receipt.';
   const telemetry = await capture(text, { outcome: 'completed', model_response_id: typeof result.id === 'string' ? result.id : '', assistant_turn_id: assistantReceipt?.id ?? null, memory_saved: !!assistantReceipt });
   if (recallLimited && telemetry.status === 'acknowledged') await captureSignal(telemetry, {
-    name: recall.policy?.decision === 'cooldown' ? 'approved_recall_cooldown_applied' : 'memory_recall_rate_limited',
+    name: recall.policyWarning ? 'context_policy_approval_unverified' : recall.policy?.decision === 'cooldown' ? 'approved_recall_cooldown_applied' : 'memory_recall_rate_limited',
     sentiment: recall.policy?.decision === 'cooldown' ? 'POSITIVE' : 'NEGATIVE', type: 'standard',
     properties: { policy_hash: recall.policy?.hash ?? null, policy_version: recall.policy?.version ?? null, policy_event_id: recall.policy?.eventId ?? null, observation: 'A runtime condition, not a measured improvement score.' },
   });
   return {
     message: { id: randomUUID(), role: 'assistant', content: text }, model: status.model, responseId: typeof result.id === 'string' ? result.id : '', sessionId: input.sessionId,
     telemetry,
-    memory: { mode: 'hosted', userId: status.memoryUser, saved: !!assistantReceipt, userReceipt, assistantReceipt, error: memoryError, recallLimited, recallReason: recall.recallLimited, policy: recall.policy, contextTruncated: !!context?.truncated, recalled: context?.selectedMemories.slice(0, 3) || [], sourceCounts: context?.metadata.memory_counts || {} },
-    knowledge: knowledgeFor(input, context, recallLimited, userReceipt.id, recall.policy),
+    memory: { mode: 'hosted', userId: status.memoryUser, saved: !!assistantReceipt, userReceipt, assistantReceipt, error: memoryError, recallLimited, recallReason: recall.recallLimited, policyWarning: recall.policyWarning, policy: recall.policy, contextTruncated: !!context?.truncated, recalled: context?.selectedMemories.slice(0, 3) || [], sourceCounts: context?.metadata.memory_counts || {} },
+    knowledge: knowledgeFor(input, context, recallLimited, userReceipt.id, recall.policy, recall.policyWarning),
   };
 }
 

@@ -19,6 +19,7 @@ export type ChatReply = {
     error: string | null;
     recallLimited: boolean;
     recallReason: string | null;
+    policyWarning?: string | null;
     policy: { id: string; version: number; hash: string; decision: 'recalled' | 'rate_limited' | 'cooldown'; eventId: string } | null;
     contextTruncated: boolean;
     recalled: { id: string; content: string; source: string; timestamp?: string }[];

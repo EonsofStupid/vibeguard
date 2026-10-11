@@ -32,20 +32,22 @@ export function policyHash(policy: z.infer<typeof CooldownPolicy>) {
   return createHash('sha256').update(JSON.stringify(Object.fromEntries(Object.entries(policy).sort(([a], [b]) => a.localeCompare(b))))).digest('hex');
 }
 
+class PolicyIntegrityError extends Error {}
+
 async function approvedPolicy(): Promise<ActiveCooldown | null> {
   const active = await evidenceRead((db, options) => db.collection<ActivePolicy>('harness_policies')
     .findOne({ _id: 'memory-recall-cooldown' }, { maxTimeMS: 5000, ...options }));
   if (!active) return null;
   const parsed = CooldownPolicy.safeParse(active.policy);
   if (!parsed.success || active.policy_hash !== policyHash(parsed.data) || !active.approved_by.startsWith('human:')) {
-    throw new Error('The active context policy is invalid; it was not applied.');
+    throw new PolicyIntegrityError('The saved context policy is invalid and cannot be applied.');
   }
   const receipt = await evidenceRead((db, options) => db.collection<ReviewReceipt>('audit').findOne({
     event: 'harness_policy_approved', rule_id: active.proposal_id,
     policy_hash: active.policy_hash, active_policy_version: active.version,
     actor: active.approved_by,
   }, { projection: { _id: 1 }, maxTimeMS: 5000, ...options }));
-  if (!receipt) throw new Error('The active context policy has no matching human approval receipt.');
+  if (!receipt) throw new PolicyIntegrityError('The saved context policy has no matching human approval receipt.');
   return { id: active._id, version: active.version, hash: active.policy_hash, proposalId: active.proposal_id, policy: parsed.data };
 }
 
@@ -70,10 +72,16 @@ export async function evaluateRecall<T>(input: RecallInput<T>, active: ActiveCoo
 }
 
 export async function recallWithApprovedPolicy<T>(input: RecallInput<T>) {
-  const active = await approvedPolicy();
+  let active: ActiveCooldown | null;
+  try { active = await approvedPolicy(); }
+  catch (error) {
+    if (!(error instanceof PolicyIntegrityError)) throw error;
+    const policyWarning = `${error.message} Long-term recall is paused until review integrity is restored. This reply uses only the current conversation; turn recording continues. No adaptive policy was applied.`;
+    return { context: null, recallLimited: policyWarning, policy: null, policyWarning };
+  }
   const db = await evidenceDatabase();
   const cooldowns = db.collection<{ _id: string; until: Date }>('harness_recall_cooldowns');
-  return evaluateRecall(input, active, {
+  const result = await evaluateRecall(input, active, {
     until: async key => (await evidenceRead((readDb, options) => readDb.collection<{ _id: string; until: Date }>('harness_recall_cooldowns').findOne({ _id: key }, { maxTimeMS: 5000, ...options })))?.until.getTime() || 0,
     pause: async (key, until) => {
       await cooldowns.updateOne({ _id: key }, { $max: { until: new Date(until) } }, { upsert: true, writeConcern: { w: 'majority' } });
@@ -88,4 +96,5 @@ export async function recallWithApprovedPolicy<T>(input: RecallInput<T>) {
       return id;
     },
   });
+  return { ...result, policyWarning: null };
 }
