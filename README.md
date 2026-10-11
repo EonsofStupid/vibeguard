@@ -2,9 +2,66 @@
 
 **A self-tightening agent harness that protects vibecoders' money and time.**
 
-Most guardrails police the model. VibeGuard's guardrails protect the *user*: the non-technical builder who pays for every retry, every runaway loop and every leaked key. When an agent's output fails an eval, VibeGuard writes a new guardrail rule, a human approves it, and every later run loads it. Agents may tighten their own leash; only humans loosen it.
+**Live:** https://vibeguard-mv4df1w6qok-prod.cloud.modelence.app — deployed on Modelence Cloud, data in MongoDB Atlas.
 
-Built at the Cerebral Valley × MongoDB **Harness Engineering & Model Wrangling** hackathon, SF Tech Week, October 11, 2026. Track: **Problem Statement 1, Recursive Harnessing**, using a hard metric signal (held-out pass rate) in the spirit of Statement 2.
+Most guardrails police the model. VibeGuard's guardrails protect the *user*: the non-technical builder who pays for every retry, every runaway loop and every leaked key. When an agent's output fails an eval, VibeGuard writes a new guardrail rule, a human approves it, and every later run loads it. **Agents may tighten their own leash; only humans loosen it.**
+
+Built solo at the Cerebral Valley × MongoDB **Harness Engineering & Model Wrangling** hackathon, SF Tech Week, October 11, 2026.
+Statement 1 (**Recursive Harnessing**): the harness evolves its own rules and context policy. Statement 2 (**long-horizon memory**): every run and rule lands in the four Atlas Agent Engine memory types and a hard metric (held-out pass rate) drives progress.
+
+## What the live app proves (numbers from the deployed loop, 2026-10-11)
+
+| Run | Rules active | Train | Held-out | Held-out 95% CI | Blocked before shipping | False blocks |
+| --- | --- | --- | --- | --- | --- | --- |
+| run_001 | none | 1/10 | 1/6 | 3%–56% | 0 | 0 |
+| run_002 | VG-0001 (cost) | 4/10 | 3/6 | 19%–81% | 5 | 0 |
+| run_003 | + VG-0002 (secrets) | 7/10 | 5/6 | 44%–97% | 10 | 0 |
+| run_004 | + VG-0003 (destructive) | 9/10 | 6/6 | 61%–100% | 13 | 0 |
+| run_005 | same | 9/10 | 6/6 | 61%–100% | 13 | 0 |
+
+Each rule was proposed by the agent from a *training* failure and approved by a human (`human:jesse`) before the next run; held-out tasks only ever get measured. The same loop run by the Python harness against the M10 cluster gives identical numbers ([docs/RESULTS.md](docs/RESULTS.md)).
+
+## Architecture
+
+```
+vibecoder prompt ──► COSTAR check ──► agent attempt ──► guard (approved rules) ──► deterministic judge
+                        │ gaps: ≤2 questions                 │ violation: explain + retry        │ train failure
+                        ▼                                    ▼                                   ▼
+                 lexicon ($vectorSearch, Voyage)      episodic run trace                 proposed rule ──► HUMAN GATE ──► approved / reverted (+ receipt)
+```
+
+| Layer | Where | What |
+| --- | --- | --- |
+| Judges' view + harness API | `web/` — Modelence (TypeScript, React 19) on **Modelence Cloud** | `harness` module: queries `summary`, `costar`, `memoryTypes`; mutations `runEvaluation`, `approveRule`, `revertRule`, `seed`, `reset` |
+| Harness engine (reference) | `src/vibeguard/` — Python | Same schemas, judge, gate and loop; CLI `python -m vibeguard demo --approver human:you --memory` |
+| Data | **MongoDB Atlas** | collections `rules` `runs` `lexicon` (1024-d Voyage embeddings + `$vectorSearch` index `lexicon_vec`) `failures` `audit` |
+| Platform memory | **Atlas Agent Engine** hosted memory (`agent-engine-sdk-memory`) | `src/vibeguard/memory/agent_engine.py` mirrors rules→procedural, runs→episodic, lexicon→semantic, failures→taxonomic and calls `build_context()` before every attempt |
+
+### Memory mapping (Atlas Agent Engine types)
+
+| Memory type | VibeGuard record | Collection | Hosted memory call |
+| --- | --- | --- | --- |
+| Procedural | Versioned guardrail rules | `rules` | `save_procedure` / `discover_procedures` |
+| Episodic | Run traces and metrics | `runs` | `save_episode` / `search_episodes` |
+| Semantic | Vibecoder lexicon: phrasing → canonical engineering label | `lexicon` | `save_semantic` / `search_semantic` |
+| Taxonomic | Failure categories, each a binary signal | `failures` | `save_taxonomic` / `search_taxonomic` |
+| Receipts | Every propose / approve / revert | `audit` | — (append-only, never deleted) |
+
+The **context policy** is measured, not asserted: `ContextPolicy` (per task) records how many memories of each type `build_context()` selected; `RunResult.context_memories` sums it per run, so the context the agent sees grows as rules are approved.
+
+## Deploy / run
+
+```bash
+# Judges' app (Modelence Cloud builds from source: npm ci && npm run build; start: npm start)
+cd web && npx modelence@latest deploy        # modelence.config.json describes the build; MONGODB_URI is injected
+# set VOYAGE_API_KEY in the environment's variables to enable $vectorSearch lexicon recall
+
+# Python harness against Atlas (+ hosted memory)
+cp .env.example .env                          # MONGODB_URI, VOYAGE_API_KEY, service-account id/secret, AGENTIC_MEMORY_PROJECT_ID
+VIBEGUARD_STORE=atlas python -m vibeguard demo --approver human:you --memory
+VIBEGUARD_STORE=atlas python -m vibeguard memory-sync      # mirror everything into the four hosted memory types
+python -m vibeguard memory-context "add stripe checkout to my next.js app"
+```
 
 ## How it works
 
@@ -39,45 +96,7 @@ flowchart LR
 | Semantic | Vibecoder lexicon: phrasing → canonical engineering label |
 | Taxonomic | Failure categories, each a binary signal |
 
-Research records live as Markdown files with YAML front matter in [`wiki/`](wiki/). The workbench uses separate local `.runtime/wiki` records unless MONGODB_URI is set. The Atlas backend implements this interface; live database access remains pending. The generated Agent Engine chat/review client is in vibeguard/. Its live targets, shared memory and RRFlow review handoff still need integration; running engines are user-reported, not verified invocations here.
-
-## Current chat test
-
-The chat client is configured for explicit live-model mode. From the repository root:
-
-~~~text
-node tools/start-chat.mjs
-~~~
-
-Open http://127.0.0.1:3001/. The page and refresh are verified HTTP 200. The current agent-started server receives EACCES for outbound model requests; chat replies are not working yet. The launcher reuses a healthy page and preserves the running server. TypeScript and 71 client tests pass. Conversation history is browser-local; RRFlow review and Atlas memory remain pending. Failures are visible and no invocation POST is automatically retried. See [chat checkpoint](artifacts/chat-checkpoint.json) and [execution runbook](docs/EXAMPLE-FIRST.md).
-
-## Run the fixture workbench locally
-
-From this folder, run:
-
-~~~powershell
-./run.ps1
-~~~
-
-Open http://127.0.0.1:8765. The provided Windows portable runtime is in the ignored .tools folder. For a fresh checkout with Python 3.11+:
-
-~~~powershell
-python -m pip install -e ".[atlas,dev]"
-python -m vibeguard.web
-python -m pytest -q
-~~~
-
-The workbench uses the actual Python harness. It starts with a separate local .runtime/wiki store so existing research records remain intact. An explicitly configured Atlas connection must succeed at startup; it never silently falls back to local storage.
-
-## MongoDB integration
-
-[Exact database URI and Prisma setup](docs/DATABASE-SETUP.md): Atlas shows user clyffy on vibeguard.qyf6cd.mongodb.net. MONGODB_URI is the shared setting name for Agent Engine and local Prisma. Prisma configuration is prepared; dependency installation is blocked in the agent environment and remains pending.
-
-The vibeguard cluster was verified in Atlas: M10, MongoDB 8.0.34, AWS us-west-1, three-node replica set, backups active.
-
-Copy .env.example to .env when setting up a fresh checkout. Populate MONGODB_URI with the driver connection string and an existing database user's credentials; set MONGODB_DATABASE=vibeguard. The app creates rules, runs, lexicon, failures, costar, facts and audit collections. Rule transitions use majority-committed MongoDB transactions, including a receipt and version check. Audit events are appended and rule reverts preserve records. The runtime database user needs read/write access to this database.
-
-Atlas database credentials and Voyage AI model API keys are different. VOYAGE_API_KEY connects to https://us.ai.mongodb.com/v1 for this US-scoped key. The Test Voyage API action makes one bounded embedding request. The server-side context client also implements approved-rule reranking; it is not yet connected to the draft-check workflow. API availability and retrieval need live verification. Keys never appear in browser responses or logs.
+Research records also live as Markdown files with YAML front matter in [`wiki/`](wiki/) (the flat-file "LLM wiki" the Atlas collections mirror). A generated Agent Engine chat/review client lives in `vibeguard/` and a Python fixture workbench in `src/vibeguard/web/` (`./run.ps1`); both are experiments beside the deployed app and are not part of the demo path.
 
 ## CLI and optional API
 
@@ -89,7 +108,7 @@ python -m vibeguard --wiki ./wiki revert VG-0001 --as human:yourname --reason "t
 
 The existing FastAPI interface is optional and shares the promotion evidence check. To run its tests, install the api extras and httpx. The primary UI uses the dependency-light workbench server above.
 
-## Results
+## Results (Python workbench replay)
 
 The isolated recorded replay produces held-out passes of 1/6, 3/6, 5/6, 6/6, 6/6 with zero false blocks. [Executed evidence](artifacts/replay-evidence.json) explicitly marks synthetic human approvals in a temporary store. The actual workbench rule remains proposed for human review. These are harness mechanics, not independent live-model results. The workbench displays the frozen dataset hash, task traces and training-only promotion checks.
 
@@ -98,7 +117,8 @@ The isolated recorded replay produces held-out passes of 1/6, 3/6, 5/6, 6/6, 6/6
 - **The agent is a `ScriptedAgent`.** It replays recorded candidates in order, so attempts are simulated and no live model calls are made. An LLM agent plugs into the same `attempt()` call.
 - **The judge and the rule writer share regex detectors.** This validates the harness mechanics (propose → approve → enforce → measure), not general model quality.
 - **No dollar savings are claimed.** A blocked candidate costs one more attempt; the claim is that it stops shipping a runaway loop, a leaked key or a destructive command.
-- **Actors are labels.** `human:` and `agent:` prefixes are prototype identity, not verified authentication.
+- **Actors are labels.** The gate checks the `human:` / `agent:` prefix; the deployed app binds the actor to the signed-in Modelence user when there is one and otherwise trusts the label. Production hardening = require sign-in.
+- **Hosted memory is a mirror, not the source of truth.** Rules/runs live in VibeGuard's own Atlas collections; the Agent Engine memory bridge mirrors them and asks `build_context()` for the context policy. If the hosted gateway is unavailable the loop still runs (memory off = `context: null` in the trace).
 - **One failure class is out of reach by design.** The double-click bug (`t09`) can't be caught by a pattern rule, so training tops out at 9/10.
 
 ## Prior work and inspiration
@@ -113,7 +133,8 @@ Source: [`rrflow/rrflow-development`](https://github.com/rrflow/rrflow-developme
 
 ## Original contributions (built today)
 
-- Native Windows runtime and a clean workbench with explicit human review.
+- The deployed judges' view on Modelence Cloud: pass-rate curve with Wilson intervals and rule annotations, the human gate (approve / revert), COSTAR panel with `$vectorSearch` lexicon recall, append-only receipts, memory-type counts.
+- Atlas Agent Engine memory bridge (`src/vibeguard/memory/`): the four memory types written from the loop, `build_context()` before every attempt, measured context policy per run.
 - Training-only promotion check, bounded retries, rejected rule-ID replacement and accurate exhausted-draft outcomes.
 - Atlas transactions for rule transitions and versioned receipts.
 
@@ -134,15 +155,9 @@ Source: [`rrflow/rrflow-development`](https://github.com/rrflow/rrflow-developme
 | `src/vibeguard/loop/` | Attempt → guard → judge → propose loop, metrics |
 | `src/vibeguard/lexicon/`, `failures/` | Semantic and taxonomic seed memory |
 | `src/vibeguard/storage/` | Flat-file and Atlas stores; transactional rule receipts |
+| `src/vibeguard/memory/` | Atlas Agent Engine hosted-memory bridge (four memory types + `build_context`) |
+| `web/` | Modelence app: `src/server/harness/` (TypeScript port of the harness) and `src/client/pages/HomePage.tsx` (judges' view) |
 | `src/vibeguard/web/` | Primary workbench, actual harness API and static UI |
 | `src/vibeguard/context/` | Bounded MongoDB Voyage embedding and reranking calls |
 | `wiki/` | The flat-file memory itself |
 | `AGENTS.md`, `SCOPE.md` | Map for coding agents; delivery scope |
-
-## Verified delivery checkpoint
-
-34 active tests pass; the optional FastAPI module is skipped because FastAPI is not installed in the portable runtime. Browser baseline, draft checking, error states and persistence across restart were verified. dnspython 2.8.0 is installed. An authenticated Voyage embedding request returned HTTP 200 with voyage-code-4 and a 1024-dimension vector; see artifacts/voyage-check.json. The app process is still restricted from opening outbound sockets in this agent environment; that is a permission failure, not a timeout. Run ./tools/check-voyage.ps1 from your own PowerShell to verify the client outside that environment. A database user, MONGODB_URI and a live Atlas round trip are still required. See [SCOPE.md](SCOPE.md) for checkpoint evidence and remaining work.
-
-## Working examples and shared memory
-
-[Execution runbook](docs/EXAMPLE-FIRST.md) covers the first three examples, VibeGuard chat and RRFlow review roles, shared memory provisioning and the live RSI acceptance boundary. Start with `.tools/python/python.exe tools/preview_examples.py`; it detects failures and proposes rules without activating them.

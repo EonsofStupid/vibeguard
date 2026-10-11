@@ -1,6 +1,11 @@
 # Results
 
-All numbers below come from runs executed against the live Atlas M10 (`vibeguard.qyf6cd.mongodb.net`) on 2026-10-11, from the commit noted at the bottom. Reproduce with the commands at the end.
+Two independent executions of the same loop, same 16-task frozen eval set, 2026-10-11:
+
+1. **Deployed app** — https://vibeguard-mv4df1w6qok-prod.cloud.modelence.app (TypeScript harness on Modelence Cloud, Modelence-provisioned Atlas). Driven through its own `harness.runEvaluation` / `harness.approveRule` methods at 22:09 UTC; the dashboard shows these runs live.
+2. **Python harness** — against the Atlas M10 `vibeguard.qyf6cd.mongodb.net`, from the commit noted at the bottom.
+
+Both produce the table below (identical verdicts, metrics and rule set), which is the port's correctness check.
 
 ## Recursive harnessing: held-out pass rate by run (Statement 1)
 
@@ -27,6 +32,20 @@ Lexicon entries embedded with Voyage `voyage-code-4` (1024-d) through MongoDB's 
 | Atlas `$vectorSearch` + Voyage | **1.000** | 8 |
 
 Per-query detail: `artifacts/recall-at-k.json`.
+
+## Atlas Agent Engine hosted memory (bridge)
+
+`src/vibeguard/memory/agent_engine.py` mirrors the loop into the platform's memory server (service-account SDK `agent-engine-sdk-memory` 0.11.8, project-scoped gateway):
+
+| Step | Evidence |
+| --- | --- |
+| Service-account token exchange | HTTP 200, 3600 s |
+| `save_taxonomic` × 5 failure categories | acknowledged, `has_embedding=True` (14:49–15:00 PT) |
+| `save_semantic` × 8 lexicon entries | rate-limited by the hosted embedding service (`retry later`), retried with backoff |
+| `build_context()` from the harness | returned `memory_counts` / timing (retrieval 1.04 s) |
+| Status at 15:18 PT | runtime `ready`, but gateway answers `NO_WORKSPACE_ENDPOINT` for project-scoped calls — escalated to MongoDB on site |
+
+The bridge is additive: with the gateway down the loop runs with `context: null` per task.
 
 ## Memory types on Atlas
 

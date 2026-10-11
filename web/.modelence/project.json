@@ -1,0 +1,8 @@
+{
+  "appId": "6acc07e8fa49c28618844a76",
+  "deploy": {
+    "environmentId": "6acc07eafa49c28618844a78",
+    "appAlias": "vibeguard-mv4df1w6qok",
+    "envAlias": "prod"
+  }
+}

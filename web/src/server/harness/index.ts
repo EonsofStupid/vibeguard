@@ -4,7 +4,7 @@ import { Module } from 'modelence/server';
 import { dbRules, dbRuns, dbLexicon, dbFailures, dbAudit, dbCostar } from './db';
 import { allRules } from './gate';
 import { runOnce } from './loop';
-import { scorePrompt, missing, sideConversation } from './costar';
+import { scorePrompt, missing, sideConversation, uiSpec } from './costar';
 import { vectorResolve, embedLexicon } from './semantic';
 import { RunResult } from './schemas';
 import { SEED_FAILURES, SEED_LEXICON } from './seed';
@@ -39,7 +39,7 @@ export default new Module('harness', {
       try { lexicon = (await vectorResolve(prompt, 3)).map(({ record, score }) => ({ ...record, score })); }
       catch (e: any) { resolver = `unavailable: ${e?.message ?? e}`; }
       await dbCostar.insertOne({ record: { prompt, scores, missing: gaps, at: new Date().toISOString() }, body: '' } as any);
-      return { scores, missing: gaps, ask: sideConversation(gaps), lexicon, resolver };
+      return { scores, missing: gaps, ask: sideConversation(gaps), ui: uiSpec(gaps), lexicon, resolver };
     },
     memoryTypes: async () => ({
       procedural: await dbRules.countDocuments({}), episodic: await dbRuns.countDocuments({}),

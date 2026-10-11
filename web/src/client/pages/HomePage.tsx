@@ -2,7 +2,7 @@
  * VibeGuard judges' view: the harness loop, live from Atlas.
  * run → judge → propose rule → human gate → next run loads it.
  */
-import { useCallback, useMemo, useState, type ButtonHTMLAttributes, type CSSProperties, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ButtonHTMLAttributes, type CSSProperties, type ReactNode } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { modelenceMutation, modelenceQuery } from '@modelence/react-query';
 import { toast } from 'react-hot-toast';
@@ -27,9 +27,11 @@ type Rule = {
 type Audit = { at: string; event: string; rule_id?: string; experiment_id?: string; run_id?: string; version?: number; status?: string; actor?: string; reason?: string };
 type Summary = { runs: Run[]; rules: Rule[]; audit: Audit[] };
 type MemoryTypes = { procedural: number; episodic: number; semantic: number; taxonomic: number; receipts: number };
+type UiCard = { id: string; question: string; options: { label: string; text: string }[]; freeText: boolean };
 type Costar = {
   scores: { dimension: string; p_present: number; evidence: string[] }[];
   missing: string[]; ask: string[];
+  ui: { type: 'form'; version: number; cards: UiCard[]; done: boolean };
   lexicon: { entry_id: string; phrase: string; canonical_label: string; stack?: string | null; teach: string; score: number }[];
   resolver: string;
 };
@@ -266,7 +268,7 @@ function MemoryStrip({ m }: { m?: MemoryTypes }) {
 }
 
 function PassRateChart({ runs }: { runs: Run[] }) {
-  const W = 640, H = 220, L = 36, R = 12, T = 22, B = 28;
+  const W = 640, H = 236, L = 36, R = 12, T = 40, B = 28;
   const n = runs.length;
   const x = (i: number) => (n <= 1 ? (L + W - R) / 2 : L + (i * (W - L - R)) / (n - 1));
   const y = (p: number) => T + (1 - p) * (H - T - B);
@@ -312,8 +314,17 @@ function PassRateChart({ runs }: { runs: Run[] }) {
 function CostarPanel() {
   const [draft, setDraft] = useState('add stripe checkout to my next.js app');
   const [prompt, setPrompt] = useState('');
+  const [trail, setTrail] = useState<{ prompt: string; present: number }[]>([]);
+  const [freeText, setFreeText] = useState<Record<string, string>>({});
   const q = useQuery({ ...modelenceQuery<Costar>('harness.costar', { prompt }), enabled: prompt.length > 0, staleTime: Infinity });
   const d = q.data;
+  const present = d ? d.scores.filter((s) => s.p_present >= 0.5).length : 0;
+  // record each scored prompt once (completeness trail: before -> after each answer)
+  useEffect(() => {
+    if (d && prompt) setTrail((t) => (t.length && t[t.length - 1].prompt === prompt ? t : [...t, { prompt, present }]));
+  }, [d, prompt, present]);
+  const submit = (text: string) => { const next = text.trim(); setDraft(next); setPrompt(next); };
+  const answer = (text: string) => submit(`${prompt} ${text}`);
   return (
     <Card>
       <Label>Give the agent a clearer starting point</Label>
@@ -337,16 +348,18 @@ function CostarPanel() {
             {d.scores.map((s) => (
               <li key={s.dimension} className="text-xs">
                 <div className="flex justify-between"><span className="capitalize">{s.dimension}</span><span className={cn('font-mono', s.p_present < 0.5 ? 'text-signal' : 'text-verdant')}>{s.p_present.toFixed(2)}</span></div>
-                <div className="mt-0.5 h-1.5 overflow-hidden rounded bg-raised"><div className={cn('h-full', s.p_present < 0.5 ? 'bg-signal' : 'bg-verdant')} style={{ width: pct(s.p_present) }} /></div>
+                <div className="mt-0.5 h-1.5 overflow-hidden rounded bg-raised"><div className={cn('h-full transition-all', s.p_present < 0.5 ? 'bg-signal' : 'bg-verdant')} style={{ width: pct(s.p_present) }} /></div>
               </li>
             ))}
           </ul>
-          {d.ask.length > 0 ? (
+          {d.ui.done ? (
+            <p className="text-sm text-verdant">Complete enough to start. No side-conversation needed — the agent gets to work.</p>
+          ) : (
             <div>
               <Label>A couple of details that would help</Label>
               <ul className="mt-1 space-y-1 text-sm">{d.ask.map((a) => <li key={a} className="rounded-md border border-line bg-raised px-2.5 py-1.5">{a}</li>)}</ul>
             </div>
-          ) : <p className="text-sm text-verdant">Complete enough to start. No side-conversation needed.</p>}
+          )}
           {d.lexicon.length > 0 && (
             <div>
               <Label>Words for what you are building</Label>
