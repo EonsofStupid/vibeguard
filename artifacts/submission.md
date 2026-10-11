@@ -16,20 +16,26 @@ submission; the event allows at most four members. Do not invent team members.
 
 ## Project Description
 
-VibeGuard is an agent harness that turns observed failures into measured changes
-to its own behavior. A real memory-recall rate limit motivated a live-model-authored
-60-second cooldown policy. Frozen incident-replay cases improved from 1/3 to 3/3
-training and 1/4 to 4/4 held-out passes. Avoidable recall attempts fell from 8 to 0,
-while all 51 simulated conversation turns were retained, with zero regressions
-or false blocks. These are replay measurements, not live throughput claims.
+VibeGuard is an agent harness that learns from observed failures while keeping
+humans in control of durable changes. Inspired by RRFlow's adaptive reasoning
+and governed effects, it combines a Modelence chat workbench, MongoDB Atlas
+records, Atlas Agent Engine memory and a version-bound human review workflow.
+Relevant facts and terminology help users learn as they build.
 
-Atlas stores the experiment, exact proposal, active policy and audit trail. A
-deployed RRFlow agent checks the version and policy hash and pauses for a human
-decision before activation. Future chats apply the approved scope automatically.
-The workbench combines actual chat, hosted Agent Engine memory, contextual
-terminology and a visible failure → proposal → evaluation → review → activation
-→ rerun cycle. The interface exposes the underlying service behavior; the
-project's core is the governed adaptive harness.
+A real memory-recall rate limit motivated a live-model-authored 60-second
+cooldown policy. Frozen incident replay improved held-out cases from 1/4 to 4/4
+and training from 1/3 to 3/3. Avoidable recall attempts fell from 8 to 0; all 51
+simulated conversation turns were retained, with zero regressions or false
+blocks. These are replay results, not live throughput measurements. The exact
+proposal reached RRFlow's human-review interrupt; approval, activation and the
+approved-version rerun remain pending.
+
+Raindrop accepted the historical replay event and its eligible-for-human-review
+signal. Live-chat capture and feedback are integrated in the code; their current
+production deployment is still being verified. Atlas remains authoritative for
+policy versions and audit receipts. Telemetry and successful evaluations cannot
+approve a change. This is a concrete step toward recursive harness improvement
+and memory across sessions, not a claim of autonomous or billion-token operation.
 
 ## Public GitHub Repository
 
@@ -47,25 +53,37 @@ private access.
 
 ## Partner technologies
 
-Select **Modelence** (React/TypeScript workbench and deployment) and **Raindrop**
-(server-side event capture and linked feedback through its official HTTP API).
+Select **Modelence** and **Raindrop**.
 
-The available choices are AWS, Elevenlabs, Raindrop, Modelence and Cursor. Atlas
-runs on AWS, but that is infrastructure provided through Atlas; do not imply a
-separate AWS integration. No ElevenLabs or Cursor integration is claimed here.
+Modelence provides the React/TypeScript workbench and cloud deployment. Raindrop
+is integrated through its official HTTP API. The accepted historical replay
+capture and linked eligibility signal are recorded in
+[raindrop-capture-checkpoint.json](raindrop-capture-checkpoint.json).
 
-Raindrop acknowledged the labeled historical replay import and its eligibility
-signal; the artifact records HTTP 200 with the matching event ID and HTTP 204
-for the signal. Live chat capture, explicit Helpful / Missed goal feedback and
-RRFlow receipt feedback are wired into the server. A fresh deployed chat capture
-still needs its own acknowledgement before claiming that deployment is verified.
+Available choices also include AWS, Elevenlabs and Cursor. No separate AWS,
+ElevenLabs or Cursor integration is claimed.
 
 ## Are you submitting for the Raindrop RSI Prize?
 
-**Yes** — the intended prize entry is recursive self-improvement of the harness.
+**Yes** - recursive self-improvement of the agent harness.
 
-The form offers Yes / No. Our integration uses Raindrop's documented HTTP API.
-The inspected guide and form do not specify further detailed prize eligibility.
+The accepted signal means the proposal passed VibeGuard's checks for human
+review. It does not establish activation or confirm the organizers' prize
+eligibility. Select the prize separately from the Raindrop partner checkbox.
+
+## Raindrop evidence
+
+On October 11 at 23:40 UTC, Raindrop acknowledged the historical replay event
+with HTTP 200 and a matching event ID, then its
+`incident_replay_eligible_for_human_review` signal with HTTP 204. The capture
+links experiment `context-replay-20261011T224404Z`, the source artifact's SHA-256,
+the exact proposal and the policy hash. Dashboard indexing was not inspected.
+This imports existing simulated replay evidence; it is not a new model run,
+human approval or live savings measurement.
+
+Live model input/output capture, reply feedback, memory-limit signals and
+receipt-bound review feedback are integrated. Their production deployment and
+live capture must be verified before claiming them in the demo.
 
 ## MongoDB products and Atlas sandbox usage
 
@@ -93,17 +111,15 @@ recording; that observed failure became our improvement example.
 
 ## Feedback on partner products
 
-Modelence let us keep the React workbench and typed server methods together.
-Clearer guidance separating local build success, Git pushes and actual uploaded
-deployment state would help time-constrained teams. We kept the working chat and
-human review in the main product flow and made deployment verification a separate
-checkpoint.
+Modelence kept the React workbench and typed server methods together. Clearer
+guidance separating local builds, Git pushes and actual uploaded deployment
+state would help teams working under a deadline.
 
-Raindrop's event IDs make it possible to connect user feedback and exact RRFlow
-policy receipts to observations. The event endpoint returned HTTP 200 with an
-explicit matching event ID even though the HTTP guide described HTTP 204; we
-validate that acknowledgement and keep timeouts visibly unconfirmed. Historical
-incident replay and live chat are labeled separately.
+Raindrop's event and signal API let us connect replay evidence to a specific
+review-eligibility signal. The live event endpoint returned HTTP 200 with a
+matching event ID, while signal ingestion returned HTTP 204; documenting both
+acknowledgements together would make integration easier. Ingestion success
+remains distinct from improvement quality and human approval.
 
 ## Problem statement
 
@@ -119,11 +135,11 @@ No billion-token session capacity or prevention of all compaction is claimed.
 
 Modelence, React, TypeScript, Node.js, MongoDB Atlas M10, Atlas Agent Engine hosted
 memory and review runtime, Voyage-backed embeddings, an OpenAI model, Python
-experiment tooling and a LangGraph review workflow.
+experiment tooling, a LangGraph review workflow and Raindrop HTTP event/signal capture.
 
 The new work is VibeGuard's measured proposal/promotion loop, incident-replay
 evaluation, Atlas policy/receipt boundary, hosted review integration, memory-backed
-chat and contextual explanations. RRFlow research is cited as prior work; its
+chat, contextual explanations and evidence-linked Raindrop capture. RRFlow research is cited as prior work; its
 Rust engine is not imported. In particular:
 
 - [ADR-0002](https://github.com/rrflow/rrflow-development/blob/cfa0e8073c1a5479427beb29c7c88ee0a71f2f01/docs/decisions/0002-adaptive-reasoning-governed-effects.md): adaptive reasoning with governed durable effects.
@@ -133,8 +149,8 @@ Rust engine is not imported. In particular:
 ## Final factual boundary
 
 The proposal demonstrably reached the deployed RRFlow human-review interrupt.
-Claim approval, activation and approved-version rerun only when their matching
-Atlas receipt and rerun evidence exist. Do not describe an eligible proposal as
+Human approval, activation and the approved-version rerun remain pending. Update
+that statement only when matching Atlas receipt and rerun evidence exist. Do not describe an eligible proposal as
 already active. The event requires a public repository, accessible demo link,
 all actual teammates, Atlas sandbox use for finalists and a clear distinction
 between new hackathon work and prior research.

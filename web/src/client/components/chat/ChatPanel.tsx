@@ -5,6 +5,7 @@ import { KnowledgeDrop, KnowledgeNudge } from '@/client/components/improvement/K
 import { cn } from '@/client/lib/utils';
 import type { ChatInput, ChatMessage, ChatReply, ChatStatus } from '@/server/chat/contracts';
 import MessageContent from './MessageContent';
+import CaptureFeedback from './CaptureFeedback';
 
 const STORAGE_KEY = 'vibeguard-modelence-conversation-v1';
 const SESSION_PATTERN = /^[A-Za-z0-9_-]{1,128}$/;
@@ -112,6 +113,7 @@ export default function ChatPanel() {
 
       {reply && <div className="mt-4 space-y-3">
         {reply.knowledge[0] && <KnowledgeNudge key={reply.message.id} {...reply.knowledge[0]} />}
+        {reply.telemetry && <CaptureFeedback key={reply.telemetry.eventId} capture={reply.telemetry} sessionId={reply.sessionId} />}
         <div className={cn('rounded-lg border p-3 text-sm', reply.memory.saved ? 'border-verdant/35 bg-verdant/5' : 'border-signal/40 bg-signal/10')}>
           <p>{reply.memory.saved ? 'Both conversation turns received Atlas memory receipts.' : 'The reply arrived, but its memory write was not confirmed.'}</p>
           {reply.memory.error && <p className="mt-1 text-xs text-signal">{reply.memory.error}</p>}

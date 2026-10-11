@@ -120,3 +120,7 @@ Headings are tight (`tracking-tight`), uppercase micro-labels use
 - `--animate-pulse-soft`: running state indicator (eval in progress).
 - Transitions on hover/focus are 150ms `transition-colors`. No motion on data
   updates besides the fade; charts redraw instantly.
+
+## Context and feedback
+
+Relevant knowledge opens in keyboard-accessible popovers, with a dismissible nonmodal nudge after a completed reply. Pending RRFlow review opens a focus-managed dialog once per execution; Review later dismisses it without deciding. Raindrop delivery receipts use cobalt informational styling, with explicit Helpful and Missed my goal controls. Only acknowledged delivery is labeled accepted; no telemetry status implies human approval.
