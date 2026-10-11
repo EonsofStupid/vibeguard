@@ -8,7 +8,7 @@ import { getAgentEngineHeaders } from "@/lib/agent-engine-auth";
 import { getAgentEngineTarget, isSafeSessionId } from "@/lib/agent-engine-api";
 import { SUSPENDED_CHAT_RESPONSE } from "@/lib/session";
 
-export const maxDuration = 60;
+export const maxDuration = 90;
 
 type AgentEngineStreamEvent = {
   suspended: boolean;
@@ -62,7 +62,7 @@ export async function POST(request: Request) {
   const userText = messages.filter(message => message.role === "user").at(-1)?.parts
     .filter(part => part.type === "text").map(part => part.text).join("") || "";
   if (!userText.trim()) return new Response("No message provided", { status: 400 });
-  if (process.env.VIBEGUARD_CHAT_BACKEND === "model") return modelChat(messages, request);
+  if (process.env.VIBEGUARD_CHAT_BACKEND === "model") return modelChat(messages, request, typeof body.session_id === "string" ? body.session_id : undefined);
 
   const userId = typeof body.user_id === "string" ? body.user_id : undefined;
   const sessionId =

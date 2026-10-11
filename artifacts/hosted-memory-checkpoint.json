@@ -1,0 +1,53 @@
+{
+  "checked_at": "2026-10-11T21:33:12.066254+00:00",
+  "sdk_version": "0.10.0",
+  "statement": 2,
+  "example": "resume the goal",
+  "passed": true,
+  "core_passed": true,
+  "stage": "complete",
+  "project_id": "6acbc84c07e49c5b0f33c510",
+  "oauth_status": 200,
+  "token_expires_in": 3600,
+  "turn": {
+    "id": "6acbffa015ff5156615ec68d",
+    "session_id": "vibeguard-memory-setup",
+    "turn_seq": 1,
+    "acknowledged": true,
+    "has_embedding": false
+  },
+  "semantic_write": {
+    "id": "6acbffa015ff5156615ec68e",
+    "label": "vibeguard-project-goal-setup",
+    "has_embedding": true,
+    "acknowledged": true
+  },
+  "semantic_read_matches": true,
+  "semantic_read": {
+    "id": "6acbffa015ff5156615ec68e",
+    "label": "vibeguard-project-goal-setup",
+    "user_id": "vibeguard-operator",
+    "has_embedding": true,
+    "embedding_model_id": "voyage-code-4"
+  },
+  "context_metadata": {
+    "token_count": 36,
+    "memory_counts": {
+      "semantic": 1
+    },
+    "timing": {
+      "embedding": 0.13696708902716637,
+      "retrieval": 0.07144602504558861,
+      "ranking": 0.00010230299085378647,
+      "budgeting": 0.00018364994321018457,
+      "formatting": 0.1197743519442156,
+      "total": 0.32848069502506405
+    },
+    "ranking_strategy": null,
+    "source_outcomes": null
+  },
+  "context_contains_goal": true,
+  "context_memory_ids": [
+    "6acbffa015ff5156615ec68e"
+  ]
+}

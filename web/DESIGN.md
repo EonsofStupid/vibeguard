@@ -1,37 +1,59 @@
-# Design Style Guide
+# Design Style Guide — VibeGuard
 
-> **STATUS: NOT ESTABLISHED** — this is the starter placeholder. No design
-> identity has been chosen for this app yet. Before building any UI, establish
-> the design identity by following the "Design Style Guide" section in
-> `AGENTS.md`, then replace this file's contents (including this status block)
-> with the real design brief using the structure below.
-
-This file is the app's durable design brief. Once established, it documents
-every design decision; `src/client/index.css` (Tailwind `@theme`) is where
-those decisions live as code. Read this file before any UI work and keep it in
-sync with `src/client/index.css` whenever a design decision changes.
+STATUS: ESTABLISHED (2026-10-11)
 
 ## Aesthetic Direction
 
-_Not defined yet. Describe the chosen aesthetic (e.g. playful, editorial,
-minimalist, bold, warm, technical, luxurious) and the rationale — why it fits
-this app's purpose and audience._
+**Control room / audit ledger.** VibeGuard is a governance surface: judges and
+founders read pass rates, confidence intervals, rule diffs and receipts. The UI
+is dark, dense and typographic — closer to an ops console than a marketing
+page. Every state has one color and one word (proposed / approved / reverted,
+pass / fail). Nothing decorative; the data is the decoration.
 
-## Color Palette
+Rationale: the audience (hackathon judges, an experienced founder) scans
+numbers under time pressure. High contrast, monospace for identifiers and
+regex, and a single accent per semantic state make the gate's one-way ratchet
+legible at a glance.
 
-_Not defined yet. List the `@theme` color tokens with names, values, and usage
-(background, surface, text, primary, accent, destructive, ...)._
+## Color Palette (`@theme` tokens in `src/client/index.css`)
+
+| Token | Value | Usage |
+|---|---|---|
+| `--color-ink` | `#0f1115` | page background |
+| `--color-surface` | `#171a21` | cards |
+| `--color-raised` | `#1f232c` | inputs, table rows, hover |
+| `--color-line` | `#2a2f3a` | borders, chart grid |
+| `--color-text` | `#e6e8ee` | primary text |
+| `--color-muted` | `#8b93a7` | secondary text, axis labels |
+| `--color-signal` | `#f5b73d` | **proposed** rules, warnings, run markers |
+| `--color-verdant` | `#3ddc97` | **approved** rules, pass, human actions |
+| `--color-ember` | `#ff5c5c` | **reverted** rules, fail, false blocks |
+| `--color-cobalt` | `#5b8cff` | held-out series, links, focus ring |
+
+Semantic mapping is fixed: amber = agent proposed (waiting on a human),
+green = human approved, red = human reverted. Never reuse these for anything
+else.
 
 ## Typography
 
-_Not defined yet. Document the font pairing (display/heading font + body font),
-where they are imported from, and usage rules._
+- Display / headings: **Space Grotesk** (Google Fonts) — `font-display`
+- Body: **IBM Plex Sans** (Google Fonts) — `font-sans`
+- Identifiers, regex, numbers in tables: **JetBrains Mono** — `font-mono`
+
+Headings are tight (`tracking-tight`), uppercase micro-labels use
+`text-[11px] tracking-[0.14em] uppercase text-muted`.
 
 ## Spacing & Radius
 
-_Not defined yet. Document the spacing scale and border-radius convention._
+- Page gutter 16px on phones, 24px from `md:`; max content width 1200px.
+- Cards: `rounded-xl` (12px), 1px `border-line`, 16–20px padding.
+- Controls: `rounded-md` (6px). Badges: `rounded-full`.
+- Vertical rhythm in 8px steps (`space-y-2/4/6`).
 
 ## Motion & Animation
 
-_Not defined yet. List the animation keyframes and `@theme` `--animate-*`
-utilities and when to use them (entrances, hovers, loading states)._
+- `--animate-fade-up`: cards and rows enter with a 320ms translate+fade. Apply
+  `animate-fade-up` to new content; stagger with inline `animation-delay`.
+- `--animate-pulse-soft`: running state indicator (eval in progress).
+- Transitions on hover/focus are 150ms `transition-colors`. No motion on data
+  updates besides the fade; charts redraw instantly.

@@ -1,0 +1,4 @@
+# Local runtime uses the existing Atlas cluster; Docker chooses host ports.
+services:
+  mongodb:
+    local: false

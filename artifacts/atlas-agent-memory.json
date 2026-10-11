@@ -1,0 +1,94 @@
+{
+  "checked_at": "2026-10-11T21:30:14.333649+00:00",
+  "read_only": true,
+  "passed": true,
+  "database": "mdb_memory_6acbc84c07e49c5b0f33c510",
+  "database_exists": true,
+  "visible_database_names": [
+    "admin",
+    "config",
+    "local",
+    "mdb_memory_6acbc84c07e49c5b0f33c510",
+    "mdb_store_6acbc84c07e49c5b0f33c510",
+    "vibeguard"
+  ],
+  "collection_counts": {
+    "extraction_config": 0,
+    "memory_episodic": 0,
+    "memory_procedural": 0,
+    "memory_semantic": 1,
+    "memory_short_term": 4,
+    "memory_snapshot": 0,
+    "memory_taxonomic": 0,
+    "memory_user_context": 0,
+    "scheduled_tasks": 0,
+    "session_counters": 3,
+    "tasks": 2,
+    "tasks_dlq": 0,
+    "worker_state": 0
+  },
+  "verified_records": [
+    {
+      "collection": "memory_short_term",
+      "id": "6acbffa015ff5156615ec68d",
+      "user_id": "vibeguard-operator",
+      "project_id": "6acbc84c07e49c5b0f33c510",
+      "session_id": "vibeguard-memory-setup",
+      "label": null,
+      "has_embedding": false,
+      "embedding_dimensions": null,
+      "embedding_model_id": null,
+      "content_character_count": 154,
+      "content_sha256": "4d715dc71350d099159d03dd222d75165d9626e62e4b56b0f9ac16661e34e0e3",
+      "timestamp": "2026-10-11 21:29:04.244000",
+      "user_scope_verified": true
+    },
+    {
+      "collection": "memory_semantic",
+      "id": "6acbffa015ff5156615ec68e",
+      "user_id": "vibeguard-operator",
+      "project_id": "6acbc84c07e49c5b0f33c510",
+      "session_id": null,
+      "label": "vibeguard-project-goal-setup",
+      "has_embedding": true,
+      "embedding_dimensions": 1024,
+      "embedding_model_id": "voyage-code-4",
+      "content_character_count": 154,
+      "content_sha256": "4d715dc71350d099159d03dd222d75165d9626e62e4b56b0f9ac16661e34e0e3",
+      "timestamp": "2026-10-11 21:29:04.774000",
+      "user_scope_verified": true
+    }
+  ],
+  "verified_count": 2,
+  "chat": {
+    "checked_at": "2026-10-11T21:32:05.982955+00:00",
+    "session_id": "vibeguard-chat-memory-confirmed",
+    "user_id": "vibeguard-operator",
+    "row_count": 2,
+    "user_turn_count": 1,
+    "assistant_turn_count": 1,
+    "assistant_matches_http_response": true,
+    "http_status": 200,
+    "chat_saved_event": true,
+    "records": [
+      {
+        "id": "6acc002215ff5156615ec692",
+        "role": "user",
+        "turn_seq": 1,
+        "content_character_count": 88,
+        "content_sha256": "104f037dfb3074caff3afcd692d9cc4d0381bfbdb8a2cc2cbebdcf31594573b5",
+        "timestamp": "2026-10-11 21:31:14.842000"
+      },
+      {
+        "id": "6acc002815ff5156615ec693",
+        "role": "assistant",
+        "turn_seq": 2,
+        "content_character_count": 162,
+        "content_sha256": "accc818f74fa935c198488f9bd412f483312092a776cb5b53b4e0f5f521bfbb7",
+        "timestamp": "2026-10-11 21:31:20.430000"
+      }
+    ],
+    "passed": true
+  },
+  "collection_counts_checked_at": "2026-10-11T21:32:05.982955+00:00"
+}

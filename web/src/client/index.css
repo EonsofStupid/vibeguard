@@ -1,12 +1,47 @@
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap");
 @import "tailwindcss";
 
 @source "./";
+
+/* VibeGuard design tokens — see DESIGN.md (control room / audit ledger). */
+@theme {
+  --color-ink: #0f1115;
+  --color-surface: #171a21;
+  --color-raised: #1f232c;
+  --color-line: #2a2f3a;
+  --color-text: #e6e8ee;
+  --color-muted: #8b93a7;
+  --color-signal: #f5b73d;
+  --color-verdant: #3ddc97;
+  --color-ember: #ff5c5c;
+  --color-cobalt: #5b8cff;
+
+  --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --animate-fade-up: fade-up 320ms ease-out both;
+  --animate-pulse-soft: pulse-soft 1.6s ease-in-out infinite;
+
+  @keyframes fade-up {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes pulse-soft {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.45; }
+  }
+}
 
 /* Base UI: establish a stacking context at the root so portalled
    popups (Dialog, Select, Menu, Tooltip) layer above page content. */
 html {
   isolation: isolate;
+  color-scheme: dark;
 }
 body {
   position: relative;
+  background: var(--color-ink);
+  color: var(--color-text);
+  font-family: var(--font-sans);
 }

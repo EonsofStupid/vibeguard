@@ -11,6 +11,11 @@ import { SEED_FAILURES, SEED_LEXICON } from './seed';
 
 const strip = (d: any) => d.record;
 
+/** A signed-in Modelence user is the actor of record; an anonymous dashboard viewer acts as the `human:` actor it names.
+ *  The gate only checks the human/agent prefix — binding identity to auth is the production hardening, not the demo. */
+type Ctx = { user?: { handle?: string } | null } | undefined;
+const whoIs = (ctx: Ctx, fallback: string) => (ctx?.user?.handle ? `human:${ctx.user.handle}` : fallback);
+
 export default new Module('harness', {
   configSchema: {
     voyageApiKey: { type: 'string', default: '', isPublic: false },
@@ -52,13 +57,13 @@ export default new Module('harness', {
       const r = await runOnce(`run_${String(n).padStart(3, '0')}`);
       return { ...r, traces: undefined };
     },
-    approveRule: async (args: unknown) => {
+    approveRule: async (args: unknown, ctx: Ctx) => {
       const { ruleId, actor } = z.object({ ruleId: z.string(), actor: Actor }).parse(args);
-      try { return await approve(ruleId, actor); } catch (e) { if (e instanceof GateError) throw new Error(e.message); throw e; }
+      try { return await approve(ruleId, whoIs(ctx, actor)); } catch (e) { if (e instanceof GateError) throw new Error(e.message); throw e; }
     },
-    revertRule: async (args: unknown) => {
+    revertRule: async (args: unknown, ctx: Ctx) => {
       const { ruleId, actor, reason } = z.object({ ruleId: z.string(), actor: Actor, reason: z.string().default('') }).parse(args);
-      try { return await revert(ruleId, actor, reason); } catch (e) { if (e instanceof GateError) throw new Error(e.message); throw e; }
+      try { return await revert(ruleId, whoIs(ctx, actor), reason); } catch (e) { if (e instanceof GateError) throw new Error(e.message); throw e; }
     },
     seed: async () => {
       for (const c of SEED_FAILURES) await dbFailures.upsertOne({ _id: c.category_id } as any, { $set: { record: c, body: c.why_it_matters } });

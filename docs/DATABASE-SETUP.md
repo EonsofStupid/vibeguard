@@ -4,12 +4,12 @@ Updated 2026-10-11. These are two separate credentials.
 
 | Connection | Credential | Current status |
 | --- | --- | --- |
-| Application / memory runtime to Atlas | Database user clyffy and its password in MONGODB_URI | User exists with SCRAM and atlasAdmin @ admin. URI saved locally; live connection not verified. |
-| Application server to Agent Engine | Project service-account client ID and client secret | No accounts in project inventory. Creation form prepared for vibeguard-service; awaiting final browser approval. |
+| Application / memory runtime to Atlas | Database user clyffy and its password in MONGODB_URI | Authenticated ping, majority transaction, fact readback and audit receipt verified. |
+| Application server to Agent Engine | Project service-account client ID and client secret | vibeguard-service exists; OAuth HTTP 200, hosted memory ready, and real chat memory write/read are verified. |
 
 ## Atlas database configuration
 
-Cluster: vibeguard (M10). Host: vibeguard.qyf6cd.mongodb.net. Database: vibeguard. Project: 6acbc84c07e49c5b0f33c510.
+Cluster: vibeguard (M10). Host: vibeguard.qyf6cd.mongodb.net. Project: 6acbc84c07e49c5b0f33c510. Application facts and receipts use database vibeguard. Agent Engine memory uses database mdb_memory_6acbc84c07e49c5b0f33c510 in the same Atlas cluster; these are separate namespaces.
 
 The supplied database credentials are saved as MONGODB_URI in these ignored files:
 - .env (Python harness)
@@ -18,9 +18,9 @@ The supplied database credentials are saved as MONGODB_URI in these ignored file
 
 The password is URL-encoded, including its at sign. The saved URI includes /vibeguard, authSource=admin, retryWrites=true and w=majority. The URI itself must not be copied into documentation or logs. Prisma reads MONGODB_URI; there is no separate DATABASE_URL.
 
-Hosted secrets are separate from these files. The Agent Engine project's MONGODB_URI secret still needs verification or updating with the same value. Do not assume a local env edit changes it.
+Hosted secrets are separate from these files. The same working URI was uploaded to the Agent Engine project's MONGODB_URI secret, version 2, on 2026-10-11 at 20:52 UTC. A local env edit does not update it.
 
-Prisma and @prisma/client 6.19.3 are installed and the client is generated. Prisma schema validation passed with the saved local URI. The bounded Atlas connection check failed during DNS resolution, before database authentication. No successful Atlas write/read is claimed. Details: artifacts/atlas-checkpoint.json.
+Prisma and @prisma/client 6.19.3 are installed and generated. Schema validation passed. The fresh unrestricted Python process passed the Atlas round trip. Six project facts are saved in vibeguard.facts and all six plus their transaction receipt were read back. Evidence: artifacts/project-memory.json. Earlier sandbox DNS/socket failures do not describe the current process permissions.
 
 From the repository root, the existing bounded check is:
 
@@ -32,19 +32,24 @@ Exit zero requires an authenticated ping, a facts write/read match, and an audit
 
 ## Agent Engine service account
 
-Prepared account: vibeguard-service, project vibeguard, role PROJECT_OWNER, default secret lifetime 90 days. No account has been created at this checkpoint.
+Created account: vibeguard-service, project vibeguard, role PROJECT_OWNER. OAuth HTTP 200 and a 3600-second token lifetime were verified; see artifacts/service-account-auth.json.
 
-The database username/password cannot substitute for the service account credentials. Save the generated client ID and secret in vibeguard/.env.local under MONGODB_AGENTIC_CLIENT_ID and MONGODB_AGENTIC_CLIENT_SECRET. Creation displays the secret once. The application already exchanges these for a token at /api/v1/oauth/token, caches a one-hour token for 59 minutes, and refreshes on the next request. No manually maintained ACCESS_TOKEN is required by the Next client.
+The database username/password cannot substitute for the service account credentials. The generated client ID and secret are saved in ignored root .env and vibeguard/.env.local under MONGODB_AGENTIC_CLIENT_ID and MONGODB_AGENTIC_CLIENT_SECRET, with a private recovery record in .runtime/agentengine-service-account.json. The application exchanges them for a token at /api/v1/oauth/token and refreshes automatically. No manual ACCESS_TOKEN entry is required.
 
-A deployed chat also needs MONGODB_AGENTIC_API_URL from its actual deployed workspace and VIBEGUARD_CHAT_BACKEND=agentengine. Those are not configured yet. Keep direct-model mode until the deployed endpoint is identified and verified.
+A deployed agent chat would additionally need MONGODB_AGENTIC_API_URL from its actual workspace and VIBEGUARD_CHAT_BACKEND=agentengine. That is a separate future integration. The current direct-model chat works with the hosted standalone memory service and does not require a deployed agent workspace.
 
-## Completion sequence
+## Verified memory and chat checkpoint
 
-1. Create the prepared project service account and save its generated credentials locally.
-2. Verify an OAuth token exchange without logging the credentials or token.
-3. Verify/update the hosted MONGODB_URI secret, inspect the effective memory configuration, and check memory readiness. Do not upload the root memory config blindly: local candidates differ and may disable extraction.
-4. Record and retrieve a test turn through standalone memory with an explicit user_id and session_id. Long-term extraction is asynchronous and requires a separate recall check.
-5. Set the real deployed workspace URL, verify a chat reply and then an auditable RRFlow review.
+Statement 2, resume-the-goal example, now has real service and database evidence:
+
+- The hosted memory runtime reported ready after the user's configuration changes; hosted Atlas reads and writes succeeded.
+- The official Python SDK 0.10.0 acknowledged a scoped turn and semantic goal fact. A new-session read matched that fact, and context retrieval returned its ID and 36 tokens of goal context. The default helper completed successfully at 21:33:12 UTC on 2026-10-11. Evidence: artifacts/hosted-memory-checkpoint.json, passed: true.
+- Direct Atlas inspection confirmed the turn and semantic records, including the semantic fact's 1024-dimension voyage-code-4 embedding. Evidence: artifacts/atlas-agent-memory.json.
+- The actual /api/chat endpoint returned HTTP 200, recalled the project goal, and emitted saved: true in hosted memory mode. Both the user and assistant turns exist in Atlas under session vibeguard-chat-memory-confirmed; the stored assistant text exactly matches the HTTP response. Evidence: artifacts/chat-memory-checkpoint.json and the chat section of artifacts/atlas-agent-memory.json.
+
+The chat adapter uses server-side VIBEGUARD_MEMORY_MODE=hosted, VIBEGUARD_MEMORY_URL=https://agentengine.mongodb.com, MONGODB_AGENTIC_PROJECT_ID, and VIBEGUARD_MEMORY_USER_ID=vibeguard-operator. It retrieves bounded context and requires acknowledged turn receipts. Token exchange and memory calls remain server-side.
+
+Next, complete the Statement 1 retry-budget example: real failure, proposed harness change, RRFlow human decision, auditable receipt, and measured rerun. A functioning chat and memory round trip do not establish this improvement cycle.
 
 Account setup supports both problem statements by enabling durable memory and human-approved harness changes. Configuration and schema validation alone are not functional proof.
 
@@ -53,16 +58,25 @@ Official references:
 - https://www.mongodb.com/docs/agentengine/add-features/memory-only/
 - https://www.mongodb.com/docs/agentengine/deploy/human-in-the-loop/
 
-## Current hosted memory blocker
+## Hosted memory configuration and resolved network failure
 
-The user reported state: failed, blocked_on: orchestration_engine, with a missing project-scoped LLM provider key. The existing OpenAI key is present locally as LLM_API_KEY in rrflow/agents/rrflow/.env, matching rrflow/project-config.yaml. It has not been verified uploaded to the project.
+The missing LLM key was fixed: LLM_API_KEY and OPENAI_API_KEY were imported at project scope and MONGOMEM_LLM_PROVIDER is openai. The later failed / orchestration_engine state cleared after the user's configuration changes. Successful hosted reads and writes now prove that the memory service reaches Atlas; the final access-list contents have not been independently reread.
 
-Run from the repository root in the authenticated normal terminal:
+The installed official CLI v0.1.119 maps production agentengine.mongodb.com to these exact data-plane entries:
 
-~~~powershell
-node tools/fix-memory-provider.mjs
+~~~text
+44.214.209.237/32
+52.44.27.64/32
 ~~~
 
-The helper reads only the existing LLM_API_KEY for upload, explicitly selects context hack and project 6acbc84c07e49c5b0f33c510 at project scope, then applies the existing hosted memory configuration and verifies state: ready. It stops on any command failure or timeout. It does not upload a local memory config or redeploy an agent. The --check option validates the local input without network calls. Installed CLI help confirmed the flags; local --check passed. Live execution remains pending because the agent process cannot make outbound connections.
+These are the production entries identified during diagnosis. CLI setup-ip-access requires a registered workspace, which this memory-only project does not have.
+
+The hosted memory configuration is stored and read back as generation 2: voyage-code-4/1024, OpenAI gpt-5.6-luna using LLM_API_KEY, four extraction types, and a one-minute idle threshold. Evidence: artifacts/hosted-memory-config.json. The service is now ready and its core write/read/context path is verified. Enabling four extraction types does not prove all four are populated; the verified records are short-term turns and an explicitly saved semantic fact. Automatic extraction remains a separate observation.
+
+## Observed rate limit
+
+Rapid consecutive embedding requests triggered a Voyage rate-limit response during an additional search_semantic step. That failure is retained separately in artifacts/hosted-memory-search-limited.json; the default write/read/context helper now passes. An optional --with-search flag exercises the extra search. On the specific recall rate-limit response, chat continues using its current conversation, records both turns, and explicitly reports that long-term recall was unavailable. Other memory failures remain visible. Sustained request-rate reliability is not yet proven; a rate limit does not mean credentials or Atlas persistence failed.
+
+Docker Desktop and its WSL2 Linux engine now work. The local memory fallback was stopped because CLI 0.1.119 generated a local MongoDB URI despite the external-Atlas configuration. No local memory containers or substitute local data were created. Hosted memory remains the active path.
 
 Reference: https://www.mongodb.com/docs/agentengine/cli/agentengine_secret_set/
