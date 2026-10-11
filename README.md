@@ -47,7 +47,7 @@ vibecoder prompt ──► COSTAR check ──► agent attempt ──► guard 
 | Taxonomic | Failure categories, each a binary signal | `failures` | `save_taxonomic` / `search_taxonomic` |
 | Receipts | Every propose / approve / revert | `audit` | — (append-only, never deleted) |
 
-The **context policy** is measured, not asserted: `ContextPolicy` (per task) records how many memories of each type `build_context()` selected; `RunResult.context_memories` sums it per run, so the context the agent sees grows as rules are approved.
+The **context policy** is measured, not asserted: `ContextPolicy` (per task) records how many memories of each type `build_context()` selected; `RunResult.context_memories` sums it per run, so the context the agent sees grows as rules are approved. Verified on the hosted memory server: for one eval prompt, `build_context()` returned 17 memories (semantic 8, taxonomic 5, procedural 3 — the approved rules — episodic 1), 932 tokens ([docs/RESULTS.md](docs/RESULTS.md)).
 
 ## Deploy / run
 
