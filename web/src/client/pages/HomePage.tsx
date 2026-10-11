@@ -27,6 +27,8 @@ type Rule = {
 };
 type Audit = { at: string; event: string; rule_id?: string; experiment_id?: string; run_id?: string; version?: number; status?: string; actor?: string; reason?: string };
 type Summary = { runs: Run[]; rules: Rule[]; audit: Audit[] };
+type Trace = { task_id: string; split: 'train' | 'heldout'; attempts: number; blocked_by: string[]; false_blocks: number; verdict: { passed: boolean; failures: string[] } };
+type RunDetail = Run & { traces: Trace[] };
 type MemoryTypes = { procedural: number; episodic: number; semantic: number; taxonomic: number; receipts: number };
 type UiCard = { id: string; question: string; options: { label: string; text: string }[]; freeText: boolean };
 type Costar = {
@@ -78,6 +80,7 @@ export default function HomePage() {
 
   const runEval = useMutation({ ...modelenceMutation<Run>('harness.runEvaluation'), onSuccess: (r) => { toast.success(`${r.run_id}: held-out ${r.heldout.passed}/${r.heldout.total}`); refresh(); } });
   const seed = useMutation({ ...modelenceMutation<{ failures: number; lexiconEmbedded: number }>('harness.seed'), onSuccess: (r) => { toast.success(`seeded ${r.failures} failure categories, embedded ${r.lexiconEmbedded} lexicon entries`); refresh(); } });
+  const [openRun, setOpenRun] = useState<string | null>(null);
 
   const runs = summary.data?.runs ?? [];
   const rules = summary.data?.rules ?? [];
@@ -109,6 +112,8 @@ export default function HomePage() {
         </div>
       </div>
 
+      {/* operator guidance: the harness tells the human what the loop needs next */}
+      <NextStep runs={runs} proposed={proposedCount} />
       {runEval.isPending && <KnowledgeDrop title="A replay lets you inspect the steps." explanation="These answers were recorded in advance. Replaying them helps explain a rule and its effects without making a new model request." term="Deterministic replay" whyNow="The recorded examples are running. Their attempt count is simulated." source="Recorded example runner · scripted candidate list" />}
       {(summary.isError || memory.isError || runEval.isError || seed.isError) && <p role="alert" className="rounded-lg border border-ember/40 bg-ember/10 p-3 text-sm">{[summary.error, memory.error, runEval.error, seed.error].filter(Boolean).map(error => error instanceof Error ? error.message : 'The example request failed.').join(' ')}</p>}
 
@@ -215,17 +220,7 @@ export default function HomePage() {
               </thead>
               <tbody>
                 {runs.map((r) => (
-                  <tr key={r.run_id} className="border-t border-line/60">
-                    <td className="py-1.5 pr-3">{r.run_id}</td>
-                    <td className="py-1.5 pr-3 text-muted">{r.at.replace('T', ' ').slice(0, 19)}</td>
-                    <td className="py-1.5 pr-3">{r.rules_active.join(', ') || '—'}</td>
-                    <td className="py-1.5 pr-3">{r.train.passed}/{r.train.total}</td>
-                    <td className="py-1.5 pr-3 text-cobalt">{r.heldout.passed}/{r.heldout.total}</td>
-                    <td className="py-1.5 pr-3 text-muted">{pct(r.heldout.ci95[0])}–{pct(r.heldout.ci95[1])}</td>
-                    <td className="py-1.5 pr-3">{r.blocks}</td>
-                    <td className={cn('py-1.5 pr-3', r.false_blocks > 0 ? 'text-ember' : 'text-verdant')}>{r.false_blocks}</td>
-                    <td className="py-1.5 pr-3 text-signal">{r.proposed.join(', ') || '—'}</td>
-                  </tr>
+                  <RunRow key={r.run_id} r={r} open={openRun === r.run_id} onToggle={() => setOpenRun(openRun === r.run_id ? null : r.run_id)} />
                 ))}
               </tbody>
             </table>
@@ -239,6 +234,61 @@ export default function HomePage() {
         The review pattern applies RRFlow ADR-0002: a durable change needs a decision, a check and a receipt.
       </p>
     </Page>
+  );
+}
+
+function NextStep({ runs, proposed }: { runs: Run[]; proposed: number }) {
+  const latest = runs[runs.length - 1];
+  let step: string, tone: string;
+  if (!runs.length) { step = 'Seed memory, then Run evaluation. The first run has no rules: expect failures — they are the training signal.'; tone = 'text-cobalt'; }
+  else if (proposed > 0) { step = `${proposed} proposed rule${proposed > 1 ? 's' : ''} waiting on a human. Approve (or revert) in the queue, then run again — the next run loads only approved rules.`; tone = 'text-signal'; }
+  else if (latest.heldout.pass_rate < 1) { step = 'Run evaluation. Approved rules are live now; the held-out curve shows whether they generalise.'; tone = 'text-cobalt'; }
+  else { step = 'Held-out at 100%. Revert a rule and run again to see the gate loosen only by human action — and the curve drop.'; tone = 'text-verdant'; }
+  return (
+    <div className="flex items-start gap-2 rounded-md border border-line bg-surface/60 px-3 py-2 text-sm">
+      <span className={cn('mt-0.5 font-mono text-[11px] uppercase tracking-[0.14em]', tone)}>next</span>
+      <span>{step}</span>
+    </div>
+  );
+}
+
+function RunRow({ r, open, onToggle }: { r: Run; open: boolean; onToggle: () => void }) {
+  const detail = useQuery({ ...modelenceQuery<RunDetail>('harness.run', { runId: r.run_id }), enabled: open, staleTime: Infinity });
+  return (
+    <>
+      <tr className="cursor-pointer border-t border-line/60 hover:bg-raised/60" onClick={onToggle} title="show task traces">
+        <td className="py-1.5 pr-3"><span className="mr-1 inline-block w-3 text-muted">{open ? '▾' : '▸'}</span>{r.run_id}</td>
+        <td className="py-1.5 pr-3 text-muted">{r.at.replace('T', ' ').slice(0, 19)}</td>
+        <td className="py-1.5 pr-3">{r.rules_active.join(', ') || '—'}</td>
+        <td className="py-1.5 pr-3">{r.train.passed}/{r.train.total}</td>
+        <td className="py-1.5 pr-3 text-cobalt">{r.heldout.passed}/{r.heldout.total}</td>
+        <td className="py-1.5 pr-3 text-muted">{pct(r.heldout.ci95[0])}–{pct(r.heldout.ci95[1])}</td>
+        <td className="py-1.5 pr-3">{r.blocks}</td>
+        <td className={cn('py-1.5 pr-3', r.false_blocks > 0 ? 'text-ember' : 'text-verdant')}>{r.false_blocks}</td>
+        <td className="py-1.5 pr-3 text-signal">{r.proposed.join(', ') || '—'}</td>
+      </tr>
+      {open && (
+        <tr className="border-t border-line/40 bg-ink/40">
+          <td colSpan={9} className="px-3 py-2">
+            {detail.isLoading ? <span className="text-muted">loading traces…</span> : (
+              <div className="grid gap-1 md:grid-cols-2">
+                {(detail.data?.traces ?? []).map((t) => (
+                  <div key={t.task_id} className="flex flex-wrap items-center gap-x-2 rounded bg-raised px-2 py-1">
+                    <span>{t.task_id}</span>
+                    <span className={cn('rounded px-1 text-[10px]', t.split === 'heldout' ? 'bg-cobalt/20 text-cobalt' : 'bg-line text-muted')}>{t.split}</span>
+                    <span className={t.verdict.passed ? 'text-verdant' : 'text-ember'}>{t.verdict.passed ? 'pass' : 'fail'}</span>
+                    <span className="text-muted">{t.attempts} attempt{t.attempts === 1 ? '' : 's'}</span>
+                    {t.blocked_by.length > 0 && <span className="text-signal">blocked by {t.blocked_by.join(', ')}</span>}
+                    {t.false_blocks > 0 && <span className="text-ember">false block ×{t.false_blocks}</span>}
+                    {t.verdict.failures.length > 0 && <span className="basis-full text-[11px] text-muted">{t.verdict.failures.join(' · ')}</span>}
+                  </div>
+                ))}
+              </div>
+            )}
+          </td>
+        </tr>
+      )}
+    </>
   );
 }
 

@@ -33,19 +33,20 @@ Lexicon entries embedded with Voyage `voyage-code-4` (1024-d) through MongoDB's 
 
 Per-query detail: `artifacts/recall-at-k.json`.
 
-## Atlas Agent Engine hosted memory (bridge)
+## Atlas Agent Engine hosted memory (bridge) — verified 16:05 PT
 
-`src/vibeguard/memory/agent_engine.py` mirrors the loop into the platform's memory server (service-account SDK `agent-engine-sdk-memory` 0.11.8, project-scoped gateway):
+`src/vibeguard/memory/agent_engine.py` mirrors the loop into the platform's memory server (service-account SDK `agent-engine-sdk-memory` 0.11.8, project-scoped gateway, memory-only project `6acbc84c…`):
 
-| Step | Evidence |
-| --- | --- |
-| Service-account token exchange | HTTP 200, 3600 s |
-| `save_taxonomic` × 5 failure categories | acknowledged, `has_embedding=True` (14:49–15:00 PT) |
-| `save_semantic` × 8 lexicon entries | rate-limited by the hosted embedding service (`retry later`), retried with backoff |
-| `build_context()` from the harness | returned `memory_counts` / timing (retrieval 1.04 s) |
-| Status at 15:18 PT | runtime `ready`, but gateway answers `NO_WORKSPACE_ENDPOINT` for project-scoped calls — escalated to MongoDB on site |
+| Memory type | Written | Call |
+| --- | ---: | --- |
+| taxonomic | 5 failure categories (embedded) | `save_taxonomic` |
+| semantic | 8 lexicon entries | `save_semantic` (upsert) |
+| procedural | 3 approved rules as `vg-0001-v2` … (one procedure per rule version) | `save_procedure` |
+| episodic | 5 runs, one episode per run session | `save_episode` |
 
-The bridge is additive: with the gateway down the loop runs with `context: null` per task.
+`python -m vibeguard memory-context "make it keep trying the AI until it answers"` → the platform's `build_context()` selected **17 memories: semantic 8, taxonomic 5, procedural 3, episodic 1 — 932 tokens, retrieval 722 ms**. The three approved guardrails arrive as procedures in the agent's context: that is the context policy evolving with the rule set (Statement 1), assembled from long-horizon memory (Statement 2).
+
+Caveats observed: the hosted embedding service rate-limits bursts (`retry later`, handled with backoff); the gateway briefly answered `NO_WORKSPACE_ENDPOINT` (~15:05–15:45 PT) while the runtime reported `ready`, then recovered. The bridge is additive: with the gateway down the loop runs with `context: null` per task.
 
 ## Memory types on Atlas
 
