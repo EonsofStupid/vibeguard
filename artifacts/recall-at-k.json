@@ -1,0 +1,90 @@
+{
+  "vector": {
+    "k": 3,
+    "recall_at_k": 1.0,
+    "n": 8,
+    "per_query": [
+      {
+        "query": "my site keeps charging me money",
+        "gold": "lx-005",
+        "top": [
+          "lx-005",
+          "lx-002",
+          "lx-001"
+        ],
+        "hit": true
+      },
+      {
+        "query": "let people pay with a card",
+        "gold": "lx-002",
+        "top": [
+          "lx-002",
+          "lx-005",
+          "lx-006"
+        ],
+        "hit": true
+      },
+      {
+        "query": "don't put my api key in the code",
+        "gold": "lx-003",
+        "top": [
+          "lx-003",
+          "lx-005",
+          "lx-002"
+        ],
+        "hit": true
+      },
+      {
+        "query": "stop the button firing twice",
+        "gold": "lx-001",
+        "top": [
+          "lx-001",
+          "lx-005",
+          "lx-002"
+        ],
+        "hit": true
+      },
+      {
+        "query": "remember things between visits",
+        "gold": "lx-004",
+        "top": [
+          "lx-004",
+          "lx-006",
+          "lx-003"
+        ],
+        "hit": true
+      },
+      {
+        "query": "add a login page",
+        "gold": "lx-006",
+        "top": [
+          "lx-006",
+          "lx-002",
+          "lx-003"
+        ],
+        "hit": true
+      },
+      {
+        "query": "the page is slow",
+        "gold": "lx-007",
+        "top": [
+          "lx-007",
+          "lx-005",
+          "lx-001"
+        ],
+        "hit": true
+      },
+      {
+        "query": "go back to the version that worked",
+        "gold": "lx-008",
+        "top": [
+          "lx-008",
+          "lx-005",
+          "lx-002"
+        ],
+        "hit": true
+      }
+    ]
+  },
+  "baseline_recall_at_3": 0.625
+}
