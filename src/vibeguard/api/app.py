@@ -27,6 +27,7 @@ from vibeguard.loop.promotion import check_promotion
 from vibeguard.rules import GuardrailRule, RuleStatus
 from vibeguard.loop.run import RunResult
 from vibeguard.rules import GateError, RuleGate
+from vibeguard.settings import load_env
 from vibeguard.storage import FlatFileStore
 
 STATIC = Path(__file__).with_name("static")
@@ -34,6 +35,7 @@ _ACTOR = re.compile(r"^human:[A-Za-z0-9._-]{1,40}$")
 
 
 def make_store():
+    load_env()
     kind = os.environ.get("VIBEGUARD_STORE", "flatfile").lower()
     if kind == "atlas":
         from vibeguard.storage.atlas import AtlasStore  # provided by the Atlas checkpoint
@@ -141,12 +143,25 @@ def create_app(store=None) -> FastAPI:
     def costar(body: CostarBody):
         scores = score_prompt(body.prompt)
         gaps = missing(scores)
-        matches = [{"phrase": e.phrase, "canonical_label": e.canonical_label, "teach": e.teach, "score": round(s, 3)}
-                   for e, s in resolve_label(body.prompt, k=3) if s > 0]
+        resolver = "token-overlap"
+        matches = []
+        db = getattr(store, "db", None)
+        if db is not None and os.environ.get("VOYAGE_API_KEY"):
+            try:
+                from vibeguard.semantic import vector_resolve
+                matches = [{"phrase": r["phrase"], "canonical_label": r["canonical_label"], "teach": r.get("teach", ""), "score": sc}
+                           for r, sc in vector_resolve(db, body.prompt, k=3)]
+                resolver = "atlas-vector-search+voyage"
+            except Exception as e:  # fall back rather than fail the panel
+                resolver = f"token-overlap (vector unavailable: {type(e).__name__})"
+        if not matches:
+            matches = [{"phrase": e.phrase, "canonical_label": e.canonical_label, "teach": e.teach, "score": round(s, 3)}
+                       for e, s in resolve_label(body.prompt, k=3) if s > 0]
         return {"scores": [s.model_dump(mode="json") for s in scores],
                 "missing": [d.value for d in gaps],
                 "ask": side_conversation(gaps),
-                "lexicon": matches}
+                "lexicon": matches,
+                "resolver": resolver}
 
     @app.get("/")
     def index():

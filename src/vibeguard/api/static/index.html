@@ -294,7 +294,7 @@ $("#costarBtn").onclick = async () => {
     const miss = new Set(d.missing);
     $("#costar").innerHTML = `<div class="dims">${d.scores.map(s => `<div class="dim"><div>${miss.has(s.dimension) ? '<span class="bad">✗</span>' : '<span class="ok">✓</span>'} ${esc(s.dimension)} <span class="tag">${pct(s.p_present)}</span></div><div class="bar"><i style="width:${pct(s.p_present)}"></i></div></div>`).join("")}</div>
       ${d.ask.length ? `<b>VibeGuard would ask:</b><ul class="ask">${d.ask.map(q => `<li>${esc(q)}</li>`).join("")}</ul>` : `<div class="ok">✓ Nothing to ask. This prompt is ready.</div>`}
-      ${d.lexicon.length ? `<div class="lex"><b>Words engineers use:</b> ${d.lexicon.map(l => `“${esc(l.phrase)}” → <b>${esc(l.canonical_label)}</b>. ${esc(l.teach)}`).join("<br>")}</div>` : ""}`;
+      ${d.lexicon.length ? `<div class="lex"><b>Words engineers use</b> <span class="tag">(${esc(d.resolver || "")})</span>: ${d.lexicon.map(l => `“${esc(l.phrase)}” → <b>${esc(l.canonical_label)}</b> <span class="tag">${(l.score*100).toFixed(0)}%</span>. ${esc(l.teach)}`).join("<br>")}</div>` : ""}`;
   } catch(ex){ err(ex.message); }
 };
 
