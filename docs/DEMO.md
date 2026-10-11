@@ -1,7 +1,9 @@
 # VibeGuard — one-minute demo
 
-Demo URL: https://vibeguard.shippin.ai/  
-Existing Modelence app: `vibeguard-mv4df1w6qok` / `prod`.  
+Demo URL: https://vibeguard.shippin.ai/
+
+Existing Modelence app: `vibeguard-mv4df1w6qok` / `prod`.
+
 Repository: https://github.com/EonsofStupid/vibeguard
 
 **Current evidence:** a live model proposed a context policy; a frozen incident replay improved. Human approval, activation and the approved-version rerun are still pending. This is progress toward a complete RSI cycle, not a claim that the cycle has finished.
@@ -47,7 +49,7 @@ The candidate had zero recorded regressions and zero false blocks. The policy fi
 
 **Statement 1 — adaptive harness:** a measured failure produces a proposed, versioned context policy; human review governs activation. **Statement 2 — long-term coherence:** scoped memory, saved turns, goal recall and outcome receipts preserve continuity; rate-limit handling keeps the current conversation usable while long-term recall is unavailable.
 
-The governance design draws on RRFlow's “adaptive reasoning, governed durable effects,” as attributed in the [prior-work section](../README.md#prior-work--rrflow). That section cites [`rrflow/rrflow-development` at `cfa0e80`](https://github.com/rrflow/rrflow-development/tree/cfa0e80) and ADR-0002. The cited ADR file was not independently located in this checkout during this demo-doc update. VibeGuard applies the research; it does not import the Rust engine.
+The governance design draws on RRFlow's “adaptive reasoning, governed durable effects,” as attributed in the [prior-work section](../README.md#prior-work-and-inspiration). That section cites [`rrflow/rrflow-development` at `cfa0e80`](https://github.com/rrflow/rrflow-development/tree/cfa0e80) and ADR-0002. The cited ADR file was not independently located in this checkout during this demo-doc update. VibeGuard applies the research; it does not import the Rust engine.
 
 ## Submission status
 

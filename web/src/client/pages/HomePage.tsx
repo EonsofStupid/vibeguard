@@ -95,6 +95,9 @@ export default function HomePage() {
       <ChatPanel />
       <ReviewPanel />
 
+      <details className="rounded-xl border border-line bg-surface p-4 md:p-5">
+        <summary className="cursor-pointer text-sm font-medium text-muted">Explore recorded examples and earlier work <span className="ml-2 text-xs font-normal">Fixture replays, terminology and audit history</span></summary>
+        <div className="mt-5 space-y-4">
       {/* headline */}
       <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
@@ -233,6 +236,8 @@ export default function HomePage() {
         Replay scores explain the harness mechanics; they do not establish live model improvement. Small samples carry a Wilson interval.
         The review pattern applies RRFlow ADR-0002: a durable change needs a decision, a check and a receipt.
       </p>
+        </div>
+      </details>
     </Page>
   );
 }

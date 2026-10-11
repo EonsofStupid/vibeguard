@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 import z from 'zod';
-import { evidenceDatabase } from './live-improvement';
+import { evidenceDatabase, evidenceRead } from './live-improvement';
 
 export const CooldownPolicy = z.object({
   kind: z.literal('memory_recall_cooldown'),
@@ -32,19 +32,18 @@ export function policyHash(policy: z.infer<typeof CooldownPolicy>) {
 }
 
 async function approvedPolicy(): Promise<ActiveCooldown | null> {
-  const db = await evidenceDatabase();
-  const active = await db.collection<{ _id: string; version: number; policy: unknown; policy_hash: string; proposal_id: string; approved_by: string }>('harness_policies')
-    .findOne({ _id: 'memory-recall-cooldown' }, { maxTimeMS: 5000 });
+  const active = await evidenceRead((db, options) => db.collection<{ _id: string; version: number; policy: unknown; policy_hash: string; proposal_id: string; approved_by: string }>('harness_policies')
+    .findOne({ _id: 'memory-recall-cooldown' }, { maxTimeMS: 5000, ...options }));
   if (!active) return null;
   const parsed = CooldownPolicy.safeParse(active.policy);
   if (!parsed.success || active.policy_hash !== policyHash(parsed.data) || !active.approved_by.startsWith('human:')) {
     throw new Error('The active context policy is invalid; it was not applied.');
   }
-  const receipt = await db.collection('audit').findOne({
+  const receipt = await evidenceRead((db, options) => db.collection('audit').findOne({
     event: 'harness_policy_approved', rule_id: active.proposal_id,
     policy_hash: active.policy_hash, active_policy_version: active.version,
     actor: active.approved_by,
-  }, { projection: { _id: 1 }, maxTimeMS: 5000 });
+  }, { projection: { _id: 1 }, maxTimeMS: 5000, ...options }));
   if (!receipt) throw new Error('The active context policy has no matching human approval receipt.');
   return { id: active._id, version: active.version, hash: active.policy_hash, proposalId: active.proposal_id, policy: parsed.data };
 }
@@ -74,7 +73,7 @@ export async function recallWithApprovedPolicy<T>(input: RecallInput<T>) {
   const db = await evidenceDatabase();
   const cooldowns = db.collection<{ _id: string; until: Date }>('harness_recall_cooldowns');
   return evaluateRecall(input, active, {
-    until: async key => (await cooldowns.findOne({ _id: key }, { maxTimeMS: 5000 }))?.until.getTime() || 0,
+    until: async key => (await evidenceRead((readDb, options) => readDb.collection<{ _id: string; until: Date }>('harness_recall_cooldowns').findOne({ _id: key }, { maxTimeMS: 5000, ...options })))?.until.getTime() || 0,
     pause: async (key, until) => {
       await cooldowns.updateOne({ _id: key }, { $max: { until: new Date(until) } }, { upsert: true, writeConcern: { w: 'majority' } });
     },

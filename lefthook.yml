@@ -1,0 +1,14 @@
+# Keep local commits quick. CI runs the complete checks without credentials.
+pre-commit:
+  parallel: true
+  commands:
+    biome:
+      glob: '*.{js,jsx,mjs,cjs,ts,tsx,json,jsonc,css}'
+      run: npx --no-install biome lint --no-errors-on-unmatched {staged_files}
+pre-push:
+  commands:
+    web-typecheck:
+      glob:
+        - 'web/*.{ts,tsx,json}'
+        - 'web/**/*.{ts,tsx,json}'
+      run: npm run typecheck

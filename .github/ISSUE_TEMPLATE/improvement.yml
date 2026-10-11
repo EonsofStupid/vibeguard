@@ -1,0 +1,23 @@
+name: Measurable improvement
+description: Propose a focused change tied to a problem statement.
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Observed problem and user example
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Smallest useful change
+      description: Name the problem statement this advances and what stays outside this checkpoint.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Completion evidence
+      description: State the baseline, intended metric, held-out check, and approval boundary where applicable.
+    validations:
+      required: true

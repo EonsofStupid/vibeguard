@@ -1,165 +1,125 @@
-# VibeGuard
+﻿# VibeGuard
 
-**A self-tightening agent harness that protects vibecoders' money and time.**
+**An agent harness that learns from failures, measures changes, and remembers the decisions.**
 
 **Live:** https://vibeguard.shippin.ai (= https://vibeguard-mv4df1w6qok-prod.cloud.modelence.app) — deployed on Modelence Cloud, data in MongoDB Atlas. The deployed build is branch [`live`](https://github.com/EonsofStupid/vibeguard/tree/live) (dashboard gate + provenance); `main` additionally carries the chat panel and the RRFlow review gate (`web/src/server/review/`), merged late on the day and not yet deployed.
 
 **Demo video:** `docs/demo/vibeguard-demo.mp4` (55 s screen recording of the live loop) with `docs/demo/vibeguard-demo.srt` captions.
 
-Most guardrails police the model. VibeGuard's guardrails protect the *user*: the non-technical builder who pays for every retry, every runaway loop and every leaked key. When an agent's output fails an eval, VibeGuard writes a new guardrail rule, a human approves it, and every later run loads it. **Agents may tighten their own leash; only humans loosen it.**
+[Demo](https://vibeguard.shippin.ai) · [Walkthrough](docs/DEMO.md) · [Problem statements](docs/FOCUS.md) · [Delivery evidence](SCOPE.md) · [Contributing](CONTRIBUTING.md)
 
-Built solo at the Cerebral Valley × MongoDB **Harness Engineering & Model Wrangling** hackathon, SF Tech Week, October 11, 2026.
-Statement 1 (**Recursive Harnessing**): the harness evolves its own rules and context policy. Statement 2 (**long-horizon memory**): every run and rule lands in the four Atlas Agent Engine memory types and a hard metric (held-out pass rate) drives progress.
+VibeGuard brings a working conversation, MongoDB Atlas memory, measured harness improvements, and RRFlow human review into one workbench. Contextual knowledge drops explain recall cooldowns and approval receipts while the user builds.
 
-## What the live app proves (numbers from the deployed loop, 2026-10-11)
+Built for the MongoDB Harness Engineering & Model Wrangling hackathon, October 11, 2026. Our two targets are **adaptive harness architecture** and **coherent memory with metric-driven progress toward long-term goals**. A short demo establishes a bounded improvement cycle; billion-token continuity remains an unmeasured scale goal.
 
-| Run | Rules active | Train | Held-out | Held-out 95% CI | Blocked before shipping | False blocks |
-| --- | --- | --- | --- | --- | --- | --- |
-| run_001 | none | 1/10 | 1/6 | 3%–56% | 0 | 0 |
-| run_002 | VG-0001 (cost) | 4/10 | 3/6 | 19%–81% | 5 | 0 |
-| run_003 | + VG-0002 (secrets) | 7/10 | 5/6 | 44%–97% | 10 | 0 |
-| run_004 | + VG-0003 (destructive) | 9/10 | 6/6 | 61%–100% | 13 | 0 |
-| run_005 | same | 9/10 | 6/6 | 61%–100% | 13 | 0 |
+## The improvement example
 
-Each rule was proposed by the agent from a *training* failure and approved by a human (`human:jesse`) before the next run; held-out tasks only ever get measured. The same loop run by the Python harness against the M10 cluster gives identical numbers ([docs/RESULTS.md](docs/RESULTS.md)).
+A real memory-recall request encountered an embedding rate limit. A live model proposed a scoped **60-second recall cooldown**: avoid repeated recall calls during that pause, continue recording turns, explain unavailable recall, and resume afterward. The proposal is evaluated against frozen cases before a human decides whether it becomes active.
 
-## Architecture
+| Recorded incident replay | Before | Proposed policy |
+| --- | ---: | ---: |
+| Training cases passed | 1 / 3 | 3 / 3 |
+| Held-out cases passed | 1 / 4 | 4 / 4 |
+| Avoidable recall attempts | 8 | 0 |
+| Simulated conversation turns recorded | 51 | 51 |
+| Regressions / false blocks | — | 0 / 0 |
 
-```
-vibecoder prompt ──► COSTAR check ──► agent attempt ──► guard (approved rules) ──► deterministic judge
-                        │ gaps: ≤2 questions                 │ violation: explain + retry        │ train failure
-                        ▼                                    ▼                                   ▼
-                 lexicon ($vectorSearch, Voyage)      episodic run trace                 proposed rule ──► HUMAN GATE ──► approved / reverted (+ receipt)
-```
+**These are incident-derived replay results with simulated follow-up timings, not a live throughput or cost-savings measurement.** One successful live model request authored the candidate. Earlier transport and provenance-validation failures remain in the evidence history. Human approval, activation, and a rerun are distinct states in the UI; a good trial cannot approve itself.
 
-| Layer | Where | What |
-| --- | --- | --- |
-| Judges' view + harness API | `web/` — Modelence (TypeScript, React 19) on **Modelence Cloud** | `harness` module: queries `summary`, `costar`, `memoryTypes`; mutations `runEvaluation`, `approveRule`, `revertRule`, `seed`, `reset` |
-| Harness engine (reference) | `src/vibeguard/` — Python | Same schemas, judge, gate and loop; CLI `python -m vibeguard demo --approver human:you --memory` |
-| Data | **MongoDB Atlas** | collections `rules` `runs` `lexicon` (1024-d Voyage embeddings + `$vectorSearch` index `lexicon_vec`) `failures` `audit` |
-| Platform memory | **Atlas Agent Engine** hosted memory (`agent-engine-sdk-memory`) | `src/vibeguard/memory/agent_engine.py` mirrors rules→procedural, runs→episodic, lexicon→semantic, failures→taxonomic and calls `build_context()` before every attempt |
+[Exact experiment](artifacts/improvement/context-replay-20261011T224404Z.json) · proposal `context-replay-20261011T224404Z-proposal-v1` · policy hash `800fe2e7e50fc730b6c252c758cba7509edf1b0d1e8683cd31418895395b92df`.
 
-### Memory mapping (Atlas Agent Engine types)
+The earlier live retry baseline passed all seven cases and generated **no improvement proposal**. Older scripted examples remain labeled fixture demonstrations.
 
-| Memory type | VibeGuard record | Collection | Hosted memory call |
-| --- | --- | --- | --- |
-| Procedural | Versioned guardrail rules | `rules` | `save_procedure` / `discover_procedures` |
-| Episodic | Run traces and metrics | `runs` | `save_episode` / `search_episodes` |
-| Semantic | Vibecoder lexicon: phrasing → canonical engineering label | `lexicon` | `save_semantic` / `search_semantic` |
-| Taxonomic | Failure categories, each a binary signal | `failures` | `save_taxonomic` / `search_taxonomic` |
-| Receipts | Every propose / approve / revert | `audit` | — (append-only, never deleted) |
-
-The **context policy** is measured, not asserted: `ContextPolicy` (per task) records how many memories of each type `build_context()` selected; `RunResult.context_memories` sums it per run, so the context the agent sees grows as rules are approved. Verified on the hosted memory server: for one eval prompt, `build_context()` returned 17 memories (semantic 8, taxonomic 5, procedural 3 — the approved rules — episodic 1), 932 tokens ([docs/RESULTS.md](docs/RESULTS.md)).
-
-## Deploy / run
-
-```bash
-# Judges' app (Modelence Cloud builds from source: npm ci && npm run build; start: npm start)
-cd web && npx modelence@latest deploy        # modelence.config.json describes the build; MONGODB_URI is injected
-# set VOYAGE_API_KEY in the environment's variables to enable $vectorSearch lexicon recall
-
-# Python harness against Atlas (+ hosted memory)
-cp .env.example .env                          # MONGODB_URI, VOYAGE_API_KEY, service-account id/secret, AGENTIC_MEMORY_PROJECT_ID
-VIBEGUARD_STORE=atlas python -m vibeguard demo --approver human:you --memory
-VIBEGUARD_STORE=atlas python -m vibeguard memory-sync      # mirror everything into the four hosted memory types
-python -m vibeguard memory-context "add stripe checkout to my next.js app"
-```
-
-## How it works
+## One path through the product
 
 ```mermaid
 flowchart LR
-    P[Vibecoder prompt] --> C{COSTAR check}
-    C -- gaps --> Q[Ask at most 2 natural questions]
-    Q --> C
-    C -- complete --> A[Agent attempt]
-    A --> G{Guard: approved rules}
-    G -- violation --> R[Explain, retry] --> A
-    G -- clean --> J[Deterministic judge]
-    J -- train failure --> W[Rule writer proposes rule]
-    W --> H{Human gate}
-    H -- approve --> Rules[(Approved rules)]
-    H -- revert --> Audit[(Audit log)]
-    Rules --> G
+    Chat[Chat and relevant knowledge] --> Memory[(Atlas Agent Engine memory)]
+    Failure[Observed failure] --> Proposal[Versioned policy proposal]
+    Proposal --> Trial[Frozen training and held-out evaluation]
+    Trial --> Review[RRFlow human decision]
+    Review --> Receipt[(Atlas policy and audit receipt)]
+    Receipt --> Chat
+    Receipt --> Rerun[Measured rerun]
+    Rerun --> Memory
 ```
 
-1. **COSTAR check.** Each prompt is scored on Context, Objective, Style, Tone, Audience and Response format with a cheap CPU check. Missing dimensions trigger at most two plain-language questions, most expensive gaps first.
-2. **Attempt and guard.** The agent's candidate is checked against every approved rule before it ships. A violation is explained to the agent and it retries.
-3. **Judge.** One yes/no detector per failure category (cost, secrets, destructive commands) plus required-code checks. No LLM-as-judge, so runs are reproducible.
-4. **Rule writer.** Failures on *training* tasks become proposed rules with provenance (run, task, failure category). Held-out tasks are only ever measured.
-5. **Human gate.** Only a human can approve a rule, and only a human can loosen or revert one. Nothing is deleted: a revert keeps the rule with `status: reverted` and an audit entry.
+- **Modelence** serves the React workbench and server methods.
+- **MongoDB Atlas** stores experiment evidence, proposals, active versions, cooldown state, and audit receipts. The application explicitly selects the existing Atlas database for this path.
+- **Atlas Agent Engine** hosts conversation memory and the RRFlow review agent. Service-account OAuth connects the application to both services.
+- **RRFlow** suspends execution for a real human decision, checks the exact proposal version and hash, and commits the policy with its receipt in a transaction.
+- **Approved scope is reusable.** Future chats apply that version automatically. A new boundary requires a new decision; review notes alone cannot alter a policy.
 
-### Memory mapping
+## Verified evidence and limits
 
-| Memory type | VibeGuard record |
+Hosted memory has acknowledged real turns and a semantic project-goal fact. That fact was retrieved in a different session, and an actual chat reply and its two turns were independently checked in Atlas. [SCOPE.md](SCOPE.md) records the checkpoint artifacts and remaining work.
+
+The measured cooldown proposal and experiment were written to Atlas and independently read back. RRFlow is deployed and the actual proposal reached its native human-review interrupt. Read current approval and activation state from Atlas; the scores do not establish activation.
+
+The domain serves a Modelence deployment. An uploaded source bundle is a separate deployment from a Git push. A local successful build alone does not verify production chat.
+
+| Memory role | Application records |
 | --- | --- |
-| Procedural | Versioned guardrail rules |
-| Episodic | Run traces and metrics |
-| Semantic | Vibecoder lexicon: phrasing → canonical engineering label |
-| Taxonomic | Failure categories, each a binary signal |
+| Procedural | Versioned rules and approved context policies |
+| Episodic | Runs, experiments, and rerun measurements |
+| Semantic | Project facts and terminology |
+| Taxonomic | Failure categories |
+| Audit | Human decisions and execution receipts |
 
-Research records also live as Markdown files with YAML front matter in [`wiki/`](wiki/) (the flat-file "LLM wiki" the Atlas collections mirror). A generated Agent Engine chat/review client lives in `vibeguard/` and a Python fixture workbench in `src/vibeguard/web/` (`./run.ps1`); both are experiments beside the deployed app and are not part of the demo path.
+These mappings alone do not prove that every type has been extracted or recalled by the hosted service. Replay measurements do not establish live throughput. Prototype reviewer names label receipts; they are not production identity verification.
 
-## CLI and optional API
+## Run the workbench
 
-~~~powershell
-python -m vibeguard costar "make it take payments"
-python -m vibeguard --wiki ./wiki rules
-python -m vibeguard --wiki ./wiki revert VG-0001 --as human:yourname --reason "too broad"
-~~~
+Node.js 22 and Python 3.11+ are the development baseline. Local hooks and CI setup are in [CONTRIBUTING.md](CONTRIBUTING.md).
 
-The existing FastAPI interface is optional and shares the promotion evidence check. To run its tests, install the api extras and httpx. The primary UI uses the dependency-light workbench server above.
+```powershell
+cd web
+npm ci
+Copy-Item .env.example .env
+# Fill existing Atlas, model and Agent Engine service-account values.
+npm run build
+$env:PORT = '3000' # Choose an available port for this manual run.
+node --env-file=.env scripts/start.mjs
+```
 
-## Results (Python workbench replay)
+The existing Next.js development launcher remains available with `node tools/start-chat.mjs`; it chooses an available port and owns cleanup. Its `status` and `stop` commands inspect and stop that owned process tree. The Modelence workbench is the main submission UI.
 
-The isolated recorded replay produces held-out passes of 1/6, 3/6, 5/6, 6/6, 6/6 with zero false blocks. [Executed evidence](artifacts/replay-evidence.json) explicitly marks synthetic human approvals in a temporary store. The actual workbench rule remains proposed for human review. These are harness mechanics, not independent live-model results. The workbench displays the frozen dataset hash, task traces and training-only promotion checks.
+For hosted memory, use the installed Agent Engine CLI. Docker is needed only for the separate local memory stack.
 
-## Honest limits
+```powershell
+.\agentengine.exe version
+.\agentengine.exe memory status --context hack --no-log
+.\.tools\python\python.exe tools\hosted_memory.py
+```
 
-- **The agent is a `ScriptedAgent`.** It replays recorded candidates in order, so attempts are simulated and no live model calls are made. An LLM agent plugs into the same `attempt()` call.
-- **The judge and the rule writer share regex detectors.** This validates the harness mechanics (propose → approve → enforce → measure), not general model quality.
-- **No dollar savings are claimed.** A blocked candidate costs one more attempt; the claim is that it stops shipping a runaway loop, a leaked key or a destructive command.
-- **Actors are labels.** The gate checks the `human:` / `agent:` prefix; the deployed app binds the actor to the signed-in Modelence user when there is one and otherwise trusts the label. Production hardening = require sign-in.
-- **Hosted memory is a mirror, not the source of truth.** Rules/runs live in VibeGuard's own Atlas collections; the Agent Engine memory bridge mirrors them and asks `build_context()` for the context policy. If the hosted gateway is unavailable the loop still runs (memory off = `context: null` in the trace).
-- **One failure class is out of reach by design.** The double-click bug (`t09`) can't be caught by a pattern rule, so training tops out at 9/10.
+## Deploy the existing Modelence app
 
-## Prior work and inspiration
+```powershell
+cd web
+npx modelence deploy --app vibeguard-mv4df1w6qok --env prod
+```
 
-VibeGuard borrows **research and architectural framing only** from RRFlow, the author's pre-alpha reasoning-data engine. No RRFlow code is copied or depended on.
+`web/modelence.config.json` declares build commands and runtime settings. Provide its required secrets in the existing Modelence environment, using the same Atlas and Agent Engine project as the local application. Keep credentials out of source and recordings.
 
-Source: [`rrflow/rrflow-development`](https://github.com/rrflow/rrflow-development) at commit `cfa0e80`.
+After deployment, verify **App Started**, load the custom domain, send a real chat message, check both memory receipts, and refresh the RRFlow queue. Verify the displayed experiment and active version. A timeout, an HTTP 200 for the page shell, or a Git push does not verify that complete path.
 
-- **ADR-0002, adaptive reasoning with governed durable effects** ([`docs/decisions/0002-adaptive-reasoning-governed-effects.md`](https://github.com/rrflow/rrflow-development/blob/cfa0e80/docs/decisions/0002-adaptive-reasoning-governed-effects.md)). Reasoning stays adaptive; anything durable crosses an authorized, checked, receipted boundary. In VibeGuard a proposed rule has no effect until a human approves it.
-- **Paired eval fixtures and dated results** ([`eval/`](https://github.com/rrflow/rrflow-development/tree/cfa0e80/eval)). Baseline and runtime prompt pairs informed the frozen train / held-out split.
-- **Bounded, provider-neutral context assembly** ([context assembly contract](https://github.com/rrflow/rrflow-development/blob/cfa0e80/docs/architecture/engine-data-flow.md#context-assembly-contract)). The COSTAR check and approved rules are the inputs to that kind of bounded context step.
+## RRFlow research and original work
 
-## Original contributions (built today)
+The design draws on [rrflow/rrflow-development](https://github.com/rrflow/rrflow-development) at `cfa0e80`: ADR-0002's governed durable effects, paired evaluation fixtures, and bounded context assembly. This is architectural inspiration; the Rust engine is not imported. Specific ADR and context-contract file paths have not been verified in this checkout.
 
-- The deployed judges' view on Modelence Cloud: pass-rate curve with Wilson intervals and rule annotations, the human gate (approve / revert), COSTAR panel with `$vectorSearch` lexicon recall, append-only receipts, memory-type counts.
-- Atlas Agent Engine memory bridge (`src/vibeguard/memory/`): the four memory types written from the loop, `build_context()` before every attempt, measured context policy per run.
-- Training-only promotion check, bounded retries, rejected rule-ID replacement and accurate exhausted-draft outcomes.
-- Atlas transactions for rule transitions and versioned receipts.
+VibeGuard's contributions are the experiment/proposal loop, frozen evaluation and promotion checks, Atlas transactions and version-bound receipts, hosted RRFlow review implementation, memory-backed chat, and contextual explanations. The research boundary and claims are documented in [FOCUS.md](docs/FOCUS.md).
 
-- Monotonic rule gate: agents propose, humans approve, humans alone loosen or revert, append-only audit.
-- Eval-driven rule writer with provenance on every rule.
-- Frozen 16-task vibecoder eval set (10 train, 6 held-out) with a deterministic judge and Wilson 95% intervals.
-- COSTAR completeness check with a hand-set decision boundary and natural, capped questions.
-- Vibecoder lexicon mapping everyday phrasing to canonical engineering terms.
-- Flat-file "LLM wiki" memory designed to port onto Atlas Agent Engine's four memory types.
+## Repository map
 
-## Repository layout
-
-| Path | What it owns |
+| Path | Responsibility |
 | --- | --- |
-| `src/vibeguard/costar/` | COSTAR schema, check, side-conversation questions |
-| `src/vibeguard/rules/` | GuardrailRule schema and the approve/revert gate |
-| `src/vibeguard/evals/` | Frozen tasks and the deterministic judge |
-| `src/vibeguard/loop/` | Attempt → guard → judge → propose loop, metrics |
-| `src/vibeguard/lexicon/`, `failures/` | Semantic and taxonomic seed memory |
-| `src/vibeguard/storage/` | Flat-file and Atlas stores; transactional rule receipts |
-| `src/vibeguard/memory/` | Atlas Agent Engine hosted-memory bridge (four memory types + `build_context`) |
-| `web/` | Modelence app: `src/server/harness/` (TypeScript port of the harness) and `src/client/pages/HomePage.tsx` (judges' view) |
-| `src/vibeguard/web/` | Primary workbench, actual harness API and static UI |
-| `src/vibeguard/context/` | Bounded MongoDB Voyage embedding and reranking calls |
-| `wiki/` | The flat-file memory itself |
-| `AGENTS.md`, `SCOPE.md` | Map for coding agents; delivery scope |
+| `web/` | Modelence chat, improvement UI, review integration, Atlas policy enforcement |
+| `rrflow/agents/rrflow/` | Hosted review agent and independent decision verifier |
+| `src/vibeguard/improvement/` | Experiments, frozen cases, proposal persistence, approved rerun |
+| `src/vibeguard/{rules,evals,loop,storage}/` | Reference harness, fixture evaluator, rule gate, stores |
+| `src/vibeguard/{memory,context,lexicon,failures,costar}/` | Memory bridge, retrieval, terminology, taxonomy, prompt context |
+| `artifacts/` | Credential-free executed evidence, including failures |
+| `docs/` | Scope, setup, demo, and architecture records |
+| `wiki/` | Original Markdown research records |
+
+Agents should read [AGENTS.md](AGENTS.md), [FOCUS.md](docs/FOCUS.md), and [SCOPE.md](SCOPE.md) before changing the product.

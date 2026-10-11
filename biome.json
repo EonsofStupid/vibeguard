@@ -1,0 +1,45 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.5.15/schema.json",
+  "vcs": { "enabled": true, "clientKind": "git", "useIgnoreFile": true, "defaultBranch": "main" },
+  "files": {
+    "ignoreUnknown": true,
+    "includes": [
+      "package.json", "biome.json", "web/**", "tools/**", "rrflow/agents/rrflow/src/**",
+      "!!**/node_modules", "!!**/.modelence", "!!web/mobile", "!!**/package-lock.json"
+    ]
+  },
+  "formatter": { "indentStyle": "space", "indentWidth": 2, "lineWidth": 110, "lineEnding": "lf" },
+  "javascript": { "formatter": { "quoteStyle": "single", "trailingCommas": "all", "semicolons": "always" } },
+  "css": { "parser": { "tailwindDirectives": true } },
+  "assist": { "enabled": false },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "preset": "none",
+      "correctness": {
+        "noConstAssign": "error",
+        "noInvalidConstructorSuper": "error",
+        "noPrecisionLoss": "error",
+        "noUnreachable": "error",
+        "noUnsafeFinally": "error",
+        "useIsNan": "error"
+      },
+      "suspicious": {
+        "noAsyncPromiseExecutor": "error",
+        "noCompareNegZero": "error",
+        "noDebugger": "error",
+        "noDoubleEquals": "error",
+        "noDuplicateCase": "error",
+        "noDuplicateClassMembers": "error",
+        "noDuplicateObjectKeys": "error",
+        "noFallthroughSwitchClause": "error",
+        "noMisleadingCharacterClass": "error",
+        "noPrototypeBuiltins": "error",
+        "noSelfCompare": "error",
+        "noShadowRestrictedNames": "error",
+        "noSparseArray": "error",
+        "noUnsafeNegation": "error"
+      }
+    }
+  }
+}
