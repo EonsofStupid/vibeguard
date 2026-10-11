@@ -47,18 +47,25 @@ private access.
 
 ## Partner technologies
 
-Select **Modelence** (used for the React/TypeScript workbench and deployment).
+Select **Modelence** (React/TypeScript workbench and deployment) and **Raindrop**
+(server-side event capture and linked feedback through its official HTTP API).
 
 The available choices are AWS, Elevenlabs, Raindrop, Modelence and Cursor. Atlas
 runs on AWS, but that is infrastructure provided through Atlas; do not imply a
-separate AWS integration. Do not select Raindrop merely because entering its RSI
-prize. No ElevenLabs, Raindrop SDK or Cursor integration is claimed here.
+separate AWS integration. No ElevenLabs or Cursor integration is claimed here.
+
+Raindrop acknowledged the labeled historical replay import and its eligibility
+signal; the artifact records HTTP 200 with the matching event ID and HTTP 204
+for the signal. Live chat capture, explicit Helpful / Missed goal feedback and
+RRFlow receipt feedback are wired into the server. A fresh deployed chat capture
+still needs its own acknowledgement before claiming that deployment is verified.
 
 ## Are you submitting for the Raindrop RSI Prize?
 
 **Yes** — the intended prize entry is recursive self-improvement of the harness.
 
-The form offers Yes / No. Selecting the prize does not claim use of Raindrop's SDK.
+The form offers Yes / No. Our integration uses Raindrop's documented HTTP API.
+The inspected guide and form do not specify further detailed prize eligibility.
 
 ## MongoDB products and Atlas sandbox usage
 
@@ -91,6 +98,12 @@ Clearer guidance separating local build success, Git pushes and actual uploaded
 deployment state would help time-constrained teams. We kept the working chat and
 human review in the main product flow and made deployment verification a separate
 checkpoint.
+
+Raindrop's event IDs make it possible to connect user feedback and exact RRFlow
+policy receipts to observations. The event endpoint returned HTTP 200 with an
+explicit matching event ID even though the HTTP guide described HTTP 204; we
+validate that acknowledgement and keep timeouts visibly unconfirmed. Historical
+incident replay and live chat are labeled separately.
 
 ## Problem statement
 
