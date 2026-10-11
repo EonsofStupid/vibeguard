@@ -8,6 +8,7 @@ import { scorePrompt, missing, sideConversation, uiSpec } from './costar';
 import { vectorResolve, embedLexicon, vectorIndexStatus, ensureVectorIndex, overlapResolve } from './semantic';
 import { Actor, RunResult } from './schemas';
 import { SEED_FAILURES, SEED_LEXICON } from './seed';
+import { raindrop } from './raindrop';
 
 const strip = (d: any) => d.record;
 
@@ -52,6 +53,7 @@ export default new Module('harness', {
       procedural: await dbRules.countDocuments({}), episodic: await dbRuns.countDocuments({}),
       semantic: await dbLexicon.countDocuments({}), taxonomic: await dbFailures.countDocuments({}),
       receipts: await dbAudit.countDocuments({}),
+      raindrop: raindrop.enabled() ? 'on' : 'off (RAINDROP_API_KEY unset)',
       vectorIndex: await vectorIndexStatus().catch((e: any) => [{ name: 'error', status: String(e?.message ?? e) }]),
     }),
   },

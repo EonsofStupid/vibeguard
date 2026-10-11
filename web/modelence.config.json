@@ -4,12 +4,32 @@
     "app": {
       "type": "service",
       "image": "node-22-slim",
-      "build": { "commands": ["npm ci", "npm run build"] },
-      "start": { "commands": ["npm start"] }
+      "build": {
+        "commands": [
+          "npm ci",
+          "npm run build"
+        ]
+      },
+      "start": {
+        "commands": [
+          "npm start"
+        ]
+      }
     }
   },
   "env": {
-    "VOYAGE_API_KEY": { "type": "secret", "required": false },
-    "VOYAGE_MODEL": { "type": "text", "value": "voyage-code-4", "required": false }
+    "VOYAGE_API_KEY": {
+      "type": "secret",
+      "required": false
+    },
+    "VOYAGE_MODEL": {
+      "type": "text",
+      "value": "voyage-code-4",
+      "required": false
+    },
+    "RAINDROP_API_KEY": {
+      "type": "secret",
+      "required": false
+    }
   }
 }

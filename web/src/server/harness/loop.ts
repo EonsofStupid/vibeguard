@@ -4,6 +4,7 @@ import { judge, matches, DETECTORS } from './judge';
 import { wilson } from './metrics';
 import { approvedRules, allRules, nextId, propose } from './gate';
 import { TASKS, SEED_FAILURES } from './seed';
+import { raindrop } from './raindrop';
 import type { EvalTask, GuardrailRule, RunResult, Verdict } from './schemas';
 
 const NUDGE: Record<string, string> = {
@@ -79,5 +80,6 @@ export async function runOnce(runId: string, agent: Agent = scriptedAgent, maxNe
   };
   const body = `# ${runId}\n\n- rules active: ${result.rules_active.join(', ') || 'none'}\n- train: ${result.train.passed}/${result.train.total}\n- held-out: ${result.heldout.passed}/${result.heldout.total}\n- blocks: ${result.blocks} (false: ${result.false_blocks})`;
   await dbRuns.upsertOne({ _id: runId } as any, { $set: { record: result, body } });
+  void raindrop.run(result);
   return result;
 }
