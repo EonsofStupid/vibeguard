@@ -3,23 +3,7 @@ import { modelenceQuery } from '@modelence/react-query';
 import { KnowledgeDrop, type Knowledge } from './KnowledgeDrop';
 import { cn } from '@/client/lib/utils';
 
-type Score = { passed: number; total: number };
-type Comparison = { before: Score; after?: Score | null };
-export type LiveImprovementState = {
-  experiment: null | {
-    experiment_id: string;
-    at: string;
-    model: string;
-    evidence_kind: string;
-    metrics: { train: Comparison; heldout: Comparison };
-    effect?: { before: number; after: number; turnsBefore: number; turnsAfter: number } | null;
-    promotion?: { eligible: boolean; before: number; after: number; total: number; regressions: string[]; false_blocks: number; reason: string } | null;
-  };
-  proposal: null | { _id: string; version: number; status: string; policy_hash: string; policy: unknown; evidence_summary: unknown };
-  review: { url: string | null; ready: boolean };
-  activation?: { receipt_id: string; policy_hash: string; version: number } | null;
-  rerun?: { id: string; passed: boolean; policy_hash: string; evidence_type: string } | null;
-};
+import type { Comparison, ImprovementStatus } from '@/shared/improvement';
 
 function reviewLink(value?: string | null): string | null {
   if (!value) return null;
@@ -46,7 +30,7 @@ function ScoreCard({ title, detail, comparison }: { title: string; detail: strin
   );
 }
 
-function ImprovementCycle({ state }: { state: LiveImprovementState }) {
+function ImprovementCycle({ state }: { state: ImprovementStatus }) {
   const { experiment, proposal, activation, rerun } = state;
   const active = !!proposal && proposal.status === 'approved' && !!activation?.receipt_id && activation.policy_hash === proposal.policy_hash;
   const verified = active && !!rerun?.passed && rerun.policy_hash === proposal?.policy_hash;
@@ -71,7 +55,7 @@ function ImprovementCycle({ state }: { state: LiveImprovementState }) {
 }
 
 export default function LiveImprovement() {
-  const state = useQuery({ ...modelenceQuery<LiveImprovementState>('harness.liveImprovement'), refetchInterval: 6000, retry: false });
+  const state = useQuery({ ...modelenceQuery<ImprovementStatus>('improvement.status'), refetchInterval: 6000, retry: false });
   const experiment = state.data?.experiment;
   const proposal = state.data?.proposal;
   const approved = proposal?.status === 'approved';

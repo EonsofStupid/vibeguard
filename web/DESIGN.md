@@ -51,6 +51,13 @@ Policy decisions show their version and event receipt. Browser history and
 hosted memory are described separately. Starting a new conversation changes the
 session, while the single-operator demo keeps its server-owned memory identity.
 
+Assistant replies render CommonMark with `react-markdown`: readable emphasis,
+lists, links, quotes and fenced code. User messages remain plain text. Generated
+headings stay at level three within the chat section; code and long identifiers
+wrap inside their message card. Code blocks use the ink surface, subtle line
+border and monospace type. Links use cobalt and a visible keyboard focus ring.
+Raw HTML is skipped, and the renderer keeps its default URL filtering.
+
 ## Aesthetic Direction
 
 **Control room / audit ledger.** VibeGuard is a governance surface: judges and

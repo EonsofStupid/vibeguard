@@ -1,0 +1,89 @@
+{
+  "schema_version": 1,
+  "checkpoint": "Statement 2: resume VibeGuard project goal through the combined Modelence chat",
+  "checked_at": "2026-10-11T23:13:45.109674+00:00",
+  "passed": true,
+  "evidence_type": "actual_modelence_chat_independent_atlas_readback",
+  "environment": {
+    "kind": "local_production_build",
+    "url": "http://localhost:65426",
+    "custom_domain_release_verified": false
+  },
+  "database": "mdb_memory_6acbc84c07e49c5b0f33c510",
+  "collection": "memory_short_term",
+  "read_concern": "majority",
+  "session_id": "chat-3a373e87-186a-40f7-ad67-9a9da974b0ae",
+  "user_id": "vibeguard-operator",
+  "records": [
+    {
+      "id": "6acc165420b7a8d67bfc1fb2",
+      "role": "user",
+      "turn_seq": 1,
+      "user_id": "vibeguard-operator",
+      "session_id": "chat-3a373e87-186a-40f7-ad67-9a9da974b0ae",
+      "project_id": "6acbc84c07e49c5b0f33c510",
+      "source": "vibeguard-modelence-chat",
+      "content": "What project goal do you remember for VibeGuard? Give me one next step and explain memory recall in plain language.",
+      "content_character_count": 115,
+      "content_sha256": "f7795097672fd463f63898de2168dee77cd73978c95c3490ff9fdb54bc42c2b6",
+      "timestamp": "2026-10-11T23:05:56.543000+00:00"
+    },
+    {
+      "id": "6acc165920b7a8d67bfc1fb3",
+      "role": "assistant",
+      "turn_seq": 2,
+      "user_id": "vibeguard-operator",
+      "session_id": "chat-3a373e87-186a-40f7-ad67-9a9da974b0ae",
+      "project_id": "6acbc84c07e49c5b0f33c510",
+      "source": "vibeguard-modelence-chat",
+      "content": "**Remembered project goal:**  \nUse MongoDB Atlas memory to preserve VibeGuard’s project context across sessions, while routing durable harness changes through RRFlow human review.\n\n**One next step:**  \nDefine a small memory test: store one project fact, start a new session, retrieve it, and verify that it is cited as context—not treated as an instruction or approval.\n\n**Memory recall in plain language:**  \nVibeGuard looks up relevant information saved from earlier conversations and shows it to me as background. That information can help maintain continuity, but it does not automatically change rules, grant permissions, or prove that a long-term fact has been extracted.",
+      "content_character_count": 677,
+      "content_sha256": "339a056da997da532769ca0cfb69fa59f992e4f66bdfc324f04271f8a8e046be",
+      "timestamp": "2026-10-11T23:06:01.522000+00:00"
+    }
+  ],
+  "checks": {
+    "both_turns_persisted": true,
+    "identity_scope_matches": true,
+    "correct_turn_order": true,
+    "modelence_source_matches": true,
+    "assistant_recalls_atlas_goal": true,
+    "assistant_recalls_rrflow_review": true,
+    "assistant_provides_next_step": true,
+    "assistant_explains_memory": true
+  },
+  "previously_saved_semantic_goal": {
+    "id": "6acbffa015ff5156615ec68e",
+    "collection": "memory_semantic",
+    "content": "VibeGuard's goal is to use MongoDB Atlas memory to preserve project context across sessions and route durable harness changes through RRFlow human review.",
+    "content_sha256": "4d715dc71350d099159d03dd222d75165d9626e62e4b56b0f9ac16661e34e0e3",
+    "verified_in_atlas": true
+  },
+  "browser_observation": {
+    "reported_by": "parent agent performing the browser walkthrough",
+    "model_response_id": "resp_03490cd167acd438006acc1655ff9087d0bf0c9e0ff4b80253",
+    "saved_user_turn_id": "6acc165420b7a8d67bfc1fb2",
+    "saved_assistant_turn_id": "6acc165920b7a8d67bfc1fb3",
+    "exact_response_body_compared_to_atlas": false,
+    "note": "Response identifier was observed in the browser; the memory rows do not store it. Stored assistant content was independently verified, but no captured HTTP body was supplied for byte-for-byte comparison."
+  },
+  "earlier_failed_attempt": {
+    "reported_by": "parent agent performing the browser walkthrough",
+    "stage": "Atlas evidence/policy read before model request",
+    "error": "MongoDB secureConnect timeout",
+    "timeout_ms": 8000,
+    "outcome": "failed",
+    "remediation": "Bounded transient read retry: at most two attempts within one 18-second budget, abort signal and driver timeouts; no automatic paid-model request retry. Production build then restarted once.",
+    "note": "The earlier failed attempt remains a failure; this checkpoint verifies the subsequent new session."
+  },
+  "verification_side_effects": {
+    "model_calls": 0,
+    "atlas_writes": 0,
+    "policy_updates": 0
+  },
+  "limits": [
+    "This checks two real saved turns and a bounded recalled goal; it does not establish sustained throughput or billion-token capacity.",
+    "Local production verification does not establish that the current release is deployed on the custom domain.",
+    "No human approval, active policy change or approved-policy rerun is established by this checkpoint."
+  ]
+}

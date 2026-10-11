@@ -4,7 +4,7 @@ import { modelenceMutation, modelenceQuery } from '@modelence/react-query';
 import { Button } from '@/client/components/ui/Button';
 import { Input } from '@/client/components/ui/Input';
 import { Textarea } from '@/client/components/ui/Textarea';
-import type { LiveImprovementState } from '@/client/components/improvement/LiveImprovement';
+import type { ImprovementStatus } from '@/shared/improvement';
 
 type PendingReview = {
   execution_id: string; session_id: string; interrupt_id: string;
@@ -64,10 +64,10 @@ export default function ReviewPanel() {
   const [latestDecision, setLatestDecision] = useState<DecisionResult | null>(null);
   const queryClient = useQueryClient();
   const pending = useQuery({ ...modelenceQuery<{ reviews: PendingReview[] }>('review.pending'), refetchInterval: 10000, retry: false });
-  const evidence = useQuery({ ...modelenceQuery<LiveImprovementState>('harness.liveImprovement'), refetchInterval: 10000 });
+  const evidence = useQuery({ ...modelenceQuery<ImprovementStatus>('improvement.status'), refetchInterval: 10000 });
   const refresh = () => {
     void pending.refetch();
-    void queryClient.invalidateQueries({ predicate: (query) => String(query.queryKey[0]).startsWith('harness.') });
+    void queryClient.invalidateQueries({ predicate: (query) => String(query.queryKey[0]).startsWith('harness.') || query.queryKey[0] === 'improvement.status' });
   };
   const request = useMutation({ ...modelenceMutation('review.request'), onSuccess: refresh });
   const reviews = pending.data?.reviews ?? [];

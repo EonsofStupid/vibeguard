@@ -12,7 +12,7 @@
     "hooks:check": "lefthook validate",
     "typecheck": "npm --prefix web run typecheck",
     "test": "npm run test:web && npm run test:runtime",
-    "test:web": "tsx --test web/src/server/harness/context-policy.test.ts",
+    "test:web": "tsx --test web/src/server/improvement/context-policy.test.ts",
     "test:runtime": "node --test tools/chat-runtime/supervisor.test.mjs",
     "test:python": "python -m pytest -q",
     "build": "npm --prefix web run build",

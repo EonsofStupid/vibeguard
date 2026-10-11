@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 import z from 'zod';
-import { evidenceDatabase, evidenceRead } from './live-improvement';
+import type { ActivePolicy, ReviewReceipt } from '../../shared/improvement';
+import { evidenceDatabase, evidenceRead } from '../storage/atlas';
 
 export const CooldownPolicy = z.object({
   kind: z.literal('memory_recall_cooldown'),
@@ -32,14 +33,14 @@ export function policyHash(policy: z.infer<typeof CooldownPolicy>) {
 }
 
 async function approvedPolicy(): Promise<ActiveCooldown | null> {
-  const active = await evidenceRead((db, options) => db.collection<{ _id: string; version: number; policy: unknown; policy_hash: string; proposal_id: string; approved_by: string }>('harness_policies')
+  const active = await evidenceRead((db, options) => db.collection<ActivePolicy>('harness_policies')
     .findOne({ _id: 'memory-recall-cooldown' }, { maxTimeMS: 5000, ...options }));
   if (!active) return null;
   const parsed = CooldownPolicy.safeParse(active.policy);
   if (!parsed.success || active.policy_hash !== policyHash(parsed.data) || !active.approved_by.startsWith('human:')) {
     throw new Error('The active context policy is invalid; it was not applied.');
   }
-  const receipt = await evidenceRead((db, options) => db.collection('audit').findOne({
+  const receipt = await evidenceRead((db, options) => db.collection<ReviewReceipt>('audit').findOne({
     event: 'harness_policy_approved', rule_id: active.proposal_id,
     policy_hash: active.policy_hash, active_policy_version: active.version,
     actor: active.approved_by,
