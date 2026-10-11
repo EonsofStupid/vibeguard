@@ -6,7 +6,8 @@ import { LexiconEntry } from './schemas';
 
 const BASE = 'https://us.ai.mongodb.com/v1';
 function key(): string {
-  const k = (getConfig('harness.voyageApiKey') as string) || process.env.VOYAGE_API_KEY || '';
+  const raw = (getConfig('harness.voyageApiKey') as string) || process.env.VOYAGE_API_KEY || '';
+  const k = raw.trim().replace(/^["']|["']$/g, '');   // dashboard-pasted values sometimes carry quotes or a newline
   if (!k) throw new Error('VOYAGE_API_KEY is not set');
   return k;
 }
@@ -16,7 +17,7 @@ export async function embed(texts: string[], inputType: 'query' | 'document'): P
     method: 'POST', headers: { Authorization: `Bearer ${key()}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ model, input: texts, input_type: inputType }),
   });
-  if (!res.ok) throw new Error(`Voyage HTTP ${res.status}`);
+  if (!res.ok) throw new Error(`Voyage HTTP ${res.status}: ${(await res.text()).slice(0, 160)}`);
   const data = (await res.json()) as { data: { embedding: number[] }[] };
   return data.data.map((d) => d.embedding);
 }
