@@ -50,20 +50,21 @@ async function approvedPolicy(): Promise<ActiveCooldown | null> {
 }
 
 /** The same enforcement path is exercised in focused tests and by actual chat. */
-export async function evaluateRecall<T>(input: RecallInput<T>, active: ActiveCooldown | null, state: State, now = Date.now()) {
+export async function evaluateRecall<T>(input: RecallInput<T>, active: ActiveCooldown | null, state: State, now?: number) {
+  const observedAt = () => now ?? Date.now();
   const key = createHash('sha256').update(JSON.stringify([input.userId, input.sessionId, input.provider, active?.hash])).digest('hex');
   const finish = async (decision: Decision, context: T | null, recallLimited: string | null) => ({
     context, recallLimited,
     policy: active ? { id: active.id, version: active.version, hash: active.hash, decision, eventId: await state.record(decision) } : null,
   });
-  if (active && await state.until(key) > now) {
+  if (active && await state.until(key) > observedAt()) {
     return finish('cooldown', null, 'Long-term recall is paused briefly after a rate limit. This reply uses the current conversation. Turn recording remains enabled.');
   }
   try {
     return finish('recalled', await input.recall(), null);
   } catch (error) {
     if (!input.isRateLimit(error)) throw error;
-    if (active) await state.pause(key, now + active.policy.cooldown_seconds * 1000);
+    if (active) await state.pause(key, observedAt() + active.policy.cooldown_seconds * 1000);
     return finish('rate_limited', null, 'Long-term recall reached its rate limit. This reply uses the current conversation. Turn recording remains enabled.');
   }
 }
