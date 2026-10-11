@@ -8,10 +8,13 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "vitest run"
+    "test": "vitest run",
+    "db:generate": "node --env-file=.env.local node_modules/prisma/build/index.js generate",
+    "db:validate": "node --env-file=.env.local node_modules/prisma/build/index.js validate"
   },
   "dependencies": {
     "@ai-sdk/react": "3.0.118",
+    "@prisma/client": "6.19.3",
     "@streamdown/cjk": "^1.0.3",
     "@streamdown/code": "^1.1.1",
     "@streamdown/math": "^1.0.2",
@@ -41,6 +44,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.4",
     "jsdom": "^29.1.1",
+    "prisma": "6.19.3",
     "tailwindcss": "^4",
     "tailwindcss-animate": "^1.0.7",
     "typescript": "^5",

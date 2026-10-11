@@ -1,0 +1,18 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("MONGODB_URI")
+}
+
+// Matches AtlasStore._document for the existing semantic facts collection.
+// Adding this schema does not create or alter any database records.
+model ProjectFactRecord {
+  id     String @id @map("_id")
+  record Json
+  body   String @default("")
+
+  @@map("facts")
+}

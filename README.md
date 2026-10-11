@@ -46,10 +46,10 @@ Research records live as Markdown files with YAML front matter in [`wiki/`](wiki
 The chat client is configured for explicit live-model mode. From the repository root:
 
 ~~~text
-corepack pnpm --dir vibeguard run dev --hostname 127.0.0.1 --port 3001
+node tools/start-chat.mjs
 ~~~
 
-Open http://127.0.0.1:3001/. A separate model probe completed, but the agent-started app request failed; a working browser reply still needs verification from this normal-terminal launch. TypeScript and 70 client tests pass. Conversation history is browser-local; RRFlow review and Atlas memory remain pending. Failures are visible and no invocation POST is automatically retried. See [chat checkpoint](artifacts/chat-checkpoint.json) and [execution runbook](docs/EXAMPLE-FIRST.md).
+Open http://127.0.0.1:3001/. The page and refresh are verified HTTP 200. The current agent-started server receives EACCES for outbound model requests; chat replies are not working yet. The launcher reuses a healthy page and preserves the running server. TypeScript and 71 client tests pass. Conversation history is browser-local; RRFlow review and Atlas memory remain pending. Failures are visible and no invocation POST is automatically retried. See [chat checkpoint](artifacts/chat-checkpoint.json) and [execution runbook](docs/EXAMPLE-FIRST.md).
 
 ## Run the fixture workbench locally
 
@@ -70,6 +70,8 @@ python -m pytest -q
 The workbench uses the actual Python harness. It starts with a separate local .runtime/wiki store so existing research records remain intact. An explicitly configured Atlas connection must succeed at startup; it never silently falls back to local storage.
 
 ## MongoDB integration
+
+[Exact database URI and Prisma setup](docs/DATABASE-SETUP.md): Atlas shows user clyffy on vibeguard.qyf6cd.mongodb.net. MONGODB_URI is the shared setting name for Agent Engine and local Prisma. Prisma configuration is prepared; dependency installation is blocked in the agent environment and remains pending.
 
 The vibeguard cluster was verified in Atlas: M10, MongoDB 8.0.34, AWS us-west-1, three-node replica set, backups active.
 

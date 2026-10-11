@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-10-11T19:32:39.156Z",
+  "checked_at": "2026-10-11T19:44:48.769Z",
   "project_context": {
     "name": "vibeguard",
     "context": "hack",
@@ -18,20 +18,34 @@
   "browser_chat": {
     "url": "http://127.0.0.1:3001/",
     "passed": false,
-    "visible_error": "The model connection failed. No successful reply was received.",
+    "error_code": "EACCES",
+    "http_status": 503,
+    "visible_error": "This server is blocked from reaching the model. Launch the chat from your normal terminal to enable outbound access.",
     "automatic_retry": false
   },
   "client_checks": {
     "typescript": "passed",
-    "tests_passed": 70,
+    "tests_passed": 71,
     "test_files_passed": 11
   },
   "launch": {
-    "agent_process_stopped": true,
-    "terminal_launch": "blocked before process start by execution environment setup refresh",
-    "next_user_command": "corepack pnpm --dir vibeguard run dev --hostname 127.0.0.1 --port 3001"
+    "running": true,
+    "launcher": "node tools/start-chat.mjs",
+    "reuse_verified": true,
+    "model_connection_verified": false
   },
   "atlas_memory": "not verified configured or ready",
   "rrflow_handoff": "not verified",
-  "live_rsi": "not demonstrated"
+  "live_rsi": "not demonstrated",
+  "browser_page": {
+    "http_status": 200,
+    "title": "VibeGuard",
+    "reload_verified": true
+  },
+  "prisma": {
+    "installed": false,
+    "prepared": true,
+    "version": "6.19.3",
+    "blocker": "Package manager network access: connect EACCES"
+  }
 }

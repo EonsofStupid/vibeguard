@@ -16,3 +16,6 @@ Table of contents for agents working in this repo. Read before writing.
 - Agents may tighten their own leash; only humans loosen it.
 - Never delete a rule: revert sets `status: reverted` and appends to `wiki/audit/`.
 - Memory mapping: procedural = rules, episodic = runs, semantic = lexicon/project facts, taxonomic = failures.
+
+## Product focus
+Read `docs/FOCUS.md` and `SCOPE.md` before planning changes. Keep both hackathon problem statements visible: adaptive harness architecture, and coherent memory with metric-driven progress toward long-term goals. Every implementation checkpoint must name the statement, the specific example it advances, and its completion evidence. Prioritize one functioning chat -> relevant facts/terminology -> RRFlow human review -> auditable outcome -> measured rerun -> memory cycle. Park expansions until the active checkpoint passes, unless the user explicitly changes scope.
