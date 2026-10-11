@@ -38,6 +38,11 @@ export async function modelChat(messages: TextMessage[], request: Request): Prom
       }),
     });
   } catch (error) {
+    const cause = error instanceof Error ? error.cause as { code?: string; syscall?: string } | undefined : undefined;
+    console.error("Model connection failed", { name: error instanceof Error ? error.name : "UnknownError", code: cause?.code, syscall: cause?.syscall });
+    if (cause?.code === "EACCES" || cause?.code === "EPERM") {
+      return new Response("This server is blocked from reaching the model. Launch the chat from your normal terminal to enable outbound access.", { status: 503 });
+    }
     return new Response(error instanceof Error && error.name === "TimeoutError"
       ? "The model request timed out. No successful reply was received."
       : "The model connection failed. No successful reply was received.", { status: 503 });

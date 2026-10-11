@@ -44,3 +44,4 @@ next-env.d.ts
 # Separate local clients for VibeGuard chat and RRFlow review
 /.next-chat/
 /.next-review/
+/.next-chat-*/

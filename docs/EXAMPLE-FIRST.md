@@ -22,6 +22,20 @@ Chat messages can suggest preferences and rules; they cannot authorize activatio
 
 If the agents share a platform project, use its existing project-scoped memory runtime. External clients can use the standalone Memory SDK with explicit user_id and session_id. Different projects require explicit integration to one chosen memory service; they do not share memory automatically. Do not create a second Atlas cluster or duplicate platform project for this first example.
 
+## Active step: prove a real chat reply
+
+The user selected CLI context hack for project vibeguard (6acbc84c07e49c5b0f33c510), organization 6aa1ed66371c6468b4a49ac1. Context selection is verified by their terminal output; deployed workspaces and memory readiness are separate checks.
+
+The ignored vibeguard/.env.local is configured for explicit model chat using the existing RRFlow model credential. A separate API probe completed successfully, but the browser request from the agent-started Next process failed. Port 3001 is now free. From the current D:\localdev\vibeguard terminal, run:
+
+~~~text
+corepack pnpm --dir vibeguard run dev --hostname 127.0.0.1 --port 3001
+~~~
+
+Keep that terminal running and open http://127.0.0.1:3001/. Ask for a brief reply, then ask a follow-up referring to the first message. Reload and verify the same conversation returns. The UI explicitly labels live model mode and browser-local conversation history. This mode has no Agent Engine execution, RRFlow review or Atlas memory connection; it does not silently substitute for a failed engine. Failures appear as errors with a non-success status rather than successful assistant messages. The model request has a 45-second deadline and no automatic POST retry.
+
+The browser reply check remains failed until an actual response appears. Client tests and the separate model probe do not pass it. Evidence: artifacts/chat-checkpoint.json. Finish this step before the infrastructure sections below.
+
 ## 1. Execute the examples now
 
 From normal PowerShell:
@@ -88,8 +102,8 @@ Browser inspection of project 6acbc84c07e49c5b0f33c510 on Oct 11 shows Memory is
 ~~~powershell
 cd D:\localdev\vibeguard
 .\agentengine.exe auth status
-.\agentengine.exe workspace list --project-id 6acbc84c07e49c5b0f33c510 --org-id 69ef9daf03d2ce35c2657862 --base-url https://agentengine.mongodb.com
-.\agentengine.exe memory status --project-id 6acbc84c07e49c5b0f33c510 --org-id 69ef9daf03d2ce35c2657862 --base-url https://agentengine.mongodb.com
+.\agentengine.exe workspace list --project-id 6acbc84c07e49c5b0f33c510 --org-id 6aa1ed66371c6468b4a49ac1 --base-url https://agentengine.mongodb.com
+.\agentengine.exe memory status --project-id 6acbc84c07e49c5b0f33c510 --org-id 6aa1ed66371c6468b4a49ac1 --base-url https://agentengine.mongodb.com
 ~~~
 
 Before configure/apply: confirm this is the engines' target project, provide its database connection through project secrets, and allow its data plane to reach the existing M10. The runtime database user must support the memory service's collections and Search/Vector Search index provisioning. The root application's MONGODB_URI is currently empty.
@@ -100,11 +114,11 @@ Once those prerequisites pass, upload the required project secrets interactively
 
 ~~~powershell
 cd D:\localdev\vibeguard
-.\agentengine.exe secret set MONGODB_URI --project-scope --project-id 6acbc84c07e49c5b0f33c510 --org-id 69ef9daf03d2ce35c2657862 --base-url https://agentengine.mongodb.com
-.\agentengine.exe secret set VOYAGE_API_KEY --project-scope --project-id 6acbc84c07e49c5b0f33c510 --org-id 69ef9daf03d2ce35c2657862 --base-url https://agentengine.mongodb.com
-.\agentengine.exe memory configure .\memory\project-config.yaml --project-id 6acbc84c07e49c5b0f33c510 --org-id 69ef9daf03d2ce35c2657862 --base-url https://agentengine.mongodb.com
-.\agentengine.exe memory apply --wait --project-id 6acbc84c07e49c5b0f33c510 --org-id 69ef9daf03d2ce35c2657862 --base-url https://agentengine.mongodb.com
-.\agentengine.exe memory status --project-id 6acbc84c07e49c5b0f33c510 --org-id 69ef9daf03d2ce35c2657862 --base-url https://agentengine.mongodb.com
+.\agentengine.exe secret set MONGODB_URI --project-scope --project-id 6acbc84c07e49c5b0f33c510 --org-id 6aa1ed66371c6468b4a49ac1 --base-url https://agentengine.mongodb.com
+.\agentengine.exe secret set VOYAGE_API_KEY --project-scope --project-id 6acbc84c07e49c5b0f33c510 --org-id 6aa1ed66371c6468b4a49ac1 --base-url https://agentengine.mongodb.com
+.\agentengine.exe memory configure .\memory\project-config.yaml --project-id 6acbc84c07e49c5b0f33c510 --org-id 6aa1ed66371c6468b4a49ac1 --base-url https://agentengine.mongodb.com
+.\agentengine.exe memory apply --wait --project-id 6acbc84c07e49c5b0f33c510 --org-id 6aa1ed66371c6468b4a49ac1 --base-url https://agentengine.mongodb.com
+.\agentengine.exe memory status --project-id 6acbc84c07e49c5b0f33c510 --org-id 6aa1ed66371c6468b4a49ac1 --base-url https://agentengine.mongodb.com
 ~~~
 
 Stop after any nonzero command. Success requires state: ready followed by actual memory writes and reads. A waiting stage or context-deadline timeout is not success. Start with direct memory writes, since extraction.enabled=[] in the prepared file. After a verified round trip, configure the deployed extraction provider and its project secret, then enable semantic, episodic and taxonomic extraction. Keep automatic extraction out of the rule activation path.
@@ -127,6 +141,6 @@ Alignment means improvement toward your stated preferences and constraints while
 
 ## Current validation
 
-34 Python checks passed; one optional FastAPI module is skipped. 64 generated client checks passed. TypeScript checking passed. Three pre-approval examples passed in isolated temporary memory. Launcher configuration was checked for both roles without network calls. Hosted memory has not been provisioned or verified, and no live engine handoff is claimed.
+34 Python checks passed; one optional FastAPI module is skipped. 70 client checks passed. TypeScript checking passed. Three pre-approval examples passed in isolated temporary memory. The earlier engine-only launcher was checked for both roles without network calls. The updated launcher supports explicit model mode; this machine blocks direct PowerShell script execution, so the active chat command above uses corepack directly. Hosted memory has not been provisioned or verified, and no live engine handoff is claimed.
 
 Platform references: [Memory configuration](https://www.mongodb.com/docs/agentengine/add-features/memory/), [Standalone memory](https://www.mongodb.com/docs/agentengine/add-features/memory-only/), [Memory SDK](https://www.mongodb.com/docs/agentengine/sdk/python/packages/agent-engine-sdk-memory/), [Agent-to-agent communication](https://www.mongodb.com/docs/agentengine/add-features/agent-to-agent/).

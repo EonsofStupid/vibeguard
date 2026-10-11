@@ -1,0 +1,37 @@
+{
+  "checked_at": "2026-10-11T19:32:39.156Z",
+  "project_context": {
+    "name": "vibeguard",
+    "context": "hack",
+    "base_url": "https://agentengine.mongodb.com",
+    "organization_id": "6aa1ed66371c6468b4a49ac1",
+    "project_id": "6acbc84c07e49c5b0f33c510",
+    "source": "User terminal output; context selected, not a deployment check"
+  },
+  "model_probe": {
+    "transport": "separate approved curl request",
+    "http_status": 200,
+    "model": "gpt-5.6-luna",
+    "execution_status": "completed",
+    "app_verified": false
+  },
+  "browser_chat": {
+    "url": "http://127.0.0.1:3001/",
+    "passed": false,
+    "visible_error": "The model connection failed. No successful reply was received.",
+    "automatic_retry": false
+  },
+  "client_checks": {
+    "typescript": "passed",
+    "tests_passed": 70,
+    "test_files_passed": 11
+  },
+  "launch": {
+    "agent_process_stopped": true,
+    "terminal_launch": "blocked before process start by execution environment setup refresh",
+    "next_user_command": "corepack pnpm --dir vibeguard run dev --hostname 127.0.0.1 --port 3001"
+  },
+  "atlas_memory": "not verified configured or ready",
+  "rrflow_handoff": "not verified",
+  "live_rsi": "not demonstrated"
+}

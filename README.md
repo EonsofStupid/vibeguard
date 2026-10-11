@@ -41,7 +41,17 @@ flowchart LR
 
 Research records live as Markdown files with YAML front matter in [`wiki/`](wiki/). The workbench uses separate local `.runtime/wiki` records unless MONGODB_URI is set. The Atlas backend implements this interface; live database access remains pending. The generated Agent Engine chat/review client is in vibeguard/. Its live targets, shared memory and RRFlow review handoff still need integration; running engines are user-reported, not verified invocations here.
 
-## Run locally
+## Current chat test
+
+The chat client is configured for explicit live-model mode. From the repository root:
+
+~~~text
+corepack pnpm --dir vibeguard run dev --hostname 127.0.0.1 --port 3001
+~~~
+
+Open http://127.0.0.1:3001/. A separate model probe completed, but the agent-started app request failed; a working browser reply still needs verification from this normal-terminal launch. TypeScript and 70 client tests pass. Conversation history is browser-local; RRFlow review and Atlas memory remain pending. Failures are visible and no invocation POST is automatically retried. See [chat checkpoint](artifacts/chat-checkpoint.json) and [execution runbook](docs/EXAMPLE-FIRST.md).
+
+## Run the fixture workbench locally
 
 From this folder, run:
 

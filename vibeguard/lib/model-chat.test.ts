@@ -37,6 +37,13 @@ describe("live model chat", () => {
     const response = await modelChat(messages, new Request("http://localhost/api/chat"));
     expect(response.status).toBe(502);
   });
+  it("identifies blocked outbound access without claiming a reply", async () => {
+    process.env.VIBEGUARD_MODEL_API_KEY = "test-key";
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("fetch failed", { cause: { code: "EACCES" } })));
+    const response = await modelChat(messages, new Request("http://localhost/api/chat"));
+    expect(response.status).toBe(503);
+    expect(await response.text()).toContain("blocked from reaching the model");
+  });
   it("reports a network failure with a non-success status", async () => {
     process.env.VIBEGUARD_MODEL_API_KEY = "test-key";
     const fetchMock = vi.fn().mockRejectedValue(new Error("blocked"));

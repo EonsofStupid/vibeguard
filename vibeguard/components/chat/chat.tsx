@@ -329,7 +329,7 @@ export function Chat({ mode = "agentengine" }: { mode?: "agentengine" | "model" 
             <h1 className="text-sm font-semibold tracking-tight text-foreground">
               VibeGuard
             </h1>
-            {mode === "agentengine" ? <Link className="text-sm text-muted-foreground hover:text-foreground" href="/reviews">Reviews</Link> : <span className="text-xs text-muted-foreground">Live model · RRFlow review pending</span>}
+            {mode === "agentengine" ? <Link className="text-sm text-muted-foreground hover:text-foreground" href="/reviews">Reviews</Link> : <span className="text-xs text-muted-foreground">Model chat · RRFlow review pending</span>}
           </div>
           {mode === "model" ? <p className="text-xs text-muted-foreground">Conversation history stays in this browser. Atlas long-term memory is not connected.</p> : null}
           <div className="flex flex-wrap items-center gap-4">
