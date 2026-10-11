@@ -275,7 +275,7 @@ function MemoryStrip({ m }: { m?: MemoryTypes }) {
 }
 
 function PassRateChart({ runs }: { runs: Run[] }) {
-  const W = 640, H = 220, L = 36, R = 12, T = 22, B = 28;
+  const W = 640, H = 236, L = 36, R = 12, T = 40, B = 28;
   const n = runs.length;
   const x = (i: number) => (n <= 1 ? (L + W - R) / 2 : L + (i * (W - L - R)) / (n - 1));
   const y = (p: number) => T + (1 - p) * (H - T - B);

@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from pydantic import BaseModel
 
 from vibeguard.evals import EvalTask, Split, Verdict, judge
+from vibeguard.memory.agent_engine import ContextPolicy
 from vibeguard.rules import RuleGate
 from vibeguard.storage import FlatFileStore
 
@@ -24,6 +25,7 @@ class TaskTrace(BaseModel):
     verdict: Verdict
     shipped: bool = False
     termination: str = "accepted"
+    context: ContextPolicy | None = None   # what Agent Engine memory put in front of the agent (None = memory off)
 
 
 class SplitMetrics(BaseModel):
@@ -44,6 +46,7 @@ class RunResult(BaseModel):
     false_blocks: int
     proposed: list[str]
     traces: list[TaskTrace]
+    context_memories: int = 0              # memories selected by build_context across all tasks (context-policy signal)
 
 
 def _split_metrics(traces: list[TaskTrace], split: Split) -> SplitMetrics:
@@ -52,9 +55,10 @@ def _split_metrics(traces: list[TaskTrace], split: Split) -> SplitMetrics:
     return SplitMetrics(passed=k, total=len(ts), pass_rate=round(k / len(ts), 3) if ts else 0.0, ci95=wilson(k, len(ts)))
 
 
-def run_task(task: EvalTask, agent: Agent, rules, max_attempts: int = 8) -> TaskTrace:
+def run_task(task: EvalTask, agent: Agent, rules, max_attempts: int = 8, memory=None) -> TaskTrace:
     if max_attempts < 1:
         raise ValueError("max_attempts must be positive")
+    context = memory.context_for(task.prompt) if memory is not None else None
     feedback, blocked, false_blocks, n, accepted = [], [], 0, 0, None
     termination = "budget_exhausted"
     for attempt in range(max_attempts):
@@ -80,14 +84,16 @@ def run_task(task: EvalTask, agent: Agent, rules, max_attempts: int = 8) -> Task
         })
     return TaskTrace(task_id=task.task_id, split=task.split, attempts=n, blocked_by=blocked,
                      false_blocks=false_blocks, verdict=verdict, shipped=accepted is not None,
-                     termination=termination)
+                     termination=termination, context=context)
 
 
-def run_once(run_id: str, tasks: list[EvalTask], store: FlatFileStore, agent: Agent | None = None, max_new_rules: int = 1) -> RunResult:
+def run_once(run_id: str, tasks: list[EvalTask], store: FlatFileStore, agent: Agent | None = None, max_new_rules: int = 1,
+             memory=None) -> RunResult:
+    """`memory` is an AgentEngineMemory: when given, build_context runs before every attempt and the run is mirrored as an episode."""
     agent = agent or ScriptedAgent()
     gate = RuleGate(store)
     rules = gate.approved()
-    traces = [run_task(t, agent, rules) for t in tasks]
+    traces = [run_task(t, agent, rules, memory=memory) for t in tasks]
     train_verdicts = [t.verdict for t in traces if t.split == Split.train and not t.verdict.passed]
     proposed = propose_rules(run_id, train_verdicts, gate, max_new=max_new_rules)
     result = RunResult(
@@ -95,8 +101,11 @@ def run_once(run_id: str, tasks: list[EvalTask], store: FlatFileStore, agent: Ag
         train=_split_metrics(traces, Split.train), heldout=_split_metrics(traces, Split.heldout),
         paid_attempts=sum(t.attempts for t in traces), blocks=sum(len(t.blocked_by) for t in traces),
         false_blocks=sum(t.false_blocks for t in traces), proposed=[r.rule_id for r in proposed], traces=traces,
+        context_memories=sum(t.context.selected for t in traces if t.context is not None),
     )
     store.write("runs", run_id, result, body=_summary(result))
+    if memory is not None:
+        memory.mirror_run(result)
     return result
 
 
