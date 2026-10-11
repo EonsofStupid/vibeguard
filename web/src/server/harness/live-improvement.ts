@@ -84,6 +84,14 @@ export async function liveImprovement() {
   ));
   const hasCandidate = !!experiment.candidate?.policy;
   const rerun = await evidenceRead((db, options) => db.collection('harness_reruns').findOne({ experiment_id: experiment.experiment_id }, { sort: { finished_at: -1 }, maxTimeMS: 5000, ...options }));
+  const active = proposal?.status === 'approved' ? await evidenceRead((db, options) => db.collection('harness_policies').findOne({
+    proposal_id: String(proposal._id), policy_hash: proposal.policy_hash,
+  }, { maxTimeMS: 5000, ...options })) : null;
+  const receipt = active && typeof active.approved_by === 'string' && active.approved_by.startsWith('human:')
+    ? await evidenceRead((db, options) => db.collection('audit').findOne({
+      event: 'harness_policy_approved', rule_id: String(proposal!._id),
+      policy_hash: active.policy_hash, active_policy_version: active.version, actor: active.approved_by,
+    }, { projection: { _id: 1 }, maxTimeMS: 5000, ...options })) : null;
   const ready = !!proposal?.review_url && ['awaiting_review', 'completed'].includes(proposal.review_state);
   return {
     experiment: {
@@ -108,6 +116,7 @@ export async function liveImprovement() {
       policy_hash: proposal.policy_hash, policy: proposal.policy, evidence_summary: proposal.evidence_summary,
     } : null,
     review: { url: ready ? proposal!.review_url : null, ready },
+    activation: active && receipt ? { receipt_id: String(receipt._id), policy_hash: active.policy_hash, version: active.version } : null,
     rerun: rerun ? { id: String(rerun._id), passed: rerun.passed, policy_hash: rerun.policy_hash, evidence_type: rerun.evidence_type } : null,
   };
 }

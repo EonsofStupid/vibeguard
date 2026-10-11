@@ -2,6 +2,17 @@
 
 STATUS: ESTABLISHED (2026-10-11)
 
+The first view makes the RSI cycle explicit: observed failure, proposed change,
+shadow results, human review, active policy and measured rerun. Use six numbered
+cards that wrap on small screens. Cobalt means recorded evidence; amber marks
+the human's next step. Green requires a matching human receipt and active policy,
+and the final step additionally requires a passing rerun of that policy hash.
+Lead the comparison with actual avoidable-call counts and retained simulated
+turns, keeping the replay label visible. Training and held-out scores remain
+separate. Chat and native review stay visible; legacy fixture dashboards and
+learning explanations begin collapsed. Never complete the cycle from a proposed
+status or a better shadow score alone.
+
 ## Learning while building
 
 The first panel speaks to the builder: “Make the next attempt better.” Show the

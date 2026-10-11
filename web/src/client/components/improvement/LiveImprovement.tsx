@@ -17,6 +17,7 @@ export type LiveImprovementState = {
   };
   proposal: null | { _id: string; version: number; status: string; policy_hash: string; policy: unknown; evidence_summary: unknown };
   review: { url: string | null; ready: boolean };
+  activation?: { receipt_id: string; policy_hash: string; version: number } | null;
   rerun?: { id: string; passed: boolean; policy_hash: string; evidence_type: string } | null;
 };
 
@@ -45,17 +46,43 @@ function ScoreCard({ title, detail, comparison }: { title: string; detail: strin
   );
 }
 
+function ImprovementCycle({ state }: { state: LiveImprovementState }) {
+  const { experiment, proposal, activation, rerun } = state;
+  const active = !!proposal && proposal.status === 'approved' && !!activation?.receipt_id && activation.policy_hash === proposal.policy_hash;
+  const verified = active && !!rerun?.passed && rerun.policy_hash === proposal?.policy_hash;
+  const incident = experiment?.evidence_kind.includes('incident');
+  const failed = !!experiment && experiment.metrics.train.before.passed < experiment.metrics.train.before.total;
+  const steps = [
+    { title: 'Observed failure', detail: incident ? 'Recorded recall rate limit' : failed ? 'Baseline failure recorded' : 'No failure recorded', recorded: !!incident || failed },
+    { title: 'Proposed change', detail: proposal ? 'Exact policy saved in Atlas' : 'No change proposed', recorded: !!proposal },
+    { title: 'Shadow results', detail: experiment?.promotion?.eligible ? 'Measured gain · no regressions' : 'Evidence not yet eligible', recorded: !!experiment?.promotion?.eligible },
+    { title: 'Human review', detail: active ? 'Decision and receipt recorded' : proposal?.status === 'rejected' ? 'Change rejected' : proposal ? 'Your decision is needed' : 'Waiting for a proposal', recorded: active, human: !!proposal && proposal.status === 'proposed' && !!experiment?.promotion?.eligible, complete: active },
+    { title: 'Active policy', detail: active ? `Approved version ${activation!.version}` : proposal?.status === 'approved' ? 'Activation evidence needed' : 'Proposed change is not active', recorded: active, complete: active },
+    { title: 'Measured rerun', detail: verified ? 'Approved version verified in replay' : 'Waiting for approved-version evidence', recorded: verified, complete: verified },
+  ];
+  return <section aria-labelledby="improvement-cycle-title" className="mt-5">
+    <div className="flex flex-wrap items-center justify-between gap-2"><h2 id="improvement-cycle-title" className="font-display text-lg font-semibold">The improvement cycle</h2><span className="text-xs text-muted">Every step follows saved evidence</span></div>
+    <ol className="mt-3 grid gap-2 sm:grid-cols-3 xl:grid-cols-6">{steps.map((step, index) => <li key={step.title} aria-current={step.human ? 'step' : undefined} className={cn('relative rounded-lg border p-3', step.complete ? 'border-verdant/40 bg-verdant/5' : step.human ? 'border-signal/60 bg-signal/10' : step.recorded ? 'border-cobalt/35 bg-cobalt/5' : 'border-line bg-ink/30')}>
+      <div className="flex items-center justify-between"><span className={cn('font-mono text-xs', step.complete ? 'text-verdant' : step.human ? 'text-signal' : step.recorded ? 'text-cobalt' : 'text-muted')}>0{index + 1}</span><span className="text-[10px] uppercase tracking-wider text-muted">{step.complete ? 'Verified' : step.human ? 'Your turn' : step.recorded ? 'Recorded' : 'Waiting'}</span></div>
+      <h3 className="mt-3 text-sm font-medium">{step.title}</h3><p className="mt-1 text-xs leading-relaxed text-muted">{step.detail}</p>
+      {step.human && <a href="#human-review" className="mt-3 inline-block text-xs font-medium text-signal underline underline-offset-4 focus-visible:ring-2 focus-visible:ring-signal">Review this change ↓</a>}
+    </li>)}</ol>
+  </section>;
+}
+
 export default function LiveImprovement() {
   const state = useQuery({ ...modelenceQuery<LiveImprovementState>('harness.liveImprovement'), refetchInterval: 6000, retry: false });
   const experiment = state.data?.experiment;
   const proposal = state.data?.proposal;
   const approved = proposal?.status === 'approved';
+  const active = approved && !!state.data?.activation?.receipt_id && state.data.activation.policy_hash === proposal?.policy_hash;
+  const rerunVerified = active && !!state.data?.rerun?.passed && state.data.rerun.policy_hash === proposal?.policy_hash;
   const cooldown = !!proposal && (proposal.policy as { kind?: string })?.kind === 'memory_recall_cooldown';
   const promotion = experiment?.promotion;
   const eligible = !!promotion?.eligible;
   const baselinePassed = !!experiment && [experiment.metrics.train.before, experiment.metrics.heldout.before].every(score => score.total > 0 && score.passed === score.total);
   const noChangeNeeded = !!experiment && !proposal && baselinePassed;
-  const statusLabel = approved ? 'Approved · rerun evidence needed' : !proposal ? noChangeNeeded ? 'Baseline passed · no change proposed' : 'Results recorded · no change proposed' : ['reverted', 'denied', 'rejected'].includes(proposal.status) ? 'Change not active' : eligible ? 'Trial complete · awaiting human review' : 'Keep proposed · checks need attention';
+  const statusLabel = rerunVerified ? 'Approved policy · replay rerun verified' : active ? 'Active policy · rerun evidence needed' : approved ? 'Approval recorded · activation evidence needed' : !proposal ? noChangeNeeded ? 'Baseline passed · no change proposed' : 'Results recorded · no change proposed' : ['reverted', 'denied', 'rejected'].includes(proposal.status) ? 'Change not active' : eligible ? 'Proposed · not active · your review is next' : 'Keep proposed · checks need attention';
   const href = state.data?.review.ready ? reviewLink(state.data.review.url) : null;
   const provenance = experiment ? `Experiment ${experiment.experiment_id}${proposal ? ` · proposal ${proposal._id}, v${proposal.version}` : ''}` : 'VibeGuard example guide · no measured result yet';
   const lessons: Knowledge[] = [
@@ -96,12 +123,14 @@ export default function LiveImprovement() {
     <section aria-labelledby="live-improvement-title" className="animate-fade-up rounded-xl border border-cobalt/40 bg-surface p-4 md:p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-[11px] uppercase tracking-[0.14em] text-cobalt">Real improvement · one example at a time</p>
-          <h1 id="live-improvement-title" className="mt-1 font-display text-2xl font-semibold md:text-3xl">Make the next attempt better.</h1>
-          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted">Try a task, see what went wrong, review one change, then measure it again. You stay in charge of what becomes active.</p>
+          <p className="text-[11px] uppercase tracking-[0.14em] text-cobalt">RSI · recursive harness improvement</p>
+          <h1 id="live-improvement-title" className="mt-1 font-display text-2xl font-semibold md:text-3xl">From failure to a better next attempt.</h1>
+          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted">The agent proposes a change to its own harness. Evidence tests it. You decide what becomes active.</p>
         </div>
         <button type="button" onClick={() => state.refetch()} disabled={state.isFetching} className="rounded-md border border-line bg-raised px-3 py-1.5 text-xs transition-colors hover:border-muted disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-cobalt">{state.isFetching ? 'Checking evidence…' : 'Refresh evidence'}</button>
       </div>
+
+      {state.data?.experiment && <ImprovementCycle state={state.data} />}
 
       <div className="mt-4 flex flex-wrap gap-2 text-xs text-muted">
         <span className="rounded-full border border-line px-3 py-1">1 · Adapt the harness</span>
@@ -113,16 +142,19 @@ export default function LiveImprovement() {
       {!state.isPending && !state.isError && !experiment && <div className="mt-5 rounded-xl border border-dashed border-line p-5"><h2 className="font-medium">Waiting for the first live comparison.</h2><p className="mt-2 text-sm text-muted">This panel fills from saved model responses and scored results. The recorded examples below can explain the workflow while the real experiment is prepared.</p></div>}
 
       {experiment && <section aria-labelledby="experiment-results-title" className="mt-5 space-y-4">
-        <h2 id="experiment-results-title" className="font-display text-lg font-semibold">What this experiment measured</h2>
+        <h2 id="experiment-results-title" className="font-display text-lg font-semibold">{cooldown ? 'The proposed change, measured' : 'What this experiment measured'}</h2>
         {cooldown && <p className="text-sm text-muted">A live model proposed this policy. These scores replay a recorded incident with simulated follow-up timings; they do not measure live provider throughput.</p>}
         <div className="flex flex-wrap items-center gap-2 text-xs">
-          <span className={cn('rounded-full border px-2.5 py-1', approved ? 'border-verdant/40 bg-verdant/10 text-verdant' : proposal ? 'border-signal/40 bg-signal/10 text-signal' : 'border-cobalt/40 bg-cobalt/10 text-cobalt')}>{statusLabel}</span>
+          <span className={cn('rounded-full border px-2.5 py-1', active ? 'border-verdant/40 bg-verdant/10 text-verdant' : proposal ? 'border-signal/40 bg-signal/10 text-signal' : 'border-cobalt/40 bg-cobalt/10 text-cobalt')}>{statusLabel}</span>
           <span className="text-muted">Model: {experiment.model} · {new Date(experiment.at).toLocaleString()}</span>
         </div>
-        {experiment.effect && <div className="rounded-lg border border-cobalt/30 bg-cobalt/5 p-4"><h3 className="text-sm font-medium">Fewer repeated requests during a known rate limit</h3><p className="mt-2 font-display text-2xl">{experiment.effect.before} → {experiment.effect.after} <span className="text-sm text-muted">avoidable recall attempts in replay</span></p><p className="mt-1 text-xs text-muted">Simulated turns recorded: {experiment.effect.turnsBefore} → {experiment.effect.turnsAfter}. Chat recording remains enabled.</p></div>}
+        {experiment.effect && <div className="grid gap-3 sm:grid-cols-[1.4fr_1fr]">
+          <div className="rounded-xl border border-cobalt/40 bg-cobalt/5 p-5"><p className="text-[11px] uppercase tracking-wider text-cobalt">Shadow replay · avoidable recall attempts</p><p className="mt-3 flex items-baseline gap-4 font-display text-5xl font-semibold md:text-6xl"><span>{experiment.effect.before}</span><span aria-label="becomes" className="text-3xl font-normal text-muted">→</span><span className="text-cobalt">{experiment.effect.after}</span></p><p className="mt-3 text-sm text-muted">Fewer repeated requests during a known rate limit.</p></div>
+          <div className="rounded-xl border border-line bg-raised/40 p-5"><p className="text-[11px] uppercase tracking-wider text-muted">Conversation preserved in replay</p><p className="mt-3 font-display text-4xl font-semibold">{experiment.effect.turnsAfter}<span className="text-xl font-normal text-muted"> / {experiment.effect.turnsBefore}</span></p><p className="mt-3 text-sm text-muted">Simulated turns retained. Recording stays enabled while recall cools down.</p></div>
+        </div>}
         <div className="grid gap-3 md:grid-cols-2">
-          <ScoreCard title="Cases used to develop the change" detail="Passing cases in the recorded training comparison." comparison={experiment.metrics.train} />
-          <ScoreCard title="Fresh cases reserved for evaluation" detail="Held-out results. These cases must not be used to write the proposal." comparison={experiment.metrics.heldout} />
+          <ScoreCard title="Training cases" detail="Used to propose the change." comparison={experiment.metrics.train} />
+          <ScoreCard title="Held-out cases" detail="Reserved for evaluation; excluded from proposal writing." comparison={experiment.metrics.heldout} />
         </div>
         <div className="rounded-lg border border-line p-4">
           <h3 className="text-sm font-medium">{noChangeNeeded ? 'The baseline already meets these checks.' : proposal ? 'Can this move to human review?' : 'What the evidence says'}</h3>
@@ -139,17 +171,18 @@ export default function LiveImprovement() {
           {!href && <p className="mt-3 text-sm text-muted">The RRFlow review panel below opens the exact proposed version. Once approved, this policy applies automatically to later chats within its scope.</p>}
           <details className="mt-3 text-xs"><summary className="cursor-pointer text-cobalt focus-visible:ring-2 focus-visible:ring-cobalt">See proposed behavior and evidence</summary><pre className="mt-3 overflow-x-auto whitespace-pre-wrap break-words rounded-md bg-ink p-3 text-muted">{displayJson(proposal.policy)}</pre><pre className="mt-2 overflow-x-auto whitespace-pre-wrap break-words rounded-md bg-ink p-3 text-muted">{displayJson(proposal.evidence_summary)}</pre><p className="mt-2 break-all font-mono text-muted">Policy fingerprint: {proposal.policy_hash}</p></details>
         </div>}
-        {state.data?.rerun?.passed && <p className="rounded-lg border border-verdant/40 bg-verdant/10 p-3 text-sm text-verdant">Approved policy verified against the frozen replay. Receipt: {state.data.rerun.id}</p>}
-        <p className="text-xs leading-relaxed text-muted">{proposal ? 'This comparison is evidence for a proposed harness change. The full improvement cycle still needs the human decision, its receipt, and a measured rerun with the approved version.' : 'A passing baseline is useful evidence, not a claim of improvement. No policy was proposed or activated. The next improvement cycle needs an observed failure to address.'}</p>
+        {rerunVerified && <p className="rounded-lg border border-verdant/40 bg-verdant/10 p-3 text-sm text-verdant">Approved policy verified against the frozen replay. Rerun: {state.data!.rerun!.id}</p>}
+        {active && <p className="break-all font-mono text-xs text-muted">Human decision receipt: {state.data!.activation!.receipt_id} · active version {state.data!.activation!.version}</p>}
+        <p className="text-xs leading-relaxed text-muted">{rerunVerified ? 'The human decision, active policy and replay rerun match the same policy fingerprint. Live provider throughput remains unmeasured.' : proposal ? 'The cycle is complete only when the exact approved version has a decision receipt and a measured rerun.' : 'A passing baseline is useful evidence, not a claim of improvement. No policy was proposed or activated.'}</p>
         <details className="text-xs text-muted"><summary className="cursor-pointer focus-visible:ring-2 focus-visible:ring-cobalt">Where these numbers came from</summary><p className="mt-2 break-words font-mono">{experiment.experiment_id} · {experiment.evidence_kind}</p><p className="mt-1">Results come from the saved experiment; the explanations below are curated learning notes.</p></details>
       </section>}
 
-      <section aria-labelledby="learning-notes-title" className="mt-5">
-        <h2 id="learning-notes-title" className="font-display text-lg font-semibold">Learn as you build</h2>
+      <details className="mt-5 border-t border-line pt-4">
+        <summary className="cursor-pointer text-sm text-cobalt">Learn as you build · why these steps matter</summary>
         <div className={cn('mt-3 grid gap-3', lessons.length > 2 ? 'md:grid-cols-3' : 'md:grid-cols-2')}>
           {lessons.map(lesson => <KnowledgeDrop key={lesson.term} {...lesson} />)}
         </div>
-      </section>
+      </details>
     </section>
   );
 }

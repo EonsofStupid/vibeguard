@@ -1,0 +1,30 @@
+name: Reproducible failure
+description: Record a concrete failure with its observed evidence.
+title: "bug: "
+body:
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Expected and actual behavior
+      description: Include the specific chat, memory, review, or evaluation step that failed.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence and environment
+      description: Include commit, deployment, status code, and credential-free logs. Never paste tokens, passwords, or connection strings.
+  - type: dropdown
+    id: focus
+    attributes:
+      label: Product focus
+      options:
+        - Adaptive harness architecture
+        - Coherent memory and long-term goals
+        - Developer tooling or deployment

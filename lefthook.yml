@@ -8,5 +8,7 @@ pre-commit:
 pre-push:
   commands:
     web-typecheck:
-      glob: 'web/**/*.{ts,tsx,json}'
+      glob:
+        - 'web/*.{ts,tsx,json}'
+        - 'web/**/*.{ts,tsx,json}'
       run: npm run typecheck

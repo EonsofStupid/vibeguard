@@ -31,7 +31,7 @@ The initial gate deliberately does not enforce a repository-wide formatting migr
 npm run format -- web/src/path/to/file.ts
 ```
 
-Lefthook checks staged supported files before a commit and Modelence types before a push that changes web source/config. It does not rewrite or restage files. Install hooks explicitly with `npm run hooks:install`; `npm run hooks:check` validates the configuration. Existing hooks should be reviewed before replacing them. CI disables local hook installation and runs the checks directly.
+Lefthook checks staged supported files before a commit and Modelence types before a push that changes web source/config. It does not rewrite or restage files. Its npm package normally installs hooks during dependency installation; `npm run hooks:install` also installs them explicitly and repairs a missing hook. Use `npm run hooks:check` to validate the configuration. Existing hooks should be reviewed before replacing them. CI disables local hook installation and runs the checks directly.
 
 ## GitHub Actions
 
