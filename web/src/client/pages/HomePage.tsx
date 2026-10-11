@@ -5,12 +5,9 @@
 import { useCallback, useEffect, useMemo, useState, type ButtonHTMLAttributes, type CSSProperties, type ReactNode } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { modelenceMutation, modelenceQuery } from '@modelence/react-query';
+import { useSession } from 'modelence/client';
 import { toast } from 'react-hot-toast';
 import Page from '@/client/components/Page';
-import LiveImprovement from '@/client/components/improvement/LiveImprovement';
-import { KnowledgeDrop } from '@/client/components/improvement/KnowledgeDrop';
-import ChatPanel from '@/client/components/chat/ChatPanel';
-import ReviewPanel from '@/client/components/review/ReviewPanel';
 import { cn } from '@/client/lib/utils';
 
 // ---- wire types (mirror src/server/harness/schemas.ts) ----
@@ -22,10 +19,10 @@ type Run = {
 type Rule = {
   rule_id: string; version: number; status: 'proposed' | 'approved' | 'reverted'; direction: 'tighten' | 'loosen';
   category: string; trigger: { type: string; pattern: string }; action: string; user_message: string;
-  origin: { run_id: string; task_id: string; failure_category: string }; proposed_by: string;
+  origin: { run_id: string; task_id: string; failure_category: string; evidence?: { prompt: string; matched: string; snippet: string; detector: string } }; proposed_by: string;
   approved_by?: string | null; created_at: string; updated_at: string;
 };
-type Audit = { at: string; event: string; rule_id?: string; experiment_id?: string; run_id?: string; version?: number; status?: string; actor?: string; reason?: string };
+type Audit = { at: string; event: string; rule_id: string; version: number; status: string; actor: string; reason?: string };
 type Summary = { runs: Run[]; rules: Rule[]; audit: Audit[] };
 type Trace = { task_id: string; split: 'train' | 'heldout'; attempts: number; blocked_by: string[]; false_blocks: number; verdict: { passed: boolean; failures: string[] } };
 type RunDetail = Run & { traces: Trace[] };
@@ -50,7 +47,7 @@ function Label({ children }: { children: ReactNode }) {
   return <div className="text-[11px] uppercase tracking-[0.14em] text-muted">{children}</div>;
 }
 function Card({ className, children, style }: { className?: string; children: ReactNode; style?: CSSProperties }) {
-  return <section style={style} className={cn('animate-fade-up rounded-xl border border-line bg-surface p-4 md:p-5', className)}>{children}</section>;
+  return <section style={style} className={cn('animate-fade-up rounded-xl border border-line bg-surface/90 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.03),0_8px_30px_rgba(0,0,0,0.25)] backdrop-blur transition-colors hover:border-muted/60 md:p-5', className)}>{children}</section>;
 }
 function Btn({ className, tone = 'neutral', ...props }: ButtonHTMLAttributes<HTMLButtonElement> & { tone?: 'neutral' | 'go' | 'stop' | 'accent' }) {
   const tones = {
@@ -73,6 +70,8 @@ function Btn({ className, tone = 'neutral', ...props }: ButtonHTMLAttributes<HTM
 
 export default function HomePage() {
   const qc = useQueryClient();
+  const { user } = useSession();
+  const actor = user ? `human:${user.handle}` : 'human:judge';
   const refresh = useCallback(() => qc.invalidateQueries({ predicate: (q) => String(q.queryKey[0]).startsWith('harness.') }), [qc]);
 
   const summary = useQuery({ ...modelenceQuery<Summary>('harness.summary'), refetchInterval: 6000 });
@@ -80,6 +79,10 @@ export default function HomePage() {
 
   const runEval = useMutation({ ...modelenceMutation<Run>('harness.runEvaluation'), onSuccess: (r) => { toast.success(`${r.run_id}: held-out ${r.heldout.passed}/${r.heldout.total}`); refresh(); } });
   const seed = useMutation({ ...modelenceMutation<{ failures: number; lexiconEmbedded: number }>('harness.seed'), onSuccess: (r) => { toast.success(`seeded ${r.failures} failure categories, embedded ${r.lexiconEmbedded} lexicon entries`); refresh(); } });
+  const reset = useMutation({ ...modelenceMutation('harness.reset'), onSuccess: () => { toast('rules, runs, receipts cleared'); setArmed(false); refresh(); } });
+  const approve = useMutation({ ...modelenceMutation<Rule>('harness.approveRule'), onSuccess: (r) => { toast.success(`${r.rule_id} approved by ${actor} (v${r.version})`); refresh(); } });
+  const revert = useMutation({ ...modelenceMutation<Rule>('harness.revertRule'), onSuccess: (r) => { toast(`${r.rule_id} reverted (v${r.version})`); refresh(); } });
+  const [armed, setArmed] = useState(false);
   const [openRun, setOpenRun] = useState<string | null>(null);
 
   const runs = summary.data?.runs ?? [];
@@ -90,49 +93,52 @@ export default function HomePage() {
   const proposedCount = rules.filter((r) => r.status === 'proposed').length;
 
   return (
-    <Page seo={{ title: 'Build, learn, improve' }}>
-      <LiveImprovement />
-      <ChatPanel />
-      <ReviewPanel />
-
-      <details className="rounded-xl border border-line bg-surface p-4 md:p-5">
-        <summary className="cursor-pointer text-sm font-medium text-muted">Explore recorded examples and earlier work <span className="ml-2 text-xs font-normal">Fixture replays, terminology and audit history</span></summary>
-        <div className="mt-5 space-y-4">
+    <Page seo={{ title: 'Harness' }}>
       {/* headline */}
       <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
-          <h2 className="font-display text-xl font-semibold md:text-2xl">Recorded examples</h2>
+          <div className="mb-2 flex flex-wrap items-center gap-2 text-[11px] font-mono uppercase tracking-[0.14em] text-muted">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-verdant/40 bg-verdant/10 px-2 py-0.5 text-verdant"><span className="size-1.5 animate-pulse-soft rounded-full bg-verdant" />live</span>
+            <span>MongoDB Atlas</span><span className="text-line">·</span><span>Atlas Agent Engine memory</span><span className="text-line">·</span><span>Modelence Cloud</span>
+          </div>
+          <h1 className="font-display text-2xl font-bold tracking-tight md:text-4xl">Recursive harness, <span className="text-verdant">governed</span>.</h1>
           <p className="mt-1 max-w-2xl text-sm text-muted">
-            Replay saved answers to see how a failure becomes a proposed boundary. These examples demonstrate the workflow;
-            their simulated attempts do not measure a live model improving.
+            The agent attempts coding tasks → a deterministic judge scores them → each failure category writes a <em>proposed</em> guardrail →
+            a human approves or reverts → the next run loads the approved rules. Agents may tighten their own leash; only humans loosen it.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Btn tone="accent" onClick={() => runEval.mutate({})} disabled={runEval.isPending}>
-            {runEval.isPending ? <span className="animate-pulse-soft">Replaying examples…</span> : 'Replay recorded examples'}
+            {runEval.isPending ? <span className="animate-pulse-soft">running…</span> : '▶ Run evaluation'}
           </Btn>
-          <Btn onClick={() => seed.mutate({})} disabled={seed.isPending}>Add example terminology</Btn>
+          <Btn onClick={() => seed.mutate({})} disabled={seed.isPending}>Seed memory</Btn>
+          {armed ? (
+            <Btn tone="stop" onClick={() => reset.mutate({})} disabled={reset.isPending}>Confirm reset</Btn>
+          ) : (
+            <Btn onClick={() => setArmed(true)}>Reset</Btn>
+          )}
         </div>
       </div>
 
       {/* operator guidance: the harness tells the human what the loop needs next */}
       <NextStep runs={runs} proposed={proposedCount} />
-      {runEval.isPending && <KnowledgeDrop title="A replay lets you inspect the steps." explanation="These answers were recorded in advance. Replaying them helps explain a rule and its effects without making a new model request." term="Deterministic replay" whyNow="The recorded examples are running. Their attempt count is simulated." source="Recorded example runner · scripted candidate list" />}
-      {(summary.isError || memory.isError || runEval.isError || seed.isError) && <p role="alert" className="rounded-lg border border-ember/40 bg-ember/10 p-3 text-sm">{[summary.error, memory.error, runEval.error, seed.error].filter(Boolean).map(error => error instanceof Error ? error.message : 'The example request failed.').join(' ')}</p>}
+
+      {/* the loop, as a strip: observe → judge → propose → govern → reload */}
+      <LoopStrip runs={runs} rules={rules} audit={audit} />
 
       {/* KPIs */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Kpi label="Replay pass rate" value={latest ? pct(latest.heldout.pass_rate) : '—'} sub={latest ? `${latest.heldout.passed}/${latest.heldout.total} · CI ${pct(latest.heldout.ci95[0])}–${pct(latest.heldout.ci95[1])}` : 'no recorded runs yet'} tone="cobalt" />
-        <Kpi label="Replay score change" value={latest && first && runs.length > 1 ? `${latest.heldout.pass_rate >= first.heldout.pass_rate ? '+' : ''}${Math.round((latest.heldout.pass_rate - first.heldout.pass_rate) * 100)} pts` : '—'} sub={runs.length > 1 ? `${first.run_id} → ${latest.run_id}` : 'needs ≥2 recorded runs'} tone="cobalt" />
-        <Kpi label="Useful answers blocked" value={latest ? String(latest.false_blocks) : '—'} sub={latest ? `${latest.blocks} blocks · ${latest.paid_attempts} simulated attempts` : ''} tone={latest && latest.false_blocks > 0 ? 'ember' : 'verdant'} />
-        <Kpi label="Recorded rules" value={`${rules.filter((r) => r.status === 'approved').length} approved`} sub={`${proposedCount} proposed · ${rules.filter((r) => r.status === 'reverted').length} reverted`} tone="signal" />
+        <Kpi label="Held-out pass rate" value={latest ? pct(latest.heldout.pass_rate) : '—'} sub={latest ? `${latest.heldout.passed}/${latest.heldout.total} · CI ${pct(latest.heldout.ci95[0])}–${pct(latest.heldout.ci95[1])}` : 'no runs yet'} tone="cobalt" />
+        <Kpi label="Improvement" value={latest && first && runs.length > 1 ? `${latest.heldout.pass_rate >= first.heldout.pass_rate ? '+' : ''}${Math.round((latest.heldout.pass_rate - first.heldout.pass_rate) * 100)} pts` : '—'} sub={runs.length > 1 ? `${first.run_id} → ${latest.run_id}` : 'needs ≥2 runs'} tone="verdant" />
+        <Kpi label="False blocks" value={latest ? String(latest.false_blocks) : '—'} sub={latest ? `${latest.blocks} blocks · ${latest.paid_attempts} paid attempts` : ''} tone={latest && latest.false_blocks > 0 ? 'ember' : 'verdant'} />
+        <Kpi label="Rules" value={`${rules.filter((r) => r.status === 'approved').length} live`} sub={`${proposedCount} proposed · ${rules.filter((r) => r.status === 'reverted').length} reverted`} tone="signal" />
       </div>
 
       {/* chart + memory */}
       <div className="grid gap-3 lg:grid-cols-[2fr_1fr]">
         <Card>
           <div className="flex items-baseline justify-between">
-            <Label>Recorded example scores · Wilson 95% CI</Label>
+            <Label>Pass rate over runs · Wilson 95% CI</Label>
             <div className="flex gap-3 text-xs text-muted">
               <span><i className="mr-1 inline-block h-2 w-3 bg-cobalt align-middle" />held-out</span>
               <span><i className="mr-1 inline-block h-2 w-3 bg-muted align-middle" />train</span>
@@ -142,40 +148,50 @@ export default function HomePage() {
           <PassRateChart runs={runs} />
         </Card>
         <Card>
-          <Label>What the workbench remembers</Label>
+          <Label>Memory types · Atlas collections</Label>
           <MemoryStrip m={memory.data} />
-          <p className="mt-3 text-xs leading-relaxed text-muted">These counts describe application records in Atlas. A saved record alone does not prove that the agent recalled it or improved.</p>
-          <details className="mt-2 text-xs text-muted"><summary className="cursor-pointer text-cobalt">Learn the memory types</summary><p className="mt-2">Procedural: how to act. Episodic: what happened. Semantic: facts and meanings. Taxonomic: how failures are grouped. Receipts preserve the decision trail.</p></details>
+          <p className="mt-3 text-xs text-muted">
+            procedural = versioned rules · episodic = run traces · semantic = lexicon (Voyage <span className="font-mono">voyage-code-4</span>, 1024-d, <span className="font-mono">$vectorSearch</span>) · taxonomic = failure categories · receipts = audit log
+          </p>
         </Card>
       </div>
 
       {/* rule queue */}
       <Card>
         <div className="flex items-center justify-between">
-          <Label>Recorded boundaries · review history</Label>
-          <span className="text-xs text-muted">Read-only history · real decisions go through RRFlow</span>
+          <Label>Rule queue · the human gate</Label>
+          <span className="text-xs text-muted">acting as <span className="font-mono text-verdant">{actor}</span></span>
         </div>
         {rules.length === 0 ? (
           <p className="mt-3 text-sm text-muted">No rules yet. Run an evaluation — failures on the train split propose the first one.</p>
         ) : (
           <ul className="mt-3 divide-y divide-line">
             {[...rules].sort((a, b) => (a.status === 'proposed' ? -1 : 1) - (b.status === 'proposed' ? -1 : 1) || a.rule_id.localeCompare(b.rule_id)).map((r) => (
-              <li key={r.rule_id} className="flex flex-col gap-2 py-3 md:flex-row md:items-start md:justify-between">
+              <li key={r.rule_id} className={cn('my-2 flex flex-col gap-2 rounded-lg border-l-2 bg-raised/40 px-3 py-3 md:flex-row md:items-start md:justify-between', r.status === 'approved' ? 'border-verdant' : r.status === 'reverted' ? 'border-ember' : 'border-signal')}>
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-mono text-sm">{r.rule_id}</span>
                     <span className={cn('rounded-full border px-2 py-0.5 text-[11px] font-medium', STATUS_CLASS[r.status])}>{r.status}</span>
-                    <span className="font-mono text-xs text-muted">v{r.version}</span>
+                    <span className="font-mono text-xs text-muted">v{r.version} · {r.direction} · {r.action}</span>
+                    <span className="rounded bg-raised px-1.5 py-0.5 font-mono text-[11px] text-muted">{r.category}</span>
                   </div>
                   <p className="mt-1 text-sm">{r.user_message}</p>
-                  <details className="mt-2 text-xs text-muted">
-                    <summary className="cursor-pointer text-cobalt focus-visible:ring-2 focus-visible:ring-cobalt">Technical details</summary>
-                    <p className="mt-2 font-mono">{r.category} · {r.direction} · {r.action}</p>
-                    <pre className="mt-2 whitespace-pre-wrap break-words rounded-md bg-ink p-3 font-mono text-[11px]">{r.trigger.type}: {r.trigger.pattern}</pre>
-                    <p className="mt-2 break-words">Origin {r.origin.run_id} / {r.origin.task_id} · proposed by <span className="font-mono">{r.proposed_by}</span>
-                      {r.approved_by ? <> · approved by <span className="font-mono text-verdant">{r.approved_by}</span></> : null}
-                    </p>
-                  </details>
+                  <div className="mt-1 truncate font-mono text-[11px] text-muted" title={r.trigger.pattern}>
+                    {r.trigger.type}: {r.trigger.pattern}
+                  </div>
+                  <div className="mt-0.5 text-[11px] text-muted">
+                    origin {r.origin.run_id} / {r.origin.task_id} · proposed by <span className="font-mono">{r.proposed_by}</span>
+                    {r.approved_by ? <> · approved by <span className="font-mono text-verdant">{r.approved_by}</span></> : null}
+                  </div>
+                  {r.origin.evidence && <Evidence e={r.origin.evidence} />}
+                </div>
+                <div className="flex shrink-0 gap-2">
+                  {r.status === 'proposed' && (
+                    <Btn tone="go" onClick={() => approve.mutate({ ruleId: r.rule_id, actor })} disabled={approve.isPending}>Approve</Btn>
+                  )}
+                  {r.status !== 'reverted' && (
+                    <Btn tone="stop" onClick={() => revert.mutate({ ruleId: r.rule_id, actor, reason: 'reverted from dashboard' })} disabled={revert.isPending}>Revert</Btn>
+                  )}
                 </div>
               </li>
             ))}
@@ -196,12 +212,9 @@ export default function HomePage() {
                 <li key={`${a.at}-${i}`} className="flex flex-wrap gap-x-2 border-b border-line/60 py-1">
                   <span className="text-muted">{a.at.replace('T', ' ').slice(0, 19)}</span>
                   <span className={cn(a.event === 'approve' ? 'text-verdant' : a.event === 'revert' ? 'text-ember' : 'text-signal')}>{a.event}</span>
-                  {a.rule_id && <span>{a.rule_id}</span>}
-                  {a.experiment_id && <span className="break-all">{a.experiment_id}</span>}
-                  {a.run_id && a.run_id !== a.experiment_id && <span className="break-all">{a.run_id}</span>}
-                  {typeof a.version === 'number' && <span className="text-muted">v{a.version}{a.status ? ` → ${a.status}` : ''}</span>}
-                  {a.status && typeof a.version !== 'number' && <span className="text-muted">{a.status}</span>}
-                  {a.actor && <span className="text-muted">{a.actor}</span>}
+                  <span>{a.rule_id}</span>
+                  <span className="text-muted">v{a.version} → {a.status}</span>
+                  <span className="text-muted">{a.actor}</span>
                   {a.reason ? <span className="text-muted">“{a.reason}”</span> : null}
                 </li>
               ))}
@@ -212,7 +225,7 @@ export default function HomePage() {
 
       {/* runs table */}
       <Card>
-        <Label>Recorded run history</Label>
+        <Label>Episodic memory · runs</Label>
         {runs.length === 0 ? (
           <p className="mt-3 text-sm text-muted">No runs recorded.</p>
         ) : (
@@ -232,13 +245,52 @@ export default function HomePage() {
       </Card>
 
       <p className="pb-6 text-xs text-muted">
-        About the recorded examples: the judge and rule writer share regex detectors, and answers are scripted.
-        Replay scores explain the harness mechanics; they do not establish live model improvement. Small samples carry a Wilson interval.
-        The review pattern applies RRFlow ADR-0002: a durable change needs a decision, a check and a receipt.
+        Honest limits: the judge and the rule writer share the same regex detectors (the loop proves the governance ratchet and
+        held-out generalisation, not detector discovery); the agent is a scripted replay, not a live model; N is small, so every
+        pass rate carries a Wilson interval. Governance pattern cites RRFlow ADR-0002 (governed durable effects).
       </p>
-        </div>
-      </details>
     </Page>
+  );
+}
+
+function LoopStrip({ runs, rules, audit }: { runs: Run[]; rules: Rule[]; audit: Audit[] }) {
+  const latest = runs[runs.length - 1];
+  const stages: { k: string; label: string; value: string; sub: string; tone: string }[] = [
+    { k: '1', label: 'Attempt', value: String(runs.reduce((a, r) => a + r.paid_attempts, 0)), sub: 'paid attempts replayed', tone: 'text-text' },
+    { k: '2', label: 'Judge', value: latest ? `${latest.train.passed + latest.heldout.passed}/16` : '—', sub: 'tasks passing now', tone: 'text-cobalt' },
+    { k: '3', label: 'Propose', value: String(rules.length), sub: 'rules written from failures', tone: 'text-signal' },
+    { k: '4', label: 'Govern', value: String(audit.filter((a) => a.event === 'approve' || a.event === 'revert').length), sub: 'human decisions, receipted', tone: 'text-verdant' },
+    { k: '5', label: 'Reload', value: latest ? String(latest.rules_active.length) : '0', sub: 'rules live next run', tone: 'text-text' },
+  ];
+  return (
+    <ol className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+      {stages.map((st, i) => (
+        <li key={st.k} className="relative rounded-lg border border-line bg-surface px-3 py-2">
+          <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.14em] text-muted"><span className="font-mono text-signal">{st.k}</span>{st.label}{i < stages.length - 1 && <span className="ml-auto text-line">→</span>}</div>
+          <div className={cn('font-display text-xl font-bold', st.tone)}>{st.value}</div>
+          <div className="truncate text-[11px] text-muted">{st.sub}</div>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+function Evidence({ e }: { e: { prompt: string; matched: string; snippet: string; detector: string } }) {
+  const [open, setOpen] = useState(false);
+  const i = e.snippet.indexOf(e.matched);
+  return (
+    <div className="mt-2">
+      <button type="button" onClick={() => setOpen(!open)} className="text-[11px] text-cobalt underline-offset-2 hover:underline">{open ? '▾ hide' : '▸ why this rule exists'} — evidence from the failing attempt</button>
+      {open && (
+        <div className="mt-1.5 space-y-1.5 rounded-md border border-line bg-ink p-2.5 text-xs">
+          <div><span className="text-muted">vibecoder asked:</span> “{e.prompt}”</div>
+          <pre className="overflow-x-auto whitespace-pre-wrap rounded bg-raised p-2 font-mono text-[11px] leading-snug">
+            {i >= 0 ? <>{e.snippet.slice(0, i)}<mark className="rounded bg-ember/30 px-0.5 text-text">{e.matched}</mark>{e.snippet.slice(i + e.matched.length)}</> : e.snippet}
+          </pre>
+          <div className="truncate font-mono text-[10px] text-muted" title={e.detector}>detector: {e.detector}</div>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -310,13 +362,13 @@ function Kpi({ label, value, sub, tone }: { label: string; value: string; sub?: 
 
 function MemoryStrip({ m }: { m?: MemoryTypes }) {
   const rows: [keyof MemoryTypes, string][] = [
-    ['procedural', 'Boundaries'], ['episodic', 'Past attempts'], ['semantic', 'Facts and terminology'], ['taxonomic', 'Failure types'], ['receipts', 'Decision trail'],
+    ['procedural', 'rules'], ['episodic', 'runs'], ['semantic', 'lexicon'], ['taxonomic', 'failures'], ['receipts', 'audit'],
   ];
   return (
     <ul className="mt-3 space-y-1.5">
       {rows.map(([k, coll]) => (
         <li key={k} className="flex items-center justify-between rounded-md bg-raised px-3 py-1.5 text-sm">
-          <span>{coll} <span className="font-mono text-[10px] text-muted">· {k}</span></span>
+          <span>{k} <span className="font-mono text-xs text-muted">· {coll}</span></span>
           <span className="font-mono">{m ? m[k] : '…'}</span>
         </li>
       ))}
@@ -346,8 +398,16 @@ function PassRateChart({ runs }: { runs: Run[] }) {
           <text x={L - 6} y={y(g) + 3} textAnchor="end" fontSize={10} fill="var(--color-muted)" fontFamily="var(--font-mono)">{pct(g)}</text>
         </g>
       ))}
+      <defs>
+        <linearGradient id="heldoutFill" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0%" stopColor="var(--color-cobalt)" stopOpacity={0.35} />
+          <stop offset="100%" stopColor="var(--color-cobalt)" stopOpacity={0} />
+        </linearGradient>
+        <filter id="glow"><feGaussianBlur stdDeviation="2.5" result="b" /><feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge></filter>
+      </defs>
+      {n > 1 && <path d={`${path((r) => r.heldout)} L${x(n - 1).toFixed(1)},${y(0).toFixed(1)} L${x(0).toFixed(1)},${y(0).toFixed(1)} Z`} fill="url(#heldoutFill)" />}
       <path d={path((r) => r.train)} fill="none" stroke="var(--color-muted)" strokeWidth={1.5} strokeDasharray="4 3" />
-      <path d={path((r) => r.heldout)} fill="none" stroke="var(--color-cobalt)" strokeWidth={2.5} strokeLinejoin="round" />
+      <path d={path((r) => r.heldout)} fill="none" stroke="var(--color-cobalt)" strokeWidth={2.5} strokeLinejoin="round" filter="url(#glow)" />
       {runs.map((r, i) => (
         <g key={r.run_id}>
           <line x1={x(i)} x2={x(i)} y1={y(r.heldout.ci95[0])} y2={y(r.heldout.ci95[1])} stroke="var(--color-cobalt)" strokeOpacity={0.55} strokeWidth={1.5} />
@@ -384,24 +444,26 @@ function CostarPanel() {
   const answer = (text: string) => submit(`${prompt} ${text}`);
   return (
     <Card>
-      <Label>Give the agent a clearer starting point</Label>
-      <p className="mt-2 text-sm text-muted">Describe what you want to build. We will suggest up to two useful details and explain relevant terminology.</p>
+      <Label>COSTAR completeness · agent-generated side-conversation</Label>
       <textarea
-        aria-label="What you want to build"
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
         rows={2}
         className="mt-3 w-full resize-y rounded-md border border-line bg-raised p-2.5 font-mono text-sm text-text placeholder:text-muted focus:border-cobalt focus:outline-none"
-        placeholder="What would you like to make?"
+        placeholder="paste the vibecoder's prompt…"
       />
-      <div className="mt-2 flex items-center gap-2">
-        <Btn tone="accent" onClick={() => setPrompt(draft.trim())} disabled={!draft.trim() || q.isFetching}>{q.isFetching ? 'scoring…' : 'Check prompt'}</Btn>
-        {d ? <details className="text-xs text-muted"><summary className="cursor-pointer">Recall source</summary><p className="mt-1 break-words">{d.resolver}</p></details> : null}
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        <Btn tone="accent" onClick={() => submit(draft)} disabled={!draft.trim() || q.isFetching}>{q.isFetching ? 'scoring…' : 'Check prompt'}</Btn>
+        {trail.length > 0 && (
+          <span className="font-mono text-[11px] text-muted">
+            completeness {trail.map((t, i) => <span key={i}>{i ? ' → ' : ''}<span className={cn(t.present >= 6 ? 'text-verdant' : 'text-signal')}>{t.present}/6</span></span>)}
+          </span>
+        )}
+        {trail.length > 0 && <button type="button" className="text-[11px] text-muted underline-offset-2 hover:underline" onClick={() => { setTrail([]); setPrompt(''); }}>clear</button>}
+        {d ? <span className="basis-full truncate font-mono text-[11px] text-muted">resolver: {d.resolver}</span> : null}
       </div>
-      {q.isError && <p role="alert" className="mt-3 text-sm text-ember">{q.error instanceof Error ? q.error.message : 'The prompt check could not be completed.'}</p>}
       {d && (
         <div className="mt-3 space-y-3">
-          {trail.length > 0 && <p className="text-xs text-muted">Useful details captured: {trail.map(step => `${step.present}/6`).join(' → ')}</p>}
           <ul className="grid grid-cols-2 gap-x-4 gap-y-1.5 md:grid-cols-3">
             {d.scores.map((s) => (
               <li key={s.dimension} className="text-xs">
@@ -414,34 +476,52 @@ function CostarPanel() {
             <p className="text-sm text-verdant">Complete enough to start. No side-conversation needed — the agent gets to work.</p>
           ) : (
             <div>
-              <Label>A couple of details that would help</Label>
-              <div className="mt-2 space-y-3">{d.ui.cards.map(card => <div key={card.id} className="rounded-md border border-line bg-raised p-3">
-                <p className="text-sm">{card.question}</p>
-                <div className="mt-2 flex flex-wrap gap-2">{card.options.map(option => <Btn key={option.label} disabled={q.isFetching} onClick={() => answer(option.text)}>{option.label}</Btn>)}</div>
-                {card.freeText && <form className="mt-2 flex gap-2" onSubmit={event => { event.preventDefault(); if (freeText[card.id]?.trim()) answer(freeText[card.id]); }}>
-                  <input aria-label={`Your answer: ${card.question}`} value={freeText[card.id] || ''} onChange={event => setFreeText(values => ({ ...values, [card.id]: event.target.value }))} className="min-w-0 flex-1 rounded border border-line bg-ink px-2 py-1 text-sm" />
-                  <Btn type="submit" disabled={q.isFetching || !freeText[card.id]?.trim()}>Add detail</Btn>
-                </form>}
-              </div>)}</div>
+              <div className="flex items-baseline justify-between">
+                <Label>Rendered from the server's form spec · {d.ui.cards.length} card{d.ui.cards.length === 1 ? '' : 's'}, priority order</Label>
+                <span className="font-mono text-[10px] text-muted">ui.v{d.ui.version}</span>
+              </div>
+              <ul className="mt-1.5 space-y-2">
+                {d.ui.cards.map((c) => (
+                  <li key={c.id} className="rounded-md border border-line bg-raised p-2.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm">{c.question}</span>
+                      <span className="shrink-0 rounded bg-ink px-1.5 py-0.5 font-mono text-[10px] text-signal">{c.id}</span>
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {c.options.map((o) => (
+                        <button key={o.label} type="button" onClick={() => answer(o.text)} disabled={q.isFetching}
+                          className="rounded-full border border-line bg-ink px-2.5 py-1 text-xs transition-colors hover:border-cobalt hover:text-text disabled:opacity-50">
+                          {o.label}
+                        </button>
+                      ))}
+                      {c.freeText && (
+                        <form className="flex min-w-[12rem] flex-1 gap-1" onSubmit={(e) => { e.preventDefault(); if (freeText[c.id]?.trim()) { answer(freeText[c.id]); setFreeText((f) => ({ ...f, [c.id]: '' })); } }}>
+                          <input value={freeText[c.id] ?? ''} onChange={(e) => setFreeText((f) => ({ ...f, [c.id]: e.target.value }))} placeholder="or type it…"
+                            className="min-w-0 flex-1 rounded-full border border-line bg-ink px-2.5 py-1 text-xs text-text placeholder:text-muted focus:border-cobalt focus:outline-none" />
+                        </form>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
           {d.lexicon.length > 0 && (
             <div>
-              <Label>Words for what you are building</Label>
+              <Label>Lexicon hits · canonical labels</Label>
               <ul className="mt-1 space-y-1 text-xs">
                 {d.lexicon.map((l) => (
                   <li key={l.entry_id} className="flex flex-wrap items-center gap-x-2 rounded-md bg-raised px-2.5 py-1.5">
                     <span className="text-muted">“{l.phrase}”</span><span>→</span>
                     <span className="font-mono text-cobalt">{l.canonical_label}</span>
                     {l.stack ? <span className="font-mono text-muted">[{l.stack}]</span> : null}
+                    <span className="ml-auto font-mono text-muted">{l.score.toFixed(3)}</span>
                     {l.teach ? <span className="basis-full text-muted">{l.teach}</span> : null}
-                    <details className="basis-full text-[11px] text-muted"><summary className="cursor-pointer">Why this appeared</summary><p className="mt-1">Retrieved for your prompt · terminology entry {l.entry_id} · match score {l.score.toFixed(3)}. This is a reference explanation, not a newly verified project fact.</p></details>
                   </li>
                 ))}
               </ul>
             </div>
           )}
-          <KnowledgeDrop title="A useful prompt tells the agent what success looks like." explanation="A few details about the goal, audience and desired result can prevent a confident answer to the wrong question." term="COSTAR" whyNow={d.ask.length > 0 ? 'The prompt check found gaps and selected up to two follow-up questions.' : 'The prompt check found enough information to begin.'} source="Curated prompt guide · Context, Objective, Style, Tone, Audience, Response format" />
         </div>
       )}
     </Card>
