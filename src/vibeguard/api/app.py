@@ -23,6 +23,8 @@ from vibeguard.costar.check import missing
 from vibeguard.evals import load_tasks
 from vibeguard.lexicon import resolve_label
 from vibeguard.loop import run_once
+from vibeguard.loop.promotion import check_promotion
+from vibeguard.rules import GuardrailRule, RuleStatus
 from vibeguard.loop.run import RunResult
 from vibeguard.rules import GateError, RuleGate
 from vibeguard.storage import FlatFileStore
@@ -111,7 +113,16 @@ def create_app(store=None) -> FastAPI:
     @app.post("/api/rules/{rule_id}/approve")
     def approve(rule_id: str, body: ApproveBody):
         try:
-            return RuleGate(store).approve(rule_id, actor=_human(body.actor)).model_dump(mode="json")
+            actor = _human(body.actor)
+            gate = RuleGate(store)
+            rule = store.read("rules", rule_id, GuardrailRule)
+            if rule.status != RuleStatus.proposed:
+                raise GateError("Rule must be proposed before approval.")
+            check = check_promotion(rule, load_tasks(), gate.approved())
+            if not check.eligible:
+                raise GateError(check.reason)
+            store.append_log("audit", {"event": "promotion_check", "rule_id": rule_id, "check": check.model_dump()})
+            return gate.approve(rule_id, actor=actor).model_dump(mode="json")
         except GateError as e:
             raise HTTPException(403, str(e))
         except FileNotFoundError:

@@ -22,6 +22,8 @@ class TaskTrace(BaseModel):
     blocked_by: list[str]
     false_blocks: int
     verdict: Verdict
+    shipped: bool = False
+    termination: str = "accepted"
 
 
 class SplitMetrics(BaseModel):
@@ -50,22 +52,35 @@ def _split_metrics(traces: list[TaskTrace], split: Split) -> SplitMetrics:
     return SplitMetrics(passed=k, total=len(ts), pass_rate=round(k / len(ts), 3) if ts else 0.0, ci95=wilson(k, len(ts)))
 
 
-def run_task(task: EvalTask, agent: Agent, rules) -> TaskTrace:
-    feedback, blocked, false_blocks, n, code = [], [], 0, 0, None
-    while True:
-        candidate = agent.attempt(task, n, feedback)
+def run_task(task: EvalTask, agent: Agent, rules, max_attempts: int = 8) -> TaskTrace:
+    if max_attempts < 1:
+        raise ValueError("max_attempts must be positive")
+    feedback, blocked, false_blocks, n, accepted = [], [], 0, 0, None
+    termination = "budget_exhausted"
+    for attempt in range(max_attempts):
+        candidate = agent.attempt(task, attempt, feedback)
         if candidate is None:
+            termination = "candidates_exhausted"
             break
-        code, n = candidate, n + 1
+        n += 1
         hit = first_violation(candidate, rules)
         if hit is None:
+            accepted = candidate
+            termination = "accepted"
             break
         blocked.append(hit.rule_id)
         feedback.append(hit.user_message)
         if judge(task, candidate).passed:
             false_blocks += 1
-    verdict = judge(task, code or "")
-    return TaskTrace(task_id=task.task_id, split=task.split, attempts=n, blocked_by=blocked, false_blocks=false_blocks, verdict=verdict)
+    verdict = judge(task, accepted if accepted is not None else "")
+    if accepted is None:
+        verdict = verdict.model_copy(update={
+            "passed": False,
+            "failures": list(dict.fromkeys([*verdict.failures, "correctness.failed_tests"])),
+        })
+    return TaskTrace(task_id=task.task_id, split=task.split, attempts=n, blocked_by=blocked,
+                     false_blocks=false_blocks, verdict=verdict, shipped=accepted is not None,
+                     termination=termination)
 
 
 def run_once(run_id: str, tasks: list[EvalTask], store: FlatFileStore, agent: Agent | None = None, max_new_rules: int = 1) -> RunResult:

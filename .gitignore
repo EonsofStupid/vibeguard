@@ -5,3 +5,13 @@ __pycache__/
 .pytest_cache/
 node_modules/
 dist/
+
+.tools/
+.runtime/
+.env.*
+!.env.example
+
+artifacts/*.png
+agentengine.exe
+project-config.yaml.local
+project-config.yaml

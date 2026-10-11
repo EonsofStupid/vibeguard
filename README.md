@@ -30,52 +30,56 @@ flowchart LR
 4. **Rule writer.** Failures on *training* tasks become proposed rules with provenance (run, task, failure category). Held-out tasks are only ever measured.
 5. **Human gate.** Only a human can approve a rule, and only a human can loosen or revert one. Nothing is deleted: a revert keeps the rule with `status: reverted` and an audit entry.
 
-### Memory mapping (MongoDB Atlas Agent Engine)
+### Memory mapping
 
-| Agent Engine memory type | VibeGuard record |
+| Memory type | VibeGuard record |
 | --- | --- |
 | Procedural | Versioned guardrail rules |
 | Episodic | Run traces and metrics |
 | Semantic | Vibecoder lexicon: phrasing → canonical engineering label |
 | Taxonomic | Failure categories, each a binary signal |
 
-Records live as Markdown files with YAML front matter in [`wiki/`](wiki/) and are being ported to MongoDB Atlas.
+Research records live as Markdown files with YAML front matter in [`wiki/`](wiki/). The workbench uses separate local `.runtime/wiki` records unless MONGODB_URI is set. The Atlas backend implements this interface; live database access remains pending. The generated Agent Engine chat/review client is in vibeguard/. Its live targets, shared memory and RRFlow review handoff still need integration; running engines are user-reported, not verified invocations here.
 
-## Quickstart
+## Run locally
 
-Requires Python 3.11+.
+From this folder, run:
 
-```bash
-python -m venv .venv
-# Windows: .venv\Scripts\activate    macOS/Linux: source .venv/bin/activate
-pip install -e ".[dev]"
-pytest -q
+~~~powershell
+./run.ps1
+~~~
 
-# Five runs; the named human approves each proposed rule between runs
-python -m vibeguard --wiki /tmp/vg demo --approver human:yourname
+Open http://127.0.0.1:8765. The provided Windows portable runtime is in the ignored .tools folder. For a fresh checkout with Python 3.11+:
 
-# Inspect and govern rules
-python -m vibeguard --wiki /tmp/vg rules
-python -m vibeguard --wiki /tmp/vg revert VG-0001 --as human:yourname --reason "too broad"
+~~~powershell
+python -m pip install -e ".[atlas,dev]"
+python -m vibeguard.web
+python -m pytest -q
+~~~
 
-# COSTAR check on a prompt
+The workbench uses the actual Python harness. It starts with a separate local .runtime/wiki store so existing research records remain intact. An explicitly configured Atlas connection must succeed at startup; it never silently falls back to local storage.
+
+## MongoDB integration
+
+The vibeguard cluster was verified in Atlas: M10, MongoDB 8.0.34, AWS us-west-1, three-node replica set, backups active.
+
+Copy .env.example to .env when setting up a fresh checkout. Populate MONGODB_URI with the driver connection string and an existing database user's credentials; set MONGODB_DATABASE=vibeguard. The app creates rules, runs, lexicon, failures, costar, facts and audit collections. Rule transitions use majority-committed MongoDB transactions, including a receipt and version check. Audit events are appended and rule reverts preserve records. The runtime database user needs read/write access to this database.
+
+Atlas database credentials and Voyage AI model API keys are different. VOYAGE_API_KEY connects to https://us.ai.mongodb.com/v1 for this US-scoped key. The Test Voyage API action makes one bounded embedding request. The server-side context client also implements approved-rule reranking; it is not yet connected to the draft-check workflow. API availability and retrieval need live verification. Keys never appear in browser responses or logs.
+
+## CLI and optional API
+
+~~~powershell
 python -m vibeguard costar "make it take payments"
-```
+python -m vibeguard --wiki ./wiki rules
+python -m vibeguard --wiki ./wiki revert VG-0001 --as human:yourname --reason "too broad"
+~~~
 
-### Workbench dashboard
-
-```bash
-pip install -e ".[api]"
-# Windows PowerShell: $env:VIBEGUARD_WIKI="wiki"   macOS/Linux: export VIBEGUARD_WIKI=wiki
-uvicorn --factory vibeguard.api:create_app --port 8000
-# open http://localhost:8000  (API docs at /docs)
-```
-
-Run an evaluation, approve or revert proposed rules as a named human, re-run, and watch held-out pass rate move. `VIBEGUARD_STORE=atlas` switches storage to the Atlas backend once it lands at `vibeguard.storage.atlas.AtlasStore`.
+The existing FastAPI interface is optional and shares the promotion evidence check. To run its tests, install the api extras and httpx. The primary UI uses the dependency-light workbench server above.
 
 ## Results
 
-Scores are reported only from runs executed in the current checkout. See [`docs/RESULTS.md`](docs/RESULTS.md).
+The isolated recorded replay produces held-out passes of 1/6, 3/6, 5/6, 6/6, 6/6 with zero false blocks. [Executed evidence](artifacts/replay-evidence.json) explicitly marks synthetic human approvals in a temporary store. The actual workbench rule remains proposed for human review. These are harness mechanics, not independent live-model results. The workbench displays the frozen dataset hash, task traces and training-only promotion checks.
 
 ## Honest limits
 
@@ -97,6 +101,10 @@ Source: [`rrflow/rrflow-development`](https://github.com/rrflow/rrflow-developme
 
 ## Original contributions (built today)
 
+- Native Windows runtime and a clean workbench with explicit human review.
+- Training-only promotion check, bounded retries, rejected rule-ID replacement and accurate exhausted-draft outcomes.
+- Atlas transactions for rule transitions and versioned receipts.
+
 - Monotonic rule gate: agents propose, humans approve, humans alone loosen or revert, append-only audit.
 - Eval-driven rule writer with provenance on every rule.
 - Frozen 16-task vibecoder eval set (10 train, 6 held-out) with a deterministic judge and Wilson 95% intervals.
@@ -113,6 +121,16 @@ Source: [`rrflow/rrflow-development`](https://github.com/rrflow/rrflow-developme
 | `src/vibeguard/evals/` | Frozen tasks and the deterministic judge |
 | `src/vibeguard/loop/` | Attempt → guard → judge → propose loop, metrics |
 | `src/vibeguard/lexicon/`, `failures/` | Semantic and taxonomic seed memory |
-| `src/vibeguard/storage/` | Flat-file store (Atlas backend in progress) |
+| `src/vibeguard/storage/` | Flat-file and Atlas stores; transactional rule receipts |
+| `src/vibeguard/web/` | Primary workbench, actual harness API and static UI |
+| `src/vibeguard/context/` | Bounded MongoDB Voyage embedding and reranking calls |
 | `wiki/` | The flat-file memory itself |
 | `AGENTS.md`, `SCOPE.md` | Map for coding agents; delivery scope |
+
+## Verified delivery checkpoint
+
+34 active tests pass; the optional FastAPI module is skipped because FastAPI is not installed in the portable runtime. Browser baseline, draft checking, error states and persistence across restart were verified. dnspython 2.8.0 is installed. An authenticated Voyage embedding request returned HTTP 200 with voyage-code-4 and a 1024-dimension vector; see artifacts/voyage-check.json. The app process is still restricted from opening outbound sockets in this agent environment; that is a permission failure, not a timeout. Run ./tools/check-voyage.ps1 from your own PowerShell to verify the client outside that environment. A database user, MONGODB_URI and a live Atlas round trip are still required. See [SCOPE.md](SCOPE.md) for checkpoint evidence and remaining work.
+
+## Working examples and shared memory
+
+[Execution runbook](docs/EXAMPLE-FIRST.md) covers the first three examples, VibeGuard chat and RRFlow review roles, shared memory provisioning and the live RSI acceptance boundary. Start with `.tools/python/python.exe tools/preview_examples.py`; it detects failures and proposes rules without activating them.

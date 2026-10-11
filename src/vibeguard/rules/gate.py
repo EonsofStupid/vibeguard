@@ -22,7 +22,7 @@ class GateError(PermissionError):
 
 
 def _is_human(actor: str) -> bool:
-    return actor.startswith("human:")
+    return actor.startswith("human:") and bool(actor.removeprefix("human:").strip())
 
 
 def _now() -> datetime:
@@ -46,9 +46,11 @@ class RuleGate:
 
     # ---- transitions -------------------------------------------------
     def propose(self, rule: GuardrailRule, actor: str) -> GuardrailRule:
+        if self.store.exists(KIND, rule.rule_id):
+            raise GateError(f"{rule.rule_id} already exists; proposals cannot replace durable rules.")
         if rule.direction == Direction.loosen and not _is_human(actor):
             raise GateError("Agents may tighten their own leash; only humans loosen it.")
-        rule = rule.model_copy(update={"status": RuleStatus.proposed, "proposed_by": actor, "updated_at": _now()})
+        rule = rule.model_copy(update={"status": RuleStatus.proposed, "version": 1, "approved_by": None, "proposed_by": actor, "updated_at": _now()})
         self._save(rule, "propose", actor)
         return rule
 
@@ -73,6 +75,10 @@ class RuleGate:
 
     def _save(self, rule: GuardrailRule, event: str, actor: str, **extra) -> None:
         body = f"# {rule.rule_id} — {rule.category}\n\n> {rule.user_message}\n"
-        self.store.write(KIND, rule.rule_id, rule, body=body)
-        self.store.append_log(AUDIT, {"event": event, "rule_id": rule.rule_id, "version": rule.version,
-                                      "status": rule.status.value, "actor": actor, **extra})
+        receipt = {"event": event, "rule_id": rule.rule_id, "version": rule.version,
+                   "status": rule.status.value, "actor": actor, **extra}
+        if hasattr(self.store, "write_rule_and_audit"):
+            self.store.write_rule_and_audit(rule, body, receipt)
+        else:
+            self.store.write(KIND, rule.rule_id, rule, body=body)
+            self.store.append_log(AUDIT, receipt)

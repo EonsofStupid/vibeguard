@@ -29,7 +29,7 @@ def test_run_propose_approve_rerun(client):
     assert r2["heldout"]["passed"] >= r1["heldout"]["passed"] and rid in r2["rules_active"]
     s = client.get("/api/summary").json()
     assert [r["run_id"] for r in s["runs"]] == ["run_001", "run_002"]
-    assert [a["event"] for a in s["audit"]][:2] == ["propose", "approve"]
+    assert [a["event"] for a in s["audit"]][:3] == ["propose", "promotion_check", "approve"]
     detail = client.get("/api/runs/run_002").json()
     assert len(detail["traces"]) == 16
 

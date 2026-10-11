@@ -1,0 +1,13 @@
+{
+  "at": "2026-10-11T18:41:31.298Z",
+  "http_status": 200,
+  "endpoint": "https://us.ai.mongodb.com/v1/embeddings",
+  "model": "voyage-code-4",
+  "vectors": 1,
+  "dimensions": 1024,
+  "usage": {
+    "total_tokens": 4
+  },
+  "transport": "approved curl tool",
+  "workbench_process_verified": false
+}
