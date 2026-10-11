@@ -15,16 +15,19 @@ export async function evidenceDatabase() {
     connection = client.connect().catch(async (error: unknown) => {
       connection = undefined;
       await client.close();
-      throw new Error('The evidence database could not be reached. Check the Atlas connection and network access.', { cause: error });
+      const failure = new Error('The evidence database could not be reached. Check the Atlas connection and network access.') as Error & { cause?: unknown };
+      failure.cause = error;
+      throw failure;
     });
   }
   return (await connection).db(process.env.VIBEGUARD_ATLAS_DATABASE || 'vibeguard');
 }
 
 function transientReadFailure(error: unknown): boolean {
+  const cause = error instanceof Error ? (error as Error & { cause?: unknown }).cause : undefined;
   return error instanceof MongoNetworkError || error instanceof MongoServerSelectionError ||
     error instanceof MongoOperationTimeoutError ||
-    (error instanceof Error && error.cause !== undefined && transientReadFailure(error.cause));
+    (cause !== undefined && transientReadFailure(cause));
 }
 
 /** Two READ attempts share one 18-second budget; no write or paid request is retried. */

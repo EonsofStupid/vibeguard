@@ -1,0 +1,26 @@
+{
+  "name": "vibeguard-tooling",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Repository checks and Git hooks; the deployed application lives in web/.",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "lint": "biome lint .",
+    "lint:staged": "biome lint --staged --no-errors-on-unmatched",
+    "format": "biome format --write",
+    "hooks:install": "lefthook install",
+    "hooks:check": "lefthook validate",
+    "typecheck": "npm --prefix web run typecheck",
+    "test": "npm run test:web && npm run test:runtime",
+    "test:web": "tsx --test web/src/server/harness/context-policy.test.ts",
+    "test:runtime": "node --test tools/chat-runtime/supervisor.test.mjs",
+    "test:python": "python -m pytest -q",
+    "build": "npm --prefix web run build",
+    "check": "npm run lint && npm run typecheck && npm test"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.15",
+    "lefthook": "2.2.1",
+    "tsx": "4.23.15"
+  }
+}
