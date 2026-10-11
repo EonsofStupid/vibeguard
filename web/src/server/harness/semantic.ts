@@ -4,7 +4,10 @@ import { dbLexicon } from './db';
 import { SEED_LEXICON } from './seed';
 import { LexiconEntry } from './schemas';
 
-const BASE = 'https://us.ai.mongodb.com/v1';
+/** MongoDB-issued model keys (`al-…`) talk to MongoDB's endpoint; Voyage AI keys (`pa-…`) only work on Voyage's own. */
+const MONGODB_BASE = process.env.VOYAGE_BASE_URL || 'https://us.ai.mongodb.com/v1';
+const VOYAGE_BASE = 'https://api.voyageai.com/v1';
+const baseFor = (k: string) => (k.startsWith('pa-') ? VOYAGE_BASE : MONGODB_BASE);
 function key(): string {
   const raw = (getConfig('harness.voyageApiKey') as string) || process.env.VOYAGE_API_KEY || '';
   const k = raw.trim().replace(/^["']|["']$/g, '');   // dashboard-pasted values sometimes carry quotes or a newline
@@ -13,8 +16,9 @@ function key(): string {
 }
 export async function embed(texts: string[], inputType: 'query' | 'document'): Promise<number[][]> {
   const model = process.env.VOYAGE_MODEL || 'voyage-code-4';
-  const res = await fetch(`${BASE}/embeddings`, {
-    method: 'POST', headers: { Authorization: `Bearer ${key()}`, 'Content-Type': 'application/json' },
+  const k = key();
+  const res = await fetch(`${baseFor(k)}/embeddings`, {
+    method: 'POST', headers: { Authorization: `Bearer ${k}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ model, input: texts, input_type: inputType }),
   });
   if (!res.ok) throw new Error(`Voyage HTTP ${res.status}: ${(await res.text()).slice(0, 160)}`);
