@@ -10,6 +10,7 @@ import Page from '@/client/components/Page';
 import LiveImprovement from '@/client/components/improvement/LiveImprovement';
 import { KnowledgeDrop } from '@/client/components/improvement/KnowledgeDrop';
 import ChatPanel from '@/client/components/chat/ChatPanel';
+import ReviewPanel from '@/client/components/review/ReviewPanel';
 import { cn } from '@/client/lib/utils';
 
 // ---- wire types (mirror src/server/harness/schemas.ts) ----
@@ -89,6 +90,7 @@ export default function HomePage() {
     <Page seo={{ title: 'Build, learn, improve' }}>
       <LiveImprovement />
       <ChatPanel />
+      <ReviewPanel />
 
       {/* headline */}
       <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
@@ -344,6 +346,7 @@ function CostarPanel() {
       {q.isError && <p role="alert" className="mt-3 text-sm text-ember">{q.error instanceof Error ? q.error.message : 'The prompt check could not be completed.'}</p>}
       {d && (
         <div className="mt-3 space-y-3">
+          {trail.length > 0 && <p className="text-xs text-muted">Useful details captured: {trail.map(step => `${step.present}/6`).join(' → ')}</p>}
           <ul className="grid grid-cols-2 gap-x-4 gap-y-1.5 md:grid-cols-3">
             {d.scores.map((s) => (
               <li key={s.dimension} className="text-xs">
@@ -357,7 +360,14 @@ function CostarPanel() {
           ) : (
             <div>
               <Label>A couple of details that would help</Label>
-              <ul className="mt-1 space-y-1 text-sm">{d.ask.map((a) => <li key={a} className="rounded-md border border-line bg-raised px-2.5 py-1.5">{a}</li>)}</ul>
+              <div className="mt-2 space-y-3">{d.ui.cards.map(card => <div key={card.id} className="rounded-md border border-line bg-raised p-3">
+                <p className="text-sm">{card.question}</p>
+                <div className="mt-2 flex flex-wrap gap-2">{card.options.map(option => <Btn key={option.label} disabled={q.isFetching} onClick={() => answer(option.text)}>{option.label}</Btn>)}</div>
+                {card.freeText && <form className="mt-2 flex gap-2" onSubmit={event => { event.preventDefault(); if (freeText[card.id]?.trim()) answer(freeText[card.id]); }}>
+                  <input aria-label={`Your answer: ${card.question}`} value={freeText[card.id] || ''} onChange={event => setFreeText(values => ({ ...values, [card.id]: event.target.value }))} className="min-w-0 flex-1 rounded border border-line bg-ink px-2 py-1 text-sm" />
+                  <Btn type="submit" disabled={q.isFetching || !freeText[card.id]?.trim()}>Add detail</Btn>
+                </form>}
+              </div>)}</div>
             </div>
           )}
           {d.lexicon.length > 0 && (

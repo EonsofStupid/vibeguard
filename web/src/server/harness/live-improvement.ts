@@ -46,6 +46,7 @@ export async function liveImprovement() {
     }, maxTimeMS: 5000 },
   );
   const hasCandidate = !!experiment.candidate?.policy;
+  const rerun = await db.collection('harness_reruns').findOne({ experiment_id: experiment.experiment_id }, { sort: { at: -1 }, maxTimeMS: 5000 });
   const ready = !!proposal?.review_url && ['awaiting_review', 'completed'].includes(proposal.review_state);
   return {
     experiment: {
@@ -58,11 +59,18 @@ export async function liveImprovement() {
         heldout: comparison(experiment.metrics.heldout, hasCandidate),
       },
       promotion: experiment.promotion,
+      effect: typeof experiment.metrics.train.avoidable_recalls_before === 'number' ? {
+        before: experiment.metrics.train.avoidable_recalls_before + experiment.metrics.heldout.avoidable_recalls_before,
+        after: experiment.metrics.train.avoidable_recalls_after + experiment.metrics.heldout.avoidable_recalls_after,
+        turnsBefore: experiment.metrics.train.recorded_turns_before + experiment.metrics.heldout.recorded_turns_before,
+        turnsAfter: experiment.metrics.train.recorded_turns_after + experiment.metrics.heldout.recorded_turns_after,
+      } : null,
     },
     proposal: proposal ? {
       _id: String(proposal._id), version: proposal.version, status: proposal.status,
       policy_hash: proposal.policy_hash, policy: proposal.policy, evidence_summary: proposal.evidence_summary,
     } : null,
     review: { url: ready ? proposal!.review_url : null, ready },
+    rerun: rerun ? { id: String(rerun._id), passed: rerun.passed, policy_hash: rerun.policy_hash, evidence_type: rerun.evidence_type } : null,
   };
 }

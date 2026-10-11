@@ -1,6 +1,6 @@
 ﻿# RRFlow harness review service
 
-RRFlow is the human decision service for VibeGuard's first RSI checkpoint: a measured retry-budget improvement. It runs a deterministic LangGraph workflow on MongoDB Atlas Agent Engine. A model cannot approve a proposal or choose to skip review.
+RRFlow is the human decision service for VibeGuard's measured harness improvements. It supports bounded retry budgets and memory-recall cooldowns, and runs a deterministic LangGraph workflow on MongoDB Atlas Agent Engine. A model cannot approve a proposal or choose to skip review.
 
 The workflow reads a proposed policy and its immutable experiment from Atlas, verifies measured improvement without regressions or false blocks, snapshots the exact version and hashes, and interrupts for a human. The decision commits the proposal status, active policy and append-only receipt together with majority write concern. Denial changes no active policy. A stale review fails closed; repeating the same committed decision returns its existing receipt.
 
@@ -44,7 +44,9 @@ pnpm run build
 node --test dist/agent_rrflow/harnessReview.test.js
 ```
 
-The six tests use an isolated in-memory database double. They do not write approvals to Atlas and are not live RSI evidence.
+The seven tests use an isolated in-memory database double. They do not write approvals to Atlas and are not live RSI evidence. The cooldown contract requires a 5–60 second limit scoped to user, session and provider, continued turn recording, current-thread fallback and disclosure when recall is unavailable.
+
+The Modelence review panel uses the deployed workspace's native execution queue and interrupt/resume contract. Approval applies the exact reviewed policy to future chats; approval, denial and optional preference notes are preserved in the Atlas receipt. Notes alone cannot modify the policy. The cooldown experiment uses incident-derived replay, and its scores do not claim live provider recovery.
 
 ## Deployment
 

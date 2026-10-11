@@ -97,7 +97,7 @@ class FakeClient:
         self.calls.append({"purpose": kwargs["purpose"], "input": deepcopy(kwargs["payload"]),
                            "http_status": 200, "status": "completed", "response_id": "fake-not-live",
                            "usage": {"input_tokens": 1, "output_tokens": 1, "total_tokens": 2}})
-        return {**POLICY, "source_case_ids": ["train-wrapped-burst", "train-direct-burst"],
+        return {**POLICY, "source_case_ids": ["train-wrapped-burst", "train-direct-burst", "train-unrelated-error"],
                 "explanation": "Bound the cooldown to avoid repeat calls while preserving replies and writes."}
 
 

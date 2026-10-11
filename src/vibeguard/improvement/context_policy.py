@@ -242,8 +242,9 @@ def run_context_experiment(*, root: Path, api_key: str | None = None, client=Non
             schema=POLICY_SCHEMA)
         policy = ContextPolicy.parse(proposal)
         sources = proposal.get("source_case_ids")
-        if not isinstance(sources, list) or not sources or any(source not in failed_ids for source in sources):
-            raise ValueError("Policy provenance must cite failing training cases only")
+        training_ids = {case["id"] for case in train}
+        if not isinstance(sources, list) or not sources or any(source not in training_ids for source in sources) or not failed_ids.intersection(sources):
+            raise ValueError("Policy provenance must cite training cases only, including at least one observed failure")
         policy_value = asdict(policy)
         policy_hash = content_hash(policy_value)
         artifact["candidate"].update(policy=policy_value, policy_hash=policy_hash, frozen_at=now())
@@ -364,6 +365,130 @@ def persist_eligible(artifact: dict, *, root: Path, artifact_path: Path) -> dict
     return {"experiment_id": experiment_id, "proposal_id": proposal_id, "policy_hash": policy_hash,
             "inserted_experiments": int(inserted), "inserted_proposals": int(inserted), "verified_receipts": 2,
             "majority_readback": True, "approvals_created": 0, "policy_transitions": 0}
+
+
+def validate_approved_snapshot(experiment: dict, proposal: dict | None, active: dict | None,
+                               receipt: dict | None, expected_policy_hash: str | None = None) -> ContextPolicy:
+    """Require the committed RRFlow decision, not a recalled or proposed rule."""
+    if not active or not proposal or not receipt:
+        raise ValueError("A committed active policy, approved proposal and human receipt are required")
+    policy_hash = active.get("policy_hash")
+    if active.get("_id") != "memory-recall-cooldown" or content_hash(active.get("policy")) != policy_hash:
+        raise ValueError("Active context-policy identity or digest is invalid")
+    if expected_policy_hash is not None and policy_hash != expected_policy_hash:
+        raise ValueError("The active policy is not the reviewed candidate requested")
+    if proposal.get("status") != "approved" or proposal.get("_id") != active.get("proposal_id") or proposal.get("policy_hash") != policy_hash or content_hash(proposal.get("policy")) != policy_hash:
+        raise ValueError("The active policy has no matching approved proposal")
+    if receipt.get("event") != "harness_policy_approved" or receipt.get("status") != "approved" or not str(receipt.get("actor", "")).startswith("human:"):
+        raise ValueError("A human approval receipt is required before the rerun")
+    if receipt.get("_id") != active.get("receipt_id") or receipt.get("_id") != proposal.get("decision_receipt_id"):
+        raise ValueError("Approval receipt identity does not match the active policy and proposal")
+    if receipt.get("policy_hash") != policy_hash or receipt.get("active_policy_version") != active.get("version") or receipt.get("rule_id") != proposal["_id"]:
+        raise ValueError("Approval receipt is not bound to this policy version")
+    if type(active.get("version")) is not int or active["version"] < 1 or proposal.get("version") != receipt.get("version", -2) + 1:
+        raise ValueError("Approval/proposal version chain is invalid")
+    if receipt.get("experiment_id") != experiment.get("_id") or proposal.get("experiment_id") != experiment.get("_id"):
+        raise ValueError("Approval is bound to a different measured experiment")
+    if experiment.get("candidate", {}).get("policy_hash") != policy_hash or not experiment.get("promotion", {}).get("eligible"):
+        raise ValueError("The approved policy is not the eligible measured candidate")
+    if receipt.get("experiment_hash") != content_hash(experiment):
+        raise ValueError("Measured experiment changed after human review")
+    return ContextPolicy.parse(active["policy"])
+
+
+def rerun_approved_policy(*, root: Path, experiment_id: str,
+                         expected_policy_hash: str | None = None) -> dict:
+    """Read the approved Atlas version, replay frozen fixtures, save a receipt.
+
+    No model/provider calls occur. The only writes are one immutable rerun and
+    its audit receipt, after approval verification and a transaction-time
+    recheck of the version. This function never approves or changes a policy.
+    """
+    from pymongo import MongoClient
+    from pymongo.errors import CollectionInvalid
+    from pymongo.read_concern import ReadConcern
+    from pymongo.write_concern import WriteConcern
+    from vibeguard.settings import load_env
+    import inspect
+
+    load_env(root / ".env")
+    uri = os.environ.get("MONGODB_URI", "")
+    if not uri:
+        raise ValueError("Saved Atlas connection is missing")
+    database = os.environ.get("MONGODB_DATABASE", "vibeguard")
+    def connect():
+        return MongoClient(uri, appname="VibeGuardApprovedContextRerun", serverSelectionTimeoutMS=8000,
+                           connectTimeoutMS=8000, socketTimeoutMS=15000, timeoutMS=20000)
+    with connect() as client:
+        db = client.get_database(database, read_concern=ReadConcern("majority"))
+        experiment = db.harness_experiments.find_one({"_id": experiment_id})
+        if not experiment:
+            raise ValueError("The measured experiment is missing")
+        active = db.harness_policies.find_one({"_id": "memory-recall-cooldown"})
+        proposal = db.harness_proposals.find_one({"_id": active.get("proposal_id")}) if active else None
+        receipt = db.audit.find_one({"_id": active.get("receipt_id")}) if active else None
+        policy = validate_approved_snapshot(experiment, proposal, active, receipt, expected_policy_hash)
+        fixture_raw = FIXTURES.read_bytes()
+        if hashlib.sha256(fixture_raw).hexdigest() != experiment["fixture_sha256"] or json.loads(fixture_raw) != experiment["fixture_manifest"]:
+            raise ValueError("Frozen fixtures changed after the measured experiment")
+        cases = experiment["fixture_manifest"]["cases"]
+        results = {split: [evaluated(case, policy) for case in cases if case["split"] == split]
+                   for split in ("train", "heldout")}
+        summaries = {split: totals(results[split]) for split in results}
+        metrics = {split: {"before": experiment["metrics"][split]["before"], "after": summaries[split]["passed"],
+                           "total": summaries[split]["total"],
+                           "avoidable_recalls_before": experiment["metrics"][split]["avoidable_recalls_before"],
+                           "avoidable_recalls_after": summaries[split]["avoidable_recalls"],
+                           "false_blocks": summaries[split]["false_blocks"],
+                           "recorded_turns": summaries[split]["recorded_turns"],
+                           "produced_turns": summaries[split]["produced_turns"]} for split in results}
+        passed = all(summary["passed"] == summary["total"] and summary["false_blocks"] == 0 and summary["avoidable_recalls"] == 0 and summary["recorded_turns"] == summary["produced_turns"] for summary in summaries.values())
+        rerun_id = f"context-rerun-{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}-{uuid4().hex[:8]}"
+        rerun = {"_id": rerun_id, "rerun_id": rerun_id, "experiment_id": experiment_id,
+                 "policy_id": active["_id"], "policy_hash": active["policy_hash"], "active_policy_version": active["version"],
+                 "proposal_id": proposal["_id"], "approval_receipt_id": receipt["_id"],
+                 "approved_by": receipt["actor"], "policy": asdict(policy),
+                 "phase": "post_approval_replay", "evidence_type": experiment["evidence_type"],
+                 "fixture_sha256": experiment["fixture_sha256"],
+                 "judge_function_sha256": hashlib.sha256(inspect.getsource(judge).encode()).hexdigest(),
+                 "results": results, "metrics": metrics, "summary": summaries, "passed": passed,
+                 "created_at": now(), "finished_at": now(), "actual_model_request_count": 0,
+                 "provider_calls_simulated": True, "turn_recording_simulated": True,
+                 "limitations": "Post-approval replay verifies the exact approved policy on frozen incident scenarios. It does not establish live provider recovery, actual chat integration, or improved answer quality."}
+        rerun_hash = content_hash(rerun)
+        audit = {"_id": "harness-rerun:" + rerun_id, "event": "harness_policy_rerun_recorded", "at": now(),
+                 "rerun_id": rerun_id, "rerun_hash": rerun_hash, "experiment_id": experiment_id,
+                 "policy_hash": active["policy_hash"], "active_policy_version": active["version"],
+                 "authorization_receipt_id": receipt["_id"], "check": "exact_approved_policy_and_frozen_fixture_replay",
+                 "passed": passed, "approvals_created": 0, "policy_transitions": 0}
+        if "harness_reruns" not in db.list_collection_names():
+            try:
+                db.create_collection("harness_reruns")
+            except CollectionInvalid:
+                pass
+        def save(session):
+            current_active = db.harness_policies.find_one({"_id": active["_id"]}, session=session)
+            current_proposal = db.harness_proposals.find_one({"_id": proposal["_id"]}, session=session)
+            current_receipt = db.audit.find_one({"_id": receipt["_id"]}, session=session)
+            current_experiment = db.harness_experiments.find_one({"_id": experiment_id}, session=session)
+            validate_approved_snapshot(current_experiment, current_proposal, current_active, current_receipt, active["policy_hash"])
+            if current_active["version"] != active["version"] or content_hash(current_receipt) != content_hash(receipt):
+                raise ValueError("The approval version changed during the rerun; evidence was not committed")
+            db.harness_reruns.insert_one(rerun, session=session)
+            db.audit.insert_one(audit, session=session)
+        with client.start_session() as session:
+            session.with_transaction(save, read_concern=ReadConcern("snapshot"), write_concern=WriteConcern("majority"))
+    with connect() as verifier:
+        db = verifier.get_database(database, read_concern=ReadConcern("majority"))
+        saved = db.harness_reruns.find_one({"_id": rerun_id})
+        saved_receipt = db.audit.find_one({"_id": audit["_id"]})
+        if not saved or content_hash(saved) != rerun_hash or not saved_receipt or saved_receipt.get("rerun_hash") != rerun_hash:
+            raise ValueError("Independent approved-rerun readback failed")
+    return {"rerun_id": rerun_id, "experiment_id": experiment_id, "policy_hash": active["policy_hash"],
+            "active_policy_version": active["version"], "approval_receipt_id": receipt["_id"],
+            "metrics": metrics, "passed": passed, "evidence_type": rerun["evidence_type"],
+            "majority_readback": True, "actual_model_request_count": 0,
+            "approvals_created": 0, "policy_transitions": 0}
 
 
 def main():

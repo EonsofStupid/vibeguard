@@ -15,7 +15,7 @@ type PendingReview = {
 type DecisionResult = { completed: boolean; message?: string; receipt?: { id: string; status: string; actor: string; at: string; policy_hash: string; version: number; active_policy_version: number } };
 const fieldClass = 'border-line bg-raised text-text placeholder:text-muted focus-visible:ring-cobalt focus-visible:ring-offset-0';
 
-function PendingCard({ review, onResolved }: { review: PendingReview; onResolved: () => void }) {
+function PendingCard({ review, onResolved }: { review: PendingReview; onResolved: (result: DecisionResult) => void }) {
   const [name, setName] = useState('');
   const [notes, setNotes] = useState('');
   const [decision, setDecision] = useState<'approved' | 'denied' | ''>('');
@@ -29,7 +29,7 @@ function PendingCard({ review, onResolved }: { review: PendingReview; onResolved
       <span className="rounded-full border border-signal/40 px-2 py-1 text-xs text-signal">Proposed · v{review.proposal_version}</span>
     </div>
     <p className="mt-3 text-sm leading-relaxed text-muted">{cooldown
-      ? `After an embedding rate limit, pause long-term recall for ${String(review.policy.cooldown_seconds)} seconds for this user, session and provider. Keep recording turns, use only this conversation, and tell the user recall is unavailable.`
+        ? `For future chats in this project, pause long-term recall for ${String(review.policy.cooldown_seconds)} seconds after an embedding rate limit. Each user, session and provider has its own cooldown. Keep recording turns, use only the current conversation, and tell the user recall is unavailable.`
       : `Allow at most ${String(review.policy.max_total_attempts)} attempts, respect a smaller user limit, and stop on success or a non-retryable failure.`}</p>
     <dl className="mt-4 grid grid-cols-3 gap-3 rounded-lg border border-line bg-surface p-3 text-sm">
       <div><dt className="text-xs text-muted">Before → trial</dt><dd className="mt-1 font-mono">{review.evidence.before}/{review.evidence.total} → {review.evidence.after}/{review.evidence.total}</dd></div>
@@ -48,11 +48,11 @@ function PendingCard({ review, onResolved }: { review: PendingReview; onResolved
     }}>
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="space-y-1 text-sm"><span>Your name</span><Input required maxLength={200} value={name} onChange={(event) => setName(event.target.value)} className={fieldClass} placeholder="The person making this decision" /></label>
-        <label className="space-y-1 text-sm"><span>Decision</span><select required value={decision} onChange={(event) => setDecision(event.target.value as typeof decision)} className="h-9 w-full rounded-md border border-line bg-raised px-3 text-text focus-visible:ring-2 focus-visible:ring-cobalt"><option value="">Choose a decision</option><option value="approved">Approve this exact change</option><option value="denied">Deny this change</option></select></label>
+        <label className="space-y-1 text-sm"><span>Decision</span><select required value={decision} onChange={(event) => setDecision(event.target.value as typeof decision)} className="h-9 w-full rounded-md border border-line bg-raised px-3 text-text focus-visible:ring-2 focus-visible:ring-cobalt"><option value="">Choose a decision</option><option value="approved">Approve this policy for future chats</option><option value="denied">Deny this change</option></select></label>
       </div>
-      <label className="block space-y-1 text-sm"><span>Review notes <span className="text-muted">(optional)</span></span><Textarea maxLength={4000} value={notes} onChange={(event) => setNotes(event.target.value)} className={fieldClass} /></label>
+      <label className="block space-y-1 text-sm"><span>Your preference or review notes <span className="text-muted">(optional)</span></span><Textarea maxLength={4000} value={notes} onChange={(event) => setNotes(event.target.value)} className={fieldClass} placeholder="What should future improvements respect?" /></label>
       <label className="flex items-start gap-2 text-sm"><input type="checkbox" checked={checked} onChange={(event) => setChecked(event.target.checked)} className="mt-1 accent-verdant" /><span>I reviewed this policy and its measured evidence.</span></label>
-      <p className="text-xs text-muted">Your name labels this prototype receipt. The service-account identity is recorded separately. Approval activates this exact version; denial leaves the current policy unchanged.</p>
+      <p className="text-xs text-muted">Approve once: future chats apply this version automatically. A change to the approved boundary needs a new review. Your decision and notes stay in the receipt; notes alone do not change the policy. Your name labels this prototype receipt, alongside the service-account identity.</p>
       <Button type="submit" variant="outline" loading={submit.isPending} disabled={!decision || !name.trim() || !checked || submit.isSuccess} className="border-verdant/50 bg-verdant/10 text-verdant hover:bg-verdant/20">{submit.isPending ? 'RRFlow is recording your decision…' : 'Submit my decision'}</Button>
       {submit.error && <p role="alert" className="text-sm text-ember">{submit.error.message}</p>}
       {submit.data && <div role="status" className="rounded-lg border border-line bg-surface p-3 text-sm">{submit.data.completed ? <><p>Decision committed: <strong>{submit.data.receipt?.status}</strong>.</p><p className="mt-1 break-all font-mono text-xs text-muted">Receipt {submit.data.receipt?.id}</p></> : submit.data.message}</div>}
@@ -61,6 +61,7 @@ function PendingCard({ review, onResolved }: { review: PendingReview; onResolved
 }
 
 export default function ReviewPanel() {
+  const [latestDecision, setLatestDecision] = useState<DecisionResult | null>(null);
   const queryClient = useQueryClient();
   const pending = useQuery({ ...modelenceQuery<{ reviews: PendingReview[] }>('review.pending'), refetchInterval: 10000, retry: false });
   const evidence = useQuery({ ...modelenceQuery<LiveImprovementState>('harness.liveImprovement'), refetchInterval: 10000 });
@@ -80,6 +81,7 @@ export default function ReviewPanel() {
     {!pending.isPending && !pending.error && reviews.length === 0 && <p className="mt-4 text-sm text-muted">No change is waiting for a decision.</p>}
     {proposal?.status === 'proposed' && eligible && !alreadyPending && <div className="mt-4 space-y-2"><Button variant="outline" className="border-signal/50 bg-signal/10 text-signal" loading={request.isPending} onClick={() => request.mutate({ proposal_id: proposal._id, version: proposal.version, policy_hash: proposal.policy_hash })}>{request.isPending ? 'Opening the review in RRFlow…' : 'Review proposed improvement'}</Button><p className="text-xs text-muted">Opening a review does not approve it.</p></div>}
     {request.error && <p role="alert" className="mt-3 text-sm text-ember">{request.error.message}</p>}
-    <div className="mt-4 space-y-4">{reviews.map((review) => <PendingCard key={`${review.execution_id}:${review.interrupt_id}`} review={review} onResolved={refresh} />)}</div>
+    {latestDecision && <div role="status" className="mt-4 rounded-lg border border-verdant/40 bg-verdant/10 p-3 text-sm">{latestDecision.completed ? <><p>Decision saved: <strong>{latestDecision.receipt?.status}</strong>. {latestDecision.receipt?.status === 'approved' ? 'Future chats will use this approved policy.' : 'The active policy is unchanged.'}</p><p className="mt-1 break-all font-mono text-xs">Receipt {latestDecision.receipt?.id} · active version {latestDecision.receipt?.active_policy_version}</p></> : latestDecision.message}</div>}
+    <div className="mt-4 space-y-4">{reviews.map((review) => <PendingCard key={`${review.execution_id}:${review.interrupt_id}`} review={review} onResolved={(result) => { setLatestDecision(result); refresh(); }} />)}</div>
   </section>;
 }
