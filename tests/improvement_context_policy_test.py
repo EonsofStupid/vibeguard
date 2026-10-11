@@ -5,7 +5,8 @@ from pathlib import Path
 import pytest
 
 from vibeguard.improvement.context_policy import (
-    ContextPolicy, FIXTURES, is_embedding_rate_limit, judge, replay, run_context_experiment,
+    ContextPolicy, FIXTURES, content_hash, is_embedding_rate_limit, judge, replay, run_context_experiment,
+    validate_approved_snapshot,
 )
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -125,3 +126,36 @@ def test_train_only_generation_frozen_manifest_and_human_only_activation():
 def test_policy_bounds_and_memory_invariants_are_enforced(change):
     with pytest.raises(ValueError):
         ContextPolicy.parse({**POLICY, **change})
+
+
+def approval_snapshot():
+    digest = content_hash(POLICY)
+    experiment = {"_id": "example", "candidate": {"policy": POLICY, "policy_hash": digest}, "promotion": {"eligible": True}}
+    proposal = {"_id": "proposal", "experiment_id": "example", "version": 2, "status": "approved",
+                "policy": POLICY, "policy_hash": digest, "decision_receipt_id": "receipt"}
+    active = {"_id": "memory-recall-cooldown", "version": 1, "policy": POLICY, "policy_hash": digest,
+              "proposal_id": "proposal", "receipt_id": "receipt"}
+    receipt = {"_id": "receipt", "event": "harness_policy_approved", "status": "approved", "actor": "human:test-only",
+               "policy_hash": digest, "active_policy_version": 1, "rule_id": "proposal", "version": 1,
+               "experiment_id": "example", "experiment_hash": content_hash(experiment)}
+    return experiment, proposal, active, receipt
+
+
+def test_approved_rerun_requires_exact_committed_version_and_receipt():
+    snapshot = approval_snapshot()
+    assert validate_approved_snapshot(*snapshot) == ContextPolicy.parse(POLICY)
+    with pytest.raises(ValueError):
+        validate_approved_snapshot(*snapshot, expected_policy_hash="0" * 64)
+
+
+@pytest.mark.parametrize("mutation", ["unapproved", "service_actor", "wrong_version", "changed_evidence", "missing_receipt", "wrong_policy"])
+def test_rerun_rejects_unapproved_or_stale_evidence(mutation):
+    experiment, proposal, active, receipt = deepcopy(approval_snapshot())
+    if mutation == "unapproved": proposal["status"] = "proposed"
+    if mutation == "service_actor": receipt["actor"] = "service:automatic"
+    if mutation == "wrong_version": active["version"] = 2
+    if mutation == "changed_evidence": experiment["extra"] = "changed after human review"
+    if mutation == "missing_receipt": receipt = None
+    if mutation == "wrong_policy": active["policy"]["cooldown_seconds"] = 10
+    with pytest.raises(ValueError):
+        validate_approved_snapshot(experiment, proposal, active, receipt)

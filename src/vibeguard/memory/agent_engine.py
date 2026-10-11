@@ -133,12 +133,15 @@ class AgentEngineMemory:
             f"Origin: {rule.origin.run_id}/{rule.origin.task_id} ({rule.origin.failure_category}); "
             f"proposed by {rule.proposed_by}, approved by {rule.approved_by or '-'}"
         )
+        # the HTTP backend has no update: one procedure per rule version, named `VG-0001@v2`; re-sync never duplicates
+        name = f"{rule.rule_id}-v{rule.version}".lower()   # platform pattern: ^[a-z0-9]+(-[a-z0-9]+)*$
+        if self._bound.get_procedure(name) is not None:
+            return True
         return _retry(self._bound.save_procedure,
-            procedure=rule.rule_id, description=rule.user_message, content=content,
+            procedure=name, description=rule.user_message, content=content,
             trigger_conditions=[rule.trigger.pattern], tags=[rule.category, rule.status.value, f"v{rule.version}"],
             metadata={"rule_id": rule.rule_id, "version": rule.version, "status": rule.status.value,
                       "category": rule.category, "direction": rule.direction.value},
-            update_existing=True,
         )
 
     def mirror_rules(self, rules: Iterable[GuardrailRule]) -> int:

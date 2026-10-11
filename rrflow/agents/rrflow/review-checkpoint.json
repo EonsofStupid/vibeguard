@@ -1,0 +1,214 @@
+{
+  "checked_at": "2026-10-11T22:49:42.974Z",
+  "build_id": "bld_01M4PHEFCVPK6RZAJM8B00BPN8",
+  "deployment_id": "deploy-01d61e09",
+  "proposal": {
+    "proposal_id": "context-replay-20261011T224404Z-proposal-v1",
+    "version": 1,
+    "policy_hash": "800fe2e7e50fc730b6c252c758cba7509edf1b0d1e8683cd31418895395b92df"
+  },
+  "session_id": "rrflow-context-replay-20261011T224404Z-proposal-v1-v1",
+  "invoke": {
+    "http_status": 200,
+    "body": {
+      "success": true,
+      "execution_id": "34008f55-5e7a-434e-a3ca-762988bfa269",
+      "status": "suspended",
+      "suspend_reason": "agent_interrupt",
+      "suspend_context": {
+        "activity_states": [
+          {
+            "activity_id": "6acc1285ef21c356fd9a78c8",
+            "status": "suspended"
+          }
+        ],
+        "interrupts": [
+          {
+            "id": "6acc1285ef21c356fd9a78c8",
+            "value": {
+              "action": "review_harness_policy",
+              "evidence": {
+                "after": 3,
+                "before": 1,
+                "eligible": true,
+                "false_blocks": 0,
+                "reason": "Scoped cooldown reduced avoidable recall in incident-derived replay while preserving simulated turn recording and healthy retrieval; human approval and live integration verification remain required.",
+                "regressions": [],
+                "total": 3
+              },
+              "experiment_id": "context-replay-20261011T224404Z",
+              "identity_note": "Reviewer name is a prototype human label; platform service-account identity is recorded separately.",
+              "message": "Review this measured harness policy. Approval activates only this exact version and writes an Atlas receipt. Denial leaves the current harness unchanged.",
+              "policy": {
+                "cooldown_seconds": 60,
+                "disclose_unavailable_recall": true,
+                "fallback": "current_thread_only",
+                "kind": "memory_recall_cooldown",
+                "record_turns": true,
+                "scope": "user_session_provider",
+                "trigger": "embedding_rate_limit"
+              },
+              "policy_hash": "800fe2e7e50fc730b6c252c758cba7509edf1b0d1e8683cd31418895395b92df",
+              "proposal_id": "context-replay-20261011T224404Z-proposal-v1",
+              "proposal_version": 1,
+              "replaces_active_policy_version": 0,
+              "response_schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "decision": {
+                    "enum": [
+                      "approved",
+                      "denied"
+                    ],
+                    "title": "Decision",
+                    "type": "string"
+                  },
+                  "reviewer_name": {
+                    "title": "Your name",
+                    "type": "string"
+                  },
+                  "reviewer_notes": {
+                    "title": "Review notes",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "decision",
+                  "reviewer_name"
+                ],
+                "type": "object"
+              },
+              "task_id": "RRFlow-context-replay-20261011T224404Z-proposal-v1-v1"
+            }
+          }
+        ],
+        "resume_schema": {
+          "additionalProperties": true,
+          "properties": {
+            "resume_map": {
+              "additionalProperties": false,
+              "properties": {
+                "6acc1285ef21c356fd9a78c8": {}
+              },
+              "required": [
+                "6acc1285ef21c356fd9a78c8"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "resume_map"
+          ],
+          "type": "object"
+        }
+      }
+    }
+  },
+  "pending_http_status": 200,
+  "pending_reviews": [
+    {
+      "execution_id": "34008f55-5e7a-434e-a3ca-762988bfa269",
+      "status": "suspended",
+      "message": "{\"proposal_id\":\"context-replay-20261011T224404Z-proposal-v1\",\"version\":1,\"policy_hash\":\"800fe2e7e50fc730b6c252c758cba7509edf1b0d1e8683cd31418895395b92df\"}",
+      "session_id": "rrflow-context-replay-20261011T224404Z-proposal-v1-v1",
+      "user_id": "6acbf79dc2c628971c230fd0",
+      "org_id": "6aa1ed66371c6468b4a49ac1",
+      "project_id": "6acbc84c07e49c5b0f33c510",
+      "workspace_id": "ws-6acc09b7f638d6502445e5d5",
+      "result": null,
+      "error": null,
+      "suspend_reason": "agent_interrupt",
+      "suspend_context": {
+        "interrupts": [
+          {
+            "id": "6acc1285ef21c356fd9a78c8",
+            "value": {
+              "action": "review_harness_policy",
+              "evidence": {
+                "after": 3,
+                "before": 1,
+                "eligible": true,
+                "false_blocks": 0,
+                "reason": "Scoped cooldown reduced avoidable recall in incident-derived replay while preserving simulated turn recording and healthy retrieval; human approval and live integration verification remain required.",
+                "regressions": [],
+                "total": 3
+              },
+              "experiment_id": "context-replay-20261011T224404Z",
+              "identity_note": "Reviewer name is a prototype human label; platform service-account identity is recorded separately.",
+              "message": "Review this measured harness policy. Approval activates only this exact version and writes an Atlas receipt. Denial leaves the current harness unchanged.",
+              "policy": {
+                "cooldown_seconds": 60,
+                "disclose_unavailable_recall": true,
+                "fallback": "current_thread_only",
+                "kind": "memory_recall_cooldown",
+                "record_turns": true,
+                "scope": "user_session_provider",
+                "trigger": "embedding_rate_limit"
+              },
+              "policy_hash": "800fe2e7e50fc730b6c252c758cba7509edf1b0d1e8683cd31418895395b92df",
+              "proposal_id": "context-replay-20261011T224404Z-proposal-v1",
+              "proposal_version": 1,
+              "replaces_active_policy_version": 0,
+              "response_schema": {
+                "additionalProperties": false,
+                "properties": {
+                  "decision": {
+                    "enum": [
+                      "approved",
+                      "denied"
+                    ],
+                    "title": "Decision",
+                    "type": "string"
+                  },
+                  "reviewer_name": {
+                    "title": "Your name",
+                    "type": "string"
+                  },
+                  "reviewer_notes": {
+                    "title": "Review notes",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "decision",
+                  "reviewer_name"
+                ],
+                "type": "object"
+              },
+              "task_id": "RRFlow-context-replay-20261011T224404Z-proposal-v1-v1"
+            }
+          }
+        ],
+        "resume_schema": {
+          "additionalProperties": true,
+          "properties": {
+            "resume_map": {
+              "additionalProperties": false,
+              "properties": {
+                "6acc1285ef21c356fd9a78c8": {}
+              },
+              "required": [
+                "6acc1285ef21c356fd9a78c8"
+              ],
+              "type": "object"
+            }
+          },
+          "required": [
+            "resume_map"
+          ],
+          "type": "object"
+        }
+      },
+      "suspend_generation": 1,
+      "created_at": "2026-10-11T22:49:36.675Z",
+      "updated_at": "2026-10-11T22:49:41.971Z",
+      "suspended_at": "2026-10-11T22:49:41.971Z",
+      "suspended_intervals": [
+        {
+          "started_at": "2026-10-11T22:49:41.971Z"
+        }
+      ]
+    }
+  ],
+  "human_decision_submitted": false
+}
