@@ -2,7 +2,7 @@
  * VibeGuard judges' view: the harness loop, live from Atlas.
  * run → judge → propose rule → human gate → next run loads it.
  */
-import { useCallback, useMemo, useState, type ButtonHTMLAttributes, type CSSProperties, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ButtonHTMLAttributes, type CSSProperties, type ReactNode } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { modelenceMutation, modelenceQuery } from '@modelence/react-query';
 import { useSession } from 'modelence/client';
@@ -25,9 +25,11 @@ type Rule = {
 type Audit = { at: string; event: string; rule_id: string; version: number; status: string; actor: string; reason?: string };
 type Summary = { runs: Run[]; rules: Rule[]; audit: Audit[] };
 type MemoryTypes = { procedural: number; episodic: number; semantic: number; taxonomic: number; receipts: number };
+type UiCard = { id: string; question: string; options: { label: string; text: string }[]; freeText: boolean };
 type Costar = {
   scores: { dimension: string; p_present: number; evidence: string[] }[];
   missing: string[]; ask: string[];
+  ui: { type: 'form'; version: number; cards: UiCard[]; done: boolean };
   lexicon: { entry_id: string; phrase: string; canonical_label: string; stack?: string | null; teach: string; score: number }[];
   resolver: string;
 };
@@ -321,11 +323,20 @@ function PassRateChart({ runs }: { runs: Run[] }) {
 function CostarPanel() {
   const [draft, setDraft] = useState('add stripe checkout to my next.js app');
   const [prompt, setPrompt] = useState('');
+  const [trail, setTrail] = useState<{ prompt: string; present: number }[]>([]);
+  const [freeText, setFreeText] = useState<Record<string, string>>({});
   const q = useQuery({ ...modelenceQuery<Costar>('harness.costar', { prompt }), enabled: prompt.length > 0, staleTime: Infinity });
   const d = q.data;
+  const present = d ? d.scores.filter((s) => s.p_present >= 0.5).length : 0;
+  // record each scored prompt once (completeness trail: before -> after each answer)
+  useEffect(() => {
+    if (d && prompt) setTrail((t) => (t.length && t[t.length - 1].prompt === prompt ? t : [...t, { prompt, present }]));
+  }, [d, prompt, present]);
+  const submit = (text: string) => { const next = text.trim(); setDraft(next); setPrompt(next); };
+  const answer = (text: string) => submit(`${prompt} ${text}`);
   return (
     <Card>
-      <Label>COSTAR completeness · side-conversation + semantic recall</Label>
+      <Label>COSTAR completeness · agent-generated side-conversation</Label>
       <textarea
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
@@ -333,9 +344,15 @@ function CostarPanel() {
         className="mt-3 w-full resize-y rounded-md border border-line bg-raised p-2.5 font-mono text-sm text-text placeholder:text-muted focus:border-cobalt focus:outline-none"
         placeholder="paste the vibecoder's prompt…"
       />
-      <div className="mt-2 flex items-center gap-2">
-        <Btn tone="accent" onClick={() => setPrompt(draft.trim())} disabled={!draft.trim() || q.isFetching}>{q.isFetching ? 'scoring…' : 'Check prompt'}</Btn>
-        {d ? <span className="truncate font-mono text-[11px] text-muted">resolver: {d.resolver}</span> : null}
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        <Btn tone="accent" onClick={() => submit(draft)} disabled={!draft.trim() || q.isFetching}>{q.isFetching ? 'scoring…' : 'Check prompt'}</Btn>
+        {trail.length > 0 && (
+          <span className="font-mono text-[11px] text-muted">
+            completeness {trail.map((t, i) => <span key={i}>{i ? ' → ' : ''}<span className={cn(t.present >= 6 ? 'text-verdant' : 'text-signal')}>{t.present}/6</span></span>)}
+          </span>
+        )}
+        {trail.length > 0 && <button type="button" className="text-[11px] text-muted underline-offset-2 hover:underline" onClick={() => { setTrail([]); setPrompt(''); }}>clear</button>}
+        {d ? <span className="basis-full truncate font-mono text-[11px] text-muted">resolver: {d.resolver}</span> : null}
       </div>
       {d && (
         <div className="mt-3 space-y-3">
@@ -343,16 +360,44 @@ function CostarPanel() {
             {d.scores.map((s) => (
               <li key={s.dimension} className="text-xs">
                 <div className="flex justify-between"><span className="capitalize">{s.dimension}</span><span className={cn('font-mono', s.p_present < 0.5 ? 'text-signal' : 'text-verdant')}>{s.p_present.toFixed(2)}</span></div>
-                <div className="mt-0.5 h-1.5 overflow-hidden rounded bg-raised"><div className={cn('h-full', s.p_present < 0.5 ? 'bg-signal' : 'bg-verdant')} style={{ width: pct(s.p_present) }} /></div>
+                <div className="mt-0.5 h-1.5 overflow-hidden rounded bg-raised"><div className={cn('h-full transition-all', s.p_present < 0.5 ? 'bg-signal' : 'bg-verdant')} style={{ width: pct(s.p_present) }} /></div>
               </li>
             ))}
           </ul>
-          {d.ask.length > 0 ? (
+          {d.ui.done ? (
+            <p className="text-sm text-verdant">Complete enough to start. No side-conversation needed — the agent gets to work.</p>
+          ) : (
             <div>
-              <Label>Asks (max 2, by priority)</Label>
-              <ul className="mt-1 space-y-1 text-sm">{d.ask.map((a) => <li key={a} className="rounded-md border border-line bg-raised px-2.5 py-1.5">{a}</li>)}</ul>
+              <div className="flex items-baseline justify-between">
+                <Label>Rendered from the server's form spec · {d.ui.cards.length} card{d.ui.cards.length === 1 ? '' : 's'}, priority order</Label>
+                <span className="font-mono text-[10px] text-muted">ui.v{d.ui.version}</span>
+              </div>
+              <ul className="mt-1.5 space-y-2">
+                {d.ui.cards.map((c) => (
+                  <li key={c.id} className="rounded-md border border-line bg-raised p-2.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm">{c.question}</span>
+                      <span className="shrink-0 rounded bg-ink px-1.5 py-0.5 font-mono text-[10px] text-signal">{c.id}</span>
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {c.options.map((o) => (
+                        <button key={o.label} type="button" onClick={() => answer(o.text)} disabled={q.isFetching}
+                          className="rounded-full border border-line bg-ink px-2.5 py-1 text-xs transition-colors hover:border-cobalt hover:text-text disabled:opacity-50">
+                          {o.label}
+                        </button>
+                      ))}
+                      {c.freeText && (
+                        <form className="flex min-w-[12rem] flex-1 gap-1" onSubmit={(e) => { e.preventDefault(); if (freeText[c.id]?.trim()) { answer(freeText[c.id]); setFreeText((f) => ({ ...f, [c.id]: '' })); } }}>
+                          <input value={freeText[c.id] ?? ''} onChange={(e) => setFreeText((f) => ({ ...f, [c.id]: e.target.value }))} placeholder="or type it…"
+                            className="min-w-0 flex-1 rounded-full border border-line bg-ink px-2.5 py-1 text-xs text-text placeholder:text-muted focus:border-cobalt focus:outline-none" />
+                        </form>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
             </div>
-          ) : <p className="text-sm text-verdant">Complete enough to start. No side-conversation needed.</p>}
+          )}
           {d.lexicon.length > 0 && (
             <div>
               <Label>Lexicon hits · canonical labels</Label>

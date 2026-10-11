@@ -26,6 +26,50 @@ const ASK: Record<Dimension, string> = {
   response: 'Want the whole file, just the changes, or step-by-step?',
 };
 const PRIORITY: Dimension[] = ['objective', 'context', 'audience', 'response', 'style', 'tone'];
+
+/** Quick-pick answers per dimension. The server decides which cards exist and in what order; the client only renders. */
+const QUICK_PICKS: Record<Dimension, { label: string; text: string }[]> = {
+  context: [
+    { label: 'Next.js on Vercel', text: "I'm using Next.js on Vercel." },
+    { label: 'React + Supabase', text: 'My app is React with Supabase.' },
+    { label: 'Python / Flask', text: 'My app is Python with Flask.' },
+    { label: 'No code yet', text: 'I have no existing code yet.' },
+  ],
+  objective: [
+    { label: 'Customers can pay', text: 'so that a customer can pay and I see the order.' },
+    { label: 'Fix a bug', text: 'I need to fix a bug so that the feature works again.' },
+    { label: 'Ship a prototype', text: 'I want to build a prototype I can show people.' },
+  ],
+  audience: [
+    { label: 'My customers', text: 'This is for my customers, non-technical end users.' },
+    { label: 'Just me', text: 'This is just for me.' },
+    { label: 'My team', text: 'This is for my team.' },
+  ],
+  response: [
+    { label: 'Whole file', text: 'Give me the whole file.' },
+    { label: 'Just the changes', text: 'Give me just the changes as a diff.' },
+    { label: 'Step-by-step', text: 'Walk me through it step by step.' },
+  ],
+  style: [
+    { label: 'Match my code', text: 'Follow the existing style and patterns in my code.' },
+    { label: 'Keep it simple', text: 'Keep it simple, no new dependencies.' },
+  ],
+  tone: [
+    { label: 'Friendly', text: 'Any words users see should sound friendly.' },
+    { label: 'Formal', text: 'Any words users see should sound formal.' },
+    { label: 'Plain', text: 'Keep user-facing text in plain English.' },
+  ],
+};
+
+export interface UiCard { id: Dimension; question: string; options: { label: string; text: string }[]; freeText: boolean }
+export interface UiSpec { type: 'form'; version: 1; cards: UiCard[]; done: boolean }
+
+/** Agent-generated UI: a declarative form spec for the gaps, most expensive gap first, at most two cards per turn. */
+export function uiSpec(gaps: Dimension[], max = 2): UiSpec {
+  const cards = PRIORITY.filter((d) => gaps.includes(d)).slice(0, max)
+    .map((d) => ({ id: d, question: ASK[d], options: QUICK_PICKS[d], freeText: true }));
+  return { type: 'form', version: 1, cards, done: cards.length === 0 };
+}
 const squash = (x: number) => 1 / (1 + Math.exp(-4 * x));
 
 export function scorePrompt(prompt: string) {
