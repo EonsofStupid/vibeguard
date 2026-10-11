@@ -4,6 +4,7 @@ import { modelenceMutation, modelenceQuery } from '@modelence/react-query';
 import { KnowledgeDrop } from '@/client/components/improvement/KnowledgeDrop';
 import { cn } from '@/client/lib/utils';
 import type { ChatInput, ChatMessage, ChatReply, ChatStatus } from '@/server/chat/contracts';
+import MessageContent from './MessageContent';
 
 const STORAGE_KEY = 'vibeguard-modelence-conversation-v1';
 const SESSION_PATTERN = /^[A-Za-z0-9_-]{1,128}$/;
@@ -97,7 +98,7 @@ export default function ChatPanel() {
 
       <div ref={transcript} role="log" aria-label="Conversation" aria-live="polite" className="mt-4 max-h-[30rem] space-y-3 overflow-y-auto rounded-xl border border-line bg-ink/40 p-3 md:p-4">
         {messages.length === 0 && <div className="py-5"><p className="font-medium">Start with something you want to build.</p><p className="mt-2 text-sm text-muted">For example: “Help me call a paid API with at most three attempts.” Or start a new conversation and ask what goal you were working toward.</p></div>}
-        {messages.map(message => <article key={message.id} className={cn('rounded-lg border p-3', message.role === 'user' ? 'ml-3 border-cobalt/25 bg-cobalt/5 md:ml-10' : 'mr-3 border-line bg-surface md:mr-10')}><p className="mb-2 text-xs font-medium text-muted">{message.role === 'user' ? 'You' : 'VibeGuard'}</p><p className="whitespace-pre-wrap break-words text-sm leading-relaxed">{message.content}</p></article>)}
+        {messages.map(message => <article key={message.id} className={cn('min-w-0 rounded-lg border p-3', message.role === 'user' ? 'ml-3 border-cobalt/25 bg-cobalt/5 md:ml-10' : 'mr-3 border-line bg-surface md:mr-10')}><p className="mb-2 text-xs font-medium text-muted">{message.role === 'user' ? 'You' : 'VibeGuard'}</p>{message.role === 'assistant' ? <MessageContent content={message.content} /> : <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">{message.content}</p>}</article>)}
         {send.isPending && <p role="status" className="animate-pulse-soft py-2 text-sm text-muted">Saving your turn, gathering context and asking the model…</p>}
       </div>
 
