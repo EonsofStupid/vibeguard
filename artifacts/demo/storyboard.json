@@ -1,0 +1,45 @@
+{
+  "title": "VibeGuard — chat, memory and a governed improvement",
+  "capture_environment": "local Modelence production build with real hosted Atlas and Agent Engine services",
+  "policy_status": "proposed; human decision and approved-version rerun pending",
+  "target_seconds": 58,
+  "final_captures_ready": false,
+  "scenes": [
+    {
+      "id": "chat",
+      "seconds": 13,
+      "image": "01-chat-memory.png",
+      "caption": "REAL CHAT · Atlas goal recall and independently verified saved turns",
+      "narration": "VibeGuard combines chat, durable memory, and measured harness improvement. This real chat recalls our project goal from Atlas, and both conversation turns have independently verified records."
+    },
+    {
+      "id": "learning",
+      "seconds": 8,
+      "image": "04-context-popup.png",
+      "caption": "LEARN WHILE BUILDING · Contextual explanations appear when relevant",
+      "narration": "Relevant popups explain what is happening as you build. Here, a real memory rate limit triggered a proposed change."
+    },
+    {
+      "id": "replay",
+      "seconds": 16,
+      "image": "02-rsi-evidence.png",
+      "caption": "INCIDENT REPLAY · Avoidable recalls 8 → 0 · Simulated turns retained 51 → 51",
+      "narration": "A live model proposed a sixty-second recall cooldown. Across seven frozen incident replay cases, avoidable recall attempts fell from eight to zero. All fifty-one simulated conversation turns remained recorded. These are replay results."
+    },
+    {
+      "id": "review",
+      "seconds": 15,
+      "image": "05-review-popup.png",
+      "caption": "HUMAN REVIEW PENDING · Opening the dialog does not activate a policy",
+      "narration": "RRFlow opens the exact policy for human review. The user chooses a decision and submits it explicitly. This proposal is still pending. Activation and a rerun tied to the approved version remain next."
+    },
+    {
+      "id": "trace",
+      "seconds": 6,
+      "image": "06-raindrop-trace.png",
+      "caption": "LOCAL PRODUCTION WALKTHROUGH · Human approval and the approved-version rerun remain pending",
+      "narration": "The goal is a harness that improves while preserving continuity and human control.",
+      "note": "Await actual Raindrop capture and verified behavior before adding any trace claim."
+    }
+  ]
+}

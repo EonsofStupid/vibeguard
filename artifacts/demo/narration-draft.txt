@@ -1,0 +1,5 @@
+﻿VibeGuard brings conversation, memory, and harness improvement into one workbench. A real chat recalls the project's goal from MongoDB Atlas and receives separate receipts for the user's message and the model's reply.
+
+Here, an actual embedding rate limit became an improvement proposal. A live model suggested a sixty-second recall cooldown. Frozen incident replays reduced avoidable recall attempts from eight to zero, while preserving all fifty-one simulated conversation turns. Training and held-out results stay visible, and the screen clearly labels the replay evidence.
+
+RRFlow presents the exact policy for a human decision. Approval permits that version to operate automatically within its scope. Atlas stores the policy and audit receipt, and a measured rerun checks the approved version. This recording shows the genuine pending-review state. VibeGuard never treats a proposal, a timeout, or a successful build as completed improvement.
