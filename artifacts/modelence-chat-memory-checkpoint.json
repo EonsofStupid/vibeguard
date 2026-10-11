@@ -50,7 +50,8 @@
     "assistant_recalls_atlas_goal": true,
     "assistant_recalls_rrflow_review": true,
     "assistant_provides_next_step": true,
-    "assistant_explains_memory": true
+    "assistant_explains_memory": true,
+    "assistant_matches_visible_browser_text": true
   },
   "previously_saved_semantic_goal": {
     "id": "6acbffa015ff5156615ec68e",
@@ -65,7 +66,13 @@
     "saved_user_turn_id": "6acc165420b7a8d67bfc1fb2",
     "saved_assistant_turn_id": "6acc165920b7a8d67bfc1fb3",
     "exact_response_body_compared_to_atlas": false,
-    "note": "Response identifier was observed in the browser; the memory rows do not store it. Stored assistant content was independently verified, but no captured HTTP body was supplied for byte-for-byte comparison."
+    "note": "The visible browser assistant text matches the Atlas content. No captured HTTP body was supplied; this is a visible-text comparison, not an HTTP-body comparison. The browser-observed model response identifier is not stored in the memory rows.",
+    "visible_text_source": "Browser accessibility tree; copied by parent agent",
+    "visible_assistant_text": "**Remembered project goal:**  \nUse MongoDB Atlas memory to preserve VibeGuard’s project context across sessions, while routing durable harness changes through RRFlow human review.\n\n**One next step:**  \nDefine a small memory test: store one project fact, start a new session, retrieve it, and verify that it is cited as context—not treated as an instruction or approval.\n\n**Memory recall in plain language:**  \nVibeGuard looks up relevant information saved from earlier conversations and shows it to me as background. That information can help maintain continuity, but it does not automatically change rules, grant permissions, or prove that a long-term fact has been extracted.",
+    "visible_text_exact_match": true,
+    "visible_text_canonical_whitespace_match": true,
+    "comparison_normalization": "Collapse whitespace runs and strip surrounding whitespace only",
+    "visible_text_sha256": "339a056da997da532769ca0cfb69fa59f992e4f66bdfc324f04271f8a8e046be"
   },
   "earlier_failed_attempt": {
     "reported_by": "parent agent performing the browser walkthrough",

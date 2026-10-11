@@ -133,7 +133,7 @@ async function killOwnedTree(child) {
   if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL');
 }
 
-export async function runChat({ root, args = [], childCommand, startupTimeout = 30_000, log = console.log, errorLog = console.error }) {
+export async function runChat({ root, args = [], childCommand, outputUrl = urlFromOutput, pageReady = (page) => page.status === 200 && /<title>\s*VibeGuard\s*<\/title>/i.test(page.body), startupTimeout = 30_000, log = console.log, errorLog = console.error }) {
   root = path.resolve(root);
   const { command, port } = parseArgs([...args]);
   const runtime = path.join(root, '.runtime');
@@ -222,27 +222,28 @@ export async function runChat({ root, args = [], childCommand, startupTimeout = 
     ownsLock = true;
     if (shutdown) { await removeOwnLock(lock, runId); return; }
     const nodeOptions = [process.env.NODE_OPTIONS, '--require=' + JSON.stringify(path.join(here, 'lease.cjs').replaceAll('\\', '/'))].filter(Boolean).join(' ');
-    const spec = childCommand || { executable: process.execPath, args: [next, 'dev', '--hostname', host, '--port', String(port)], cwd: client };
+    const spec = typeof childCommand === 'function' ? await childCommand({ port }) : childCommand || { executable: process.execPath, args: [next, 'dev', '--hostname', host, '--port', String(port)], cwd: client };
     child = spawn(spec.executable, spec.args, {
       cwd: spec.cwd || root,
       env: { ...process.env, ...spec.env, VIBEGUARD_DASHBOARD_ROLE: 'chat', VIBEGUARD_CHAT_PORT: '', VIBEGUARD_LEASE_PORT: String(owner.controlPort), VIBEGUARD_LEASE_TOKEN: token, VIBEGUARD_RUN_ID: runId, NODE_OPTIONS: nodeOptions },
       windowsHide: true, detached: false, stdio: ['ignore', 'pipe', 'pipe'],
     });
     let output = '';
+    let errorOutput = '';
     let childFailure;
     child.on('error', (error) => { childFailure = error; void stop(1); });
     child.on('exit', (code, signal) => {
-      if (!shutdown) { childFailure = new Error('Chat server exited (code ' + code + ', signal ' + signal + ').'); errorLog(childFailure.message); void stop(code || 1); }
+      if (!shutdown) { childFailure = new Error('Chat server exited (code ' + code + ', signal ' + signal + ').'); if (/EADDRINUSE/.test(errorOutput)) childFailure.code = 'EADDRINUSE'; errorLog(childFailure.message); void stop(code || 1); }
     });
     child.stdout.on('data', (chunk) => {
       const text = chunk.toString();
       output = (output + text).slice(-16_384);
       // A split port number cannot be mistaken for a complete URL.
       const complete = output.slice(0, Math.max(output.lastIndexOf('\n'), output.lastIndexOf('\r')) + 1);
-      state.url ||= urlFromOutput(complete);
+      state.url ||= outputUrl(complete);
       process.stdout.write(text);
     });
-    child.stderr.on('data', (chunk) => process.stderr.write(chunk));
+    child.stderr.on('data', (chunk) => { errorOutput = (errorOutput + chunk.toString()).slice(-16_384); process.stderr.write(chunk); });
     log('Starting VibeGuard; an available port will be selected automatically. Keep this terminal open.');
     const deadline = Date.now() + startupTimeout;
     while (!shutdown && Date.now() < deadline) {
@@ -250,7 +251,7 @@ export async function runChat({ root, args = [], childCommand, startupTimeout = 
       if (state.url) {
         try {
           const page = await request(state.url, { timeout: Math.min(2000, Math.max(1, deadline - Date.now())) });
-          if (page.status === 200 && /<title>\s*VibeGuard\s*<\/title>/i.test(page.body)) {
+          if (pageReady(page)) {
             if (shutdown) break;
             state.phase = 'ready';
             await writeFile(path.join(lock, 'url.txt'), state.url + '\n');

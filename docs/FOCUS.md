@@ -29,10 +29,11 @@ Use the research from rrflow/rrflow-development at cfa0e80, without importing it
 
 Reasoning and proposed improvements may be automatic. A proposed rule has no mutation authority. Human approval activates it; humans alone loosen or revert it. Reversion retains the rule and appends an audit receipt.
 
-## First three examples
+## Focused examples
 
 | Example | User experience | Harness / memory proof | Completion evidence |
 | --- | --- | --- | --- |
+| Recall cooldown (active checkpoint) | A memory rate limit produces a plain-language explanation and one scoped improvement proposal. | A live model proposes a cooldown; frozen incident replays measure its effect; RRFlow review activates the exact version for future chats. | Real failure artifact, 1/3 to 3/3 training and 1/4 to 4/4 held-out replay scores, 8 to 0 avoidable recall calls, human receipt, active-version rerun. Replay timelines and turn writes are simulated. |
 | Retry budget | User asks for an API workflow with at most three paid attempts. A small card explains retry budget and why it matters. | A failure produces a bounded-retry rule; human approval changes the next attempt. | Before/after output, training failure, proposal version, human receipt, held-out scores, false blocks and attempt count. |
 | Auditable action | User requests a file or persistent-state change. Chat shows the exact scope and routes the concrete proposal to RRFlow. A card explains scope or approval receipt. | Tool access is constrained by the reviewed action and version. Denial does not execute it; approval permits only the reviewed scope. | Matching conversation/execution/action IDs, approve/deny behavior, checked result and receipt. Use a harmless sandbox action first. |
 | Resume the goal | In a new session, the user asks to continue the same project. Chat recalls the goal, accepted retry budget and prior decision. | Bounded context uses durable memory plus authoritative active rules. | Saved and retrieved fact, correct user/session scope, restart/new-session recall, provenance and current rule version. |
@@ -52,8 +53,12 @@ Before accepting a task, name the statement it advances, the current failure it 
 Current order:
 1. Reliable local lifecycle: OS-selected port, one owned instance, bounded startup, explicit status/stop, cleanup after supervisor loss. Distinguish stopping a local server from cancelling a hosted execution.
 2. Service readiness: verify installed dependencies, actual chat reply, effective memory runtime/config and one durable write/read. Use the existing Atlas project and cluster.
-3. First complete retry-budget example with an actual human review and receipt.
+3. Complete the recall-cooldown example with an actual human review, receipt, active enforcement, and rerun. The earlier live retry baseline was perfect and produced no improvement proposal.
 4. Contextual cards, harmless auditable action and resumed-goal example through the same services.
 5. Live before/after measurement and a concise demo. Scale after these work.
 
 No checkpoint passes because a command was issued, a process printed Ready, a request timed out or a fixture replay improved. Report actual observed results and remaining blockers.
+
+## Deferred additions
+
+RRF fusion with per-resolver recall@K, additional clickable rule provenance, and a bounded context assembly preview are next candidates after the active improvement cycle passes. CI, canonical domain structure, and clear RSI presentation support this checkpoint. Extra integrations remain outside it.
