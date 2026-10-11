@@ -1,7 +1,8 @@
 import { Module } from 'modelence/server';
 import { z } from 'zod';
+import type { Proposal, ReviewReceipt } from '@/shared/improvement';
 import { getAgentMemoryHeaders } from '@/server/chat/auth';
-import { evidenceDatabase } from '@/server/harness/live-improvement';
+import { evidenceDatabase } from '@/server/storage/atlas';
 
 const id = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$/);
 const hash = z.string().regex(/^[a-f0-9]{64}$/);
@@ -77,7 +78,7 @@ async function requestReview(value: unknown) {
     const existing = pending.find((review) => review.proposal_id === request.proposal_id && review.proposal_version === request.version && review.policy_hash === request.policy_hash);
     if (existing) return { status: 'awaiting_review', review: existing };
     const db = await evidenceDatabase();
-    const proposal = await db.collection('harness_proposals').findOne({ _id: request.proposal_id } as never);
+    const proposal = await db.collection<Proposal>('harness_proposals').findOne({ _id: request.proposal_id });
     if (!proposal || proposal.status !== 'proposed' || proposal.version !== request.version || proposal.policy_hash !== request.policy_hash) throw new Error('This proposal changed or was already reviewed. Refresh the evidence.');
     await platform(target().invoke, { session_id: sessionId, message: JSON.stringify(request) }, sessionId);
     const reviews = await pendingReviews();
@@ -101,7 +102,7 @@ async function decideReview(value: unknown) {
   }, request.session_id);
   const db = await evidenceDatabase();
   const receiptId = `rrflow:${request.proposal_id}:v${request.version}`;
-  const receipt = await db.collection('audit').findOne({ _id: receiptId } as never);
+  const receipt = await db.collection<ReviewReceipt>('audit').findOne({ _id: receiptId } as never);
   if (!receipt || receipt.policy_hash !== request.policy_hash || receipt.status !== (request.decision === 'approved' ? 'approved' : 'rejected')) {
     return { completed: false, message: 'The decision was submitted. RRFlow has not returned a matching committed receipt yet.' };
   }

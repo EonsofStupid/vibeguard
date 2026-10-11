@@ -16,4 +16,7 @@ agentengine.exe
 project-config.yaml.local
 project-config.yaml
 artifacts/*.jpg
+artifacts/demo/*.mp4
+artifacts/demo/*.wav
+artifacts/demo/*.png
 .agentengine/

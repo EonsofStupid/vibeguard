@@ -2,7 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import z from 'zod';
 import { AgentMemoryError, buildMemoryContext, getAgentMemoryMode, recordMemoryTurn, type MemoryContext } from './memory';
 import type { ChatInput, ChatKnowledge, ChatReply, ChatStatus } from './contracts';
-import { recallWithApprovedPolicy } from '../harness/context-policy';
+import { recallWithApprovedPolicy } from '../improvement/context-policy';
 
 const identifier = z.string().regex(/^[A-Za-z0-9_-]{1,128}$/);
 const ChatRequest = z.object({

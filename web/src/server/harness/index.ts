@@ -8,7 +8,7 @@ import { scorePrompt, missing, sideConversation, uiSpec } from './costar';
 import { vectorResolve, embedLexicon, vectorIndexStatus, ensureVectorIndex, overlapResolve } from './semantic';
 import { RunResult } from './schemas';
 import { SEED_FAILURES, SEED_LEXICON } from './seed';
-import { liveImprovement } from './live-improvement';
+import { improvementStatus } from '../improvement/status';
 
 const strip = (d: any) => d.record;
 
@@ -19,7 +19,8 @@ export default new Module('harness', {
   stores: [dbRules, dbRuns, dbLexicon, dbFailures, dbAudit, dbCostar],
 
   queries: {
-    liveImprovement,
+    // Compatibility alias for existing clients; new UI uses improvement.status.
+    liveImprovement: improvementStatus,
     summary: async () => {
       const runs = (await dbRuns.fetch({}, { sort: { 'record.at': 1 } })).map(strip).map((r: any) => ({ ...r, traces: undefined }));
       const rules = await allRules();
