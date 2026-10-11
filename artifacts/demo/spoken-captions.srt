@@ -4,11 +4,11 @@ VibeGuard combines chat, durable memory, and measured harness improvement. Atlas
 
 2
 00:00:13,000 --> 00:00:21,000
-Relevant popups explain what is happening as you build. Here, a real memory rate limit triggered a proposed change.
+Relevant popups explain terms as you build. A retry budget counts every attempt, including retries hidden inside a tool.
 
 3
 00:00:21,000 --> 00:00:37,000
-A live model proposed a sixty-second recall cooldown. Across seven frozen incident replay cases, avoidable recall attempts fell from eight to zero. All fifty-one simulated conversation turns remained recorded. These are replay results.
+After a real memory rate limit, a live model proposed a sixty-second recall cooldown. In seven frozen incident replay cases, avoidable recalls fell eight to zero. All fifty-one simulated turns remained recorded.
 
 4
 00:00:37,000 --> 00:00:52,000
@@ -16,4 +16,4 @@ A human reviews the exact policy before it can change future chats. Our approval
 
 5
 00:00:52,000 --> 00:00:58,000
-Raindrop acknowledged the historical replay event and signal, keeping evidence connected to the experiment.
+Raindrop acknowledged this real chat event. Feedback can inform the next proposed improvement.

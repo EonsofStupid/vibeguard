@@ -1,7 +1,7 @@
 {
   "target_seconds": 58,
-  "rendered": false,
-  "evidence_environment": "local Modelence production build with real hosted Atlas and Agent Engine services",
+  "rendered": true,
+  "evidence_environment": "local Modelence production build; latest captures on localhost:53351 with real hosted Atlas, Agent Engine and Raindrop services",
   "policy_status": "human approval recorded on proposal; matching audit receipt missing, activation unverified, approved-version rerun pending",
   "synthesized_narration": true,
   "scenes": [
@@ -9,31 +9,50 @@
       "scene": "chat",
       "seconds": 13,
       "voice_seconds": 13.042,
-      "tempo": 1.026943
+      "tempo": 1.026943,
+      "source_sha256": "b5ef13559ccb6d01adc5fdb3a4ae91e7de9620131d9f168bdc4c7ec0bb5e80fa"
     },
     {
       "scene": "learning",
       "seconds": 8,
-      "voice_seconds": 8.218,
-      "tempo": 1.067297
+      "voice_seconds": 9.028,
+      "tempo": 1.172442,
+      "source_sha256": "2ea2e4247b6399dad179943768218d74796df0c223a60cb282ccc41a65abc519"
     },
     {
       "scene": "replay",
       "seconds": 16,
-      "voice_seconds": 17.371,
-      "tempo": 1.106446
+      "voice_seconds": 15.532,
+      "tempo": 1.0,
+      "source_sha256": "e129cd57b446a373518aa4e4940e73b964cb7e5728c7937c26a660e4e73921b6"
     },
     {
       "scene": "review",
       "seconds": 15,
       "voice_seconds": 13.222,
-      "tempo": 1.0
+      "tempo": 1.0,
+      "source_sha256": "f5bf7da5a8f29be5135db7f9e209d743bced6141cc663170009b8cac3c01b511"
     },
     {
       "scene": "trace",
       "seconds": 6,
-      "voice_seconds": 6.728,
-      "tempo": 1.180348
+      "voice_seconds": 6.788,
+      "tempo": 1.190922,
+      "source_sha256": "b5ef13559ccb6d01adc5fdb3a4ae91e7de9620131d9f168bdc4c7ec0bb5e80fa"
     }
-  ]
+  ],
+  "actual_seconds": 58.02,
+  "output_sha256": "6681b497b5608c3bbaeb5a03e907951b06f6cd0dfe55c0f94aac5fdc1dd05982",
+  "output_bytes": 1756741,
+  "audio_stream_verified": true,
+  "subtitle_stream_verified": true,
+  "visual_inspection": {
+    "frames_at_seconds": [
+      15,
+      40
+    ],
+    "captions_readable": true,
+    "current_approval_integrity_state_visible": true,
+    "source_browser_captures_inspected": true
+  }
 }

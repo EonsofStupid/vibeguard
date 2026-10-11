@@ -1,4 +1,4 @@
-file '01-chat-memory.png'
+file '06-raindrop-trace.png'
 duration 13
 file '04-context-popup.png'
 duration 8

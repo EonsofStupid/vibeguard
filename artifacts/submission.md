@@ -27,8 +27,9 @@ cooldown policy. Frozen incident replay improved held-out cases from 1/4 to 4/4
 and training from 1/3 to 3/3. Avoidable recall attempts fell from 8 to 0; all 51
 simulated conversation turns were retained, with zero regressions or false
 blocks. These are replay results, not live throughput measurements. The exact
-proposal reached RRFlow's human-review interrupt; approval, activation and the
-approved-version rerun remain pending.
+proposal reached RRFlow's human-review interrupt. Human approval is recorded,
+but its corresponding audit receipt is missing, so activation is unverified
+and an approved-version rerun is not yet established.
 
 Raindrop accepted the historical replay event and its eligible-for-human-review
 signal. Live-chat capture and feedback are integrated in the code; their current
@@ -149,8 +150,9 @@ Rust engine is not imported. In particular:
 ## Final factual boundary
 
 The proposal demonstrably reached the deployed RRFlow human-review interrupt.
-Human approval, activation and the approved-version rerun remain pending. Update
-that statement only when matching Atlas receipt and rerun evidence exist. Do not describe an eligible proposal as
+Human approval is recorded, but the corresponding audit receipt is missing.
+Activation remains unverified, and an approved-version rerun is not established.
+Update that statement only when matching Atlas receipt and rerun evidence exist. Do not describe an eligible proposal as
 already active. The event requires a public repository, accessible demo link,
 all actual teammates, Atlas sandbox use for finalists and a clear distinction
 between new hackathon work and prior research.
