@@ -1,0 +1,32 @@
+{
+  "observed_at": "2026-10-11T20:54:40.292390+00:00",
+  "operation_id": "project-memory-93ea93c3-73c8-402f-8f11-f304dcc8cfff",
+  "checkpoint": "statement_2_resume_goal_durable_context",
+  "passed": true,
+  "database": "vibeguard",
+  "inserted_ids": [
+    "project-vibeguard-goal-v1",
+    "project-vibeguard-statement-1-v1",
+    "project-vibeguard-statement-2-v1",
+    "project-vibeguard-rrflow-lineage-v1",
+    "project-vibeguard-human-approval-v1",
+    "project-vibeguard-one-example-first-v1"
+  ],
+  "retained_ids": [],
+  "verified_ids": [
+    "project-vibeguard-goal-v1",
+    "project-vibeguard-statement-1-v1",
+    "project-vibeguard-statement-2-v1",
+    "project-vibeguard-rrflow-lineage-v1",
+    "project-vibeguard-human-approval-v1",
+    "project-vibeguard-one-example-first-v1"
+  ],
+  "inserted_count": 6,
+  "verified_project_fact_count": 6,
+  "total_fact_count": 7,
+  "total_audit_count": 8,
+  "audit_receipt_id": "6acbf797cce831dd31cc24bf",
+  "audit_receipt_verified": true,
+  "rule_transitions": 0,
+  "synthetic_eval_runs": 0
+}

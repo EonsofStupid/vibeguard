@@ -89,11 +89,10 @@ async function mintServiceAccountToken(
 }
 
 async function getServiceAccountToken(
-  target: AgentEngineTarget,
+  origin: string,
   clientId: string,
   clientSecret: string
 ): Promise<string> {
-  const origin = target.invokeUrl.origin;
   if (
     cachedToken?.clientId === clientId &&
     cachedToken.origin === origin &&
@@ -123,10 +122,27 @@ export async function getAgentEngineHeaders(
   const headers = new Headers({ "Content-Type": "application/json" });
   if (target.mode === "deployed") {
     const credentials = configuredServiceAccount();
-    const token = await getServiceAccountToken(target, credentials.clientId, credentials.clientSecret);
+    const token = await getServiceAccountToken(target.invokeUrl.origin, credentials.clientId, credentials.clientSecret);
     headers.set("Authorization", `Bearer ${token}`);
   }
   if (sessionId) headers.set("X-Session-ID", sessionId);
+  return headers;
+}
+
+/** Memory belongs to a project, so authentication does not require a workspace. */
+export async function getAgentMemoryHeaders(
+  mode: "hosted" | "local",
+  origin: string
+): Promise<Headers> {
+  const headers = new Headers({ "Content-Type": "application/json" });
+  if (mode === "hosted") {
+    if (origin !== "https://agentengine.mongodb.com") {
+      throw new Error("Hosted memory must use https://agentengine.mongodb.com.");
+    }
+    const credentials = configuredServiceAccount();
+    const token = await getServiceAccountToken(origin, credentials.clientId, credentials.clientSecret);
+    headers.set("Authorization", `Bearer ${token}`);
+  }
   return headers;
 }
 

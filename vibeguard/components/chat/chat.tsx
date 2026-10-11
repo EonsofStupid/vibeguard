@@ -135,7 +135,7 @@ async function fetchChatHistory(
   return body;
 }
 
-export function Chat({ mode = "agentengine" }: { mode?: "agentengine" | "model" } = {}) {
+export function Chat({ mode = "agentengine", memoryMode = null, memoryUser = "vibeguard-operator" }: { mode?: "agentengine" | "model"; memoryMode?: "hosted" | "local" | null; memoryUser?: string } = {}) {
   const [input, setInput] = useState("");
   const [userId, setUserId] = useState("default-user-id");
   const [sessionId, setSessionId] = useState("");
@@ -143,6 +143,7 @@ export function Chat({ mode = "agentengine" }: { mode?: "agentengine" | "model" 
   const [isRestoring, setIsRestoring] = useState(true);
   const [progress, setProgress] = useState<SessionProgress>(null);
   const [historyError, setHistoryError] = useState<string | null>(null);
+  const [memoryStatus, setMemoryStatus] = useState<string | null>(null);
   const historyRequest = useRef<AbortController | null>(null);
   const initialSession = useRef<{ id: string; restore: boolean } | null>(null);
 
@@ -177,6 +178,8 @@ export function Chat({ mode = "agentengine" }: { mode?: "agentengine" | "model" 
         persistSessionId(authoritativeSessionId);
       } else if (dataPart.type === "data-suspension") {
         setProgress("suspended");
+      } else if (dataPart.type === "data-memory" && typeof dataPart.data === "object" && dataPart.data !== null && "saved" in dataPart.data) {
+        setMemoryStatus(dataPart.data.saved ? ("recall_limited" in dataPart.data && dataPart.data.recall_limited ? "Conversation saved to Atlas. Long-term recall is temporarily rate limited; this reply used the current conversation." : "Conversation saved to Atlas memory.") : "This reply was not saved to memory. Your browser still holds the conversation.");
       }
     },
   });
@@ -298,6 +301,7 @@ export function Chat({ mode = "agentengine" }: { mode?: "agentengine" | "model" 
     setMessages([]);
     setProgress(null);
     setHistoryError(null);
+    setMemoryStatus(null);
     setIsRestoring(false);
   }, [setMessages]);
 
@@ -331,7 +335,7 @@ export function Chat({ mode = "agentengine" }: { mode?: "agentengine" | "model" 
             </h1>
             {mode === "agentengine" ? <Link className="text-sm text-muted-foreground hover:text-foreground" href="/reviews">Reviews</Link> : <span className="text-xs text-muted-foreground">Model chat · RRFlow review pending</span>}
           </div>
-          {mode === "model" ? <p className="text-xs text-muted-foreground">Conversation history stays in this browser. Atlas long-term memory is not connected.</p> : null}
+          {mode === "model" ? <p className="text-xs text-muted-foreground" role="status">{memoryMode ? (memoryStatus || "Atlas memory configured. Each message checks recall and confirms saving; long-term learning happens in the background.") : "Conversation history stays in this browser. Atlas long-term memory is not connected."}</p> : null}
           <div className="flex flex-wrap items-center gap-4">
             <div className="flex items-center gap-2">
               <label className="text-xs text-muted-foreground whitespace-nowrap" htmlFor="user-id">
@@ -341,7 +345,8 @@ export function Chat({ mode = "agentengine" }: { mode?: "agentengine" | "model" 
                 className="h-7 w-40 text-xs"
                 id="user-id"
                 onChange={(e) => setUserId(e.target.value)}
-                value={userId}
+                value={memoryMode ? memoryUser : userId}
+                readOnly={Boolean(memoryMode)}
               />
               <Button
                 aria-label="Randomize user ID"

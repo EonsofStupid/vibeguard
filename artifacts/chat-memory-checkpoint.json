@@ -1,0 +1,7 @@
+{
+  "checked_at": "2026-10-11T21:31:20.636Z",
+  "session_id": "vibeguard-chat-memory-confirmed",
+  "status": 200,
+  "body": "data: {\"type\":\"text-start\",\"id\":\"264fbc40-a642-4576-ad56-9a029b43235f\"}\n\ndata: {\"type\":\"text-delta\",\"id\":\"264fbc40-a642-4576-ad56-9a029b43235f\",\"delta\":\"VibeGuard’s project goal is to use MongoDB Atlas memory to preserve project context across sessions and route durable harness changes through RRFlow human review.\"}\n\ndata: {\"type\":\"text-end\",\"id\":\"264fbc40-a642-4576-ad56-9a029b43235f\"}\n\ndata: {\"type\":\"data-memory\",\"data\":{\"saved\":true,\"mode\":\"hosted\",\"error\":null},\"transient\":true}\n\ndata: [DONE]\n\n",
+  "passed": true
+}

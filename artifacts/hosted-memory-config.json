@@ -1,0 +1,39 @@
+{
+  "checked_at": "2026-10-11T21:09:52.577Z",
+  "http_status": 200,
+  "project_id": "6acbc84c07e49c5b0f33c510",
+  "generation": 2,
+  "received_generation": 2,
+  "updated_at": "2026-10-11T21:09:40.168Z",
+  "config": {
+    "voyage": {
+      "model": "voyage-code-4",
+      "dimension": 1024
+    },
+    "short_term": {
+      "embed_on_write": false
+    },
+    "extraction_llm": {
+      "provider": "openai",
+      "model": "gpt-5.6-luna",
+      "api_key_secret": "LLM_API_KEY"
+    },
+    "background_extraction": {
+      "snapshot": {
+        "max_messages": 20,
+        "stale_minutes": 1,
+        "delete_promoted": false
+      }
+    },
+    "extraction": {
+      "enabled": [
+        "semantic",
+        "episodic",
+        "taxonomic",
+        "procedural"
+      ]
+    }
+  },
+  "runtime_readiness_checked": false,
+  "matches_requested_configuration": true
+}

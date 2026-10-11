@@ -1,10 +1,35 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { modelChat, readMessages } from "@/lib/model-chat";
 import { restoreEnvironmentVariable } from "@/test/environment";
+import { resetAgentEngineAuthForTests } from "@/lib/agent-engine-auth";
 const originalKey = process.env.VIBEGUARD_MODEL_API_KEY;
-afterEach(() => { restoreEnvironmentVariable("VIBEGUARD_MODEL_API_KEY", originalKey); vi.unstubAllGlobals(); });
+afterEach(() => { restoreEnvironmentVariable("VIBEGUARD_MODEL_API_KEY", originalKey); vi.unstubAllGlobals(); vi.unstubAllEnvs(); resetAgentEngineAuthForTests(); });
 const messages = [{ role: "user" as const, parts: [{ type: "text", text: "Hi" }] }];
 describe("live model chat", () => {
+  it("keeps saving turns during recall rate limits and tells the UI recall was unavailable", async () => {
+    process.env.VIBEGUARD_MODEL_API_KEY = "test-key";
+    vi.stubEnv("VIBEGUARD_MEMORY_MODE", "hosted");
+    vi.stubEnv("VIBEGUARD_MEMORY_URL", "https://agentengine.mongodb.com");
+    vi.stubEnv("MONGODB_AGENTIC_PROJECT_ID", "6acbc84c07e49c5b0f33c510");
+    vi.stubEnv("MONGODB_AGENTIC_CLIENT_ID", "test-client");
+    vi.stubEnv("MONGODB_AGENTIC_CLIENT_SECRET", "test-secret");
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(Response.json({ access_token: "test-token", expires_in: 3600 }))
+      .mockResolvedValueOnce(Response.json({ id: "user-turn", session_id: "session-1", turn_seq: 1, acknowledged: true }))
+      .mockResolvedValueOnce(Response.json({ detail: "Embedding service rate limit exceeded; retry later" }, { status: 429 }))
+      .mockResolvedValueOnce(Response.json({ status: "completed", output: [{ content: [{ type: "output_text", text: "I can continue with this conversation." }] }] }))
+      .mockResolvedValueOnce(Response.json({ id: "assistant-turn", session_id: "session-1", turn_seq: 2, acknowledged: true }));
+    vi.stubGlobal("fetch", fetchMock);
+    const response = await modelChat(messages, new Request("http://localhost/api/chat"), "session-1");
+    const stream = await response.text();
+    expect(response.status).toBe(200);
+    expect(stream).toContain('"saved":true');
+    expect(stream).toContain('"recall_limited":true');
+    expect(fetchMock).toHaveBeenCalledTimes(5);
+    const modelRequest = JSON.parse(fetchMock.mock.calls[3][1].body);
+    expect(modelRequest.instructions).toContain("do not invent memories");
+    expect(JSON.parse(fetchMock.mock.calls[4][1].body).role).toBe("assistant");
+  });
   it("rejects malformed and oversized context", () => {
     for (const body of [null, [], { messages: {} }, { messages: [{ role: "user", parts: [null] }] },
       { messages: [{ role: "system", parts: [] }] },
