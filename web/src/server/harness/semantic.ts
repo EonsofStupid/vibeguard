@@ -41,3 +41,21 @@ export async function vectorResolve(text: string, k = 3): Promise<{ record: Lexi
   const docs = await cur.toArray();
   return docs.map((d: any) => ({ record: LexiconEntry.parse(d.record), score: +Number(d.score).toFixed(4) }));
 }
+
+/** Atlas Search index status for the lexicon vector index (name, status, queryable). */
+export async function vectorIndexStatus(): Promise<{ name: string; status?: string; queryable?: boolean }[]> {
+  const coll = dbLexicon.rawCollection();
+  const idx = await coll.listSearchIndexes().toArray();
+  return idx.map((i: any) => ({ name: i.name, status: i.status, queryable: i.queryable }));
+}
+
+/** Create the vector index if the startup sync did not (e.g. the collection did not exist yet). Idempotent. */
+export async function ensureVectorIndex(): Promise<{ created: boolean; indexes: { name: string; status?: string; queryable?: boolean }[] }> {
+  const existing = await vectorIndexStatus();
+  if (existing.some((i) => i.name === 'lexicon_vec')) return { created: false, indexes: existing };
+  await dbLexicon.rawCollection().createSearchIndexes([{
+    name: 'lexicon_vec', type: 'vectorSearch',
+    definition: { fields: [{ type: 'vector', path: 'embedding', numDimensions: 1024, similarity: 'cosine' }] },
+  } as any]);
+  return { created: true, indexes: await vectorIndexStatus() };
+}
