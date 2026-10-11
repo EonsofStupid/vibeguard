@@ -2,7 +2,9 @@
 
 **A self-tightening agent harness that protects vibecoders' money and time.**
 
-**Live:** https://vibeguard-mv4df1w6qok-prod.cloud.modelence.app — deployed on Modelence Cloud, data in MongoDB Atlas.
+**Live:** https://vibeguard.shippin.ai (= https://vibeguard-mv4df1w6qok-prod.cloud.modelence.app) — deployed on Modelence Cloud, data in MongoDB Atlas. The deployed build is branch [`live`](https://github.com/EonsofStupid/vibeguard/tree/live) (dashboard gate + provenance); `main` additionally carries the chat panel and the RRFlow review gate (`web/src/server/review/`), merged late on the day and not yet deployed.
+
+**Demo video:** `docs/demo/vibeguard-demo.mp4` (55 s screen recording of the live loop) with `docs/demo/vibeguard-demo.srt` captions.
 
 Most guardrails police the model. VibeGuard's guardrails protect the *user*: the non-technical builder who pays for every retry, every runaway loop and every leaked key. When an agent's output fails an eval, VibeGuard writes a new guardrail rule, a human approves it, and every later run loads it. **Agents may tighten their own leash; only humans loosen it.**
 
