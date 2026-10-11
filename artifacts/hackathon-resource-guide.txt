@@ -1,0 +1,130 @@
+﻿﻿THE HARNESS ENGINEERING &
+MODEL WRANGLING HACKATHON
+RESOURCE GUIDE
+HACKATHON DAY — OCT 11   ·   Shack15
+PROBLEM STATEMENTS
+This hackathon focuses on harness engineering: building the systems around a model (rules, context policies, guardrails, tool access and memory) that let agents adapt to a task, sustain work over long horizons and act on real data, including databases, documents, code and other business systems. Build against one of the two statements below, with MongoDB as your data and memory layer.
+STATEMENT ONE: RECURSIVE HARNESSING
+Build a self-improving agent harness that automatically evolves its own architecture: updating rules, context policies, guardrails, tool access, and more. How can agents dynamically adapt their entire environment to fit a specific user, task, or use case?
+STATEMENT TWO: LONG HORIZON ENGINEERING
+The highest-value agentic work spans hours, days, or weeks. Build a harness that sustains coherent memory across billions of tokens in one session, relentlessly optimizes toward long-term goals, and learns from hard metric signals to complete traditionally difficult tasks.
+BUILD IN A DAY. SHOWCASE ON A GLOBAL STAGE.
+HACKATHON DAY — SEPT 26
+●
+Registration & team formation
+	●
+Hacking begins
+	●
+Submissions due
+	●
+First round judging
+	●
+Top 6 teams announced + demos
+	
+
+
+
+HACKATHON REQUIREMENTS
+* Finalist requirement: You must build your project using the MongoDB Atlas Hackathon Sandbox (sent to email).
+* No prior projects: All work must be original.
+* Demo access: Check that your repository is public and your demo link is accessible.
+* Team size: Up to 4 members.
+* Demo & attendance: Record an on-site demo October 11th; at least one team member from finalist teams must be present to be eligible to win.
+
+
+MONGODB ATLAS SANDBOX
+* You should have received an email with a link to join the MongoDB Atlas Sandbox for the hackathon.
+* You must create your project + cluster through this link. Keep an eye out for this email!
+* In order to be eligible to be a finalist, your hackathon project must be built in this sandbox.
+CEREBRAL VALLEY PLATFORM
+* All projects must be submitted through the Cerebral Valley Platform.
+* You will submit: a link to your public GitHub repository, a 1-minute demo video showing the code & functionality your team built today, and a concise project description detailing what you built.
+* Reminders: verify that your video has video & audio playback, and double check that all team members have been added to your submission.
+PRIZES
+1st
+MongoDB: $7,000 USD
+
+ElevenLabs: 3 months Scale Tier
+
+
+	
+
+	2nd
+MongoDB: $5,000 USD
+
+
+ElevenLabs: 3 months Pro Tier 
+
+
+	
+
+	3rd
+MongoDB: $3,000 USD
+
+ElevenLabs: 3 months Pro Tier
+
+
+
+	________________
+MONGODB RESOURCES
+RECOMMENDED STARTING POINT
+Configure the following before you start building. Together, they give your AI coding assistant the context, connectivity, and prompting guidance it needs to work effectively with MongoDB. Build in the Atlas Hackathon Sandbox from your email; it’s required to be a finalist.
+* MongoDB Agent Skills — A set of instructions that can be installed into an AI coding assistant (such as Claude, Cursor, or GitHub Copilot) to provide it with MongoDB best practices for connecting to a database, structuring data, writing queries, and implementing search.
+* MongoDB MCP Server — Enables an AI coding assistant to connect directly to a live MongoDB database to inspect data, run queries, retrieve counts, and manage Atlas resources.
+* Natural Language to MongoDB Queries — Guidance on how to prompt an AI assistant effectively, including what details to provide about the desired task, data structure, and output format.
+Recommended sequence: install Agent Skills, connect the MCP Server, and reference the prompting guide throughout development.
+DEVELOPER TOOLS
+* Atlas Managed MCP Server — A hosted MCP server that connects AI agents and automated workflows to Atlas using Atlas service accounts instead of end-user credentials. No local MCP infrastructure to run, and you can connect from any harness.
+* Frontier Marketplace Connectors — Native Atlas access inside ChatGPT and Codex, Claude, Gemini, Grok Build, Devin, and Cursor. Query data, inspect schemas and manage indexes without leaving your AI tool.
+DATA AND SEARCH
+* Sample Movie Dataset — A ready-to-use dataset that can be loaded in minutes and is preconfigured for AI-powered search.
+* Data Modeling in MongoDB — Best practices for structuring data for efficient use by applications and AI agents.
+* Vector Search — Enables search based on semantic meaning rather than exact keyword matches, forming the basis for long-term, retrievable agent memory.
+* Atlas Search — Provides fast, typo-tolerant keyword search capabilities.
+* Automated Embeddings — Generates and maintains vector embeddings within the database, removing the need for a separate embedding pipeline.
+* Embedding and Reranking API — A single endpoint for embedding and reranking operations, accessible from any application or technology stack.
+MEMORY AND AGENTS
+* Building an Agent with Memory and Function Calling — An example of an agent that retains context and executes functions to act on data.
+* Adding Memory to a Chat Application (Python) — Demonstrates how to maintain context across a conversation using LangChain and MongoDB Atlas.
+* Adding Memory to a Chat Application (JavaScript) — The same approach implemented in JavaScript.
+STATE
+* Build an AI Agent with LangGraph and MongoDB Atlas — A practical example using thread-specific checkpoints and conversation persistence.
+* State & Persistence: The Problem of Agent Reliability — A deeper look at checkpoints, suspend/resume, crash recovery, and where state ends and memory begins.
+CONTEXT
+* Build AI Agents with MongoDB — Agents that use MongoDB for retrieval alongside APIs and external tools.
+* GraphRAG with MongoDB and LangChain — Ingest external documents and retrieve relationship-aware context.
+STARTER CODE
+* GenAI Showcase — A comprehensive library of example applications spanning multiple AI frameworks and programming languages.
+* MongoDB and Python Quickstart — An introductory guide for building with MongoDB Atlas and Python.
+* MERN Starter Application — A starter project using MongoDB, Express, React, and Node.js.
+AFTER THE HACKATHON
+* MongoDB for Startups — Get Atlas credits, Voyage AI tokens, technical expertise, and dedicated support on the world’s leading AI-ready data platform.
+Not sure where to begin? Complete the three items under Recommended starting point, then consult the GenAI Showcase for relevant examples.
+________________
+PARTNER RESOURCES
+Credits and tools from our partners. Most credits are only available to checked-in participants, so make sure you’re registered on the Cerebral Valley Platform and checked in on the day.
+MODELENCE
+All participants get access to free sandboxes and deployments on Modelence. 
+All participants that deploy their submission on Modelence before the final demo will get $100 in Modelence credits.
+For more information, check out their hacker guide.
+
+
+RAINDROP
+Monitoring for AI agents in production that surfaces silent failures, like wrong answers, frustrated users, and broken tool calls, before they pile up.
+Start with these docs, and see howtoeval.com for a practical guide to evaluating your agent. 
+For dedicated support or demos, email support@raindrop.ai with "HACKATHON" in the subject line.
+
+
+AWS
+Kiro IDE (https://kiro.dev/) — An AI-powered desktop IDE that uses spec-driven development to turn prompts into requirements, designs, and sequenced tasks, then implements them with parallel agents and property-based tests to ship production-ready code.
+Kiro CLI (https://kiro.dev/cli/) — A terminal-based AI coding tool that brings Kiro's agentic development to your command line — build features, automate CI/CD pipelines, run custom agents, and deploy code from prompt to production.
+Kiro Crew (https://kiro.dev/crew/) — An open-source, persistent AI development workspace that remembers context across sessions, learns from your corrections, runs scheduled tasks unattended, and coordinates multiple agents in parallel — even while you're away.
+
+
+ELEVENLABS
+ElevenLabs Hacker Guide
+
+
+CURSOR
+$60 in Cursor credits for the hackathon.
+Access: Claim $60 of credits (works for both Cursor + Grok Bot usage) here. This code will only be available from 10/11 - 10/12 during the hackathon.

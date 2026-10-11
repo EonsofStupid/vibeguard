@@ -12,6 +12,15 @@
     "NODE_ENV": { "type": "text", "value": "production", "scopes": ["runtime"] },
     "VIBEGUARD_ATLAS_URI": { "type": "secret", "required": true },
     "VIBEGUARD_ATLAS_DATABASE": { "type": "text", "value": "vibeguard" },
+    "VIBEGUARD_MODEL_API_KEY": { "type": "secret", "required": true },
+    "VIBEGUARD_MODEL": { "type": "text", "value": "gpt-5.6-luna" },
+    "MONGODB_AGENTIC_CLIENT_ID": { "type": "secret", "required": true },
+    "MONGODB_AGENTIC_CLIENT_SECRET": { "type": "secret", "required": true },
+    "MONGODB_AGENTIC_PROJECT_ID": { "type": "text", "value": "6acbc84c07e49c5b0f33c510" },
+    "MONGODB_AGENTIC_API_URL": { "type": "text", "value": "https://agentengine.mongodb.com/api/v1/projects/6acbc84c07e49c5b0f33c510/workspaces/ws-6acc09b7f638d6502445e5d5/invoke" },
+    "VIBEGUARD_MEMORY_MODE": { "type": "text", "value": "hosted" },
+    "VIBEGUARD_MEMORY_URL": { "type": "text", "value": "https://agentengine.mongodb.com" },
+    "VIBEGUARD_MEMORY_USER_ID": { "type": "text", "value": "vibeguard-operator" },
     "VOYAGE_API_KEY": { "type": "secret", "required": false },
     "VOYAGE_MODEL": { "type": "text", "value": "voyage-code-4", "required": false }
   }
