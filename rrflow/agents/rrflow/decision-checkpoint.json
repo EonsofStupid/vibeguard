@@ -1,0 +1,21 @@
+{
+  "checked_at": "2026-10-11T22:54:22.992Z",
+  "source": "independent Atlas majority reads",
+  "proposal_id": "context-replay-20261011T224404Z-proposal-v1",
+  "proposal_status": "proposed",
+  "policy_hash": "800fe2e7e50fc730b6c252c758cba7509edf1b0d1e8683cd31418895395b92df",
+  "policy": {
+    "kind": "memory_recall_cooldown",
+    "cooldown_seconds": 60,
+    "scope": "user_session_provider",
+    "trigger": "embedding_rate_limit",
+    "fallback": "current_thread_only",
+    "record_turns": true,
+    "disclose_unavailable_recall": true
+  },
+  "human_decision_present": false,
+  "verified": false,
+  "checks": null,
+  "receipt": null,
+  "active_policy": null
+}
