@@ -11,6 +11,23 @@ The working example is bounded memory-recall cooldown. Incident-derived replay
 and actual service evidence remain separately labeled. This is not evidence of
 billion-token capacity or measured production scale.
 
+## Verified research lineage
+
+The public RRFlow sources were checked at commit
+[`cfa0e8073c1a5479427beb29c7c88ee0a71f2f01`](https://github.com/rrflow/rrflow-development/commit/cfa0e8073c1a5479427beb29c7c88ee0a71f2f01).
+[ADR-0002](https://github.com/rrflow/rrflow-development/blob/cfa0e8073c1a5479427beb29c7c88ee0a71f2f01/docs/decisions/0002-adaptive-reasoning-governed-effects.md)
+places authorization, validation and receipts at durable-effect boundaries;
+VibeGuard's human approval and Atlas transaction are our application of that
+principle, rather than imported engine code.
+
+The [context assembly contract](https://github.com/rrflow/rrflow-development/blob/cfa0e8073c1a5479427beb29c7c88ee0a71f2f01/docs/architecture/engine-data-flow.md#context-assembly-contract)
+specifies a provider-neutral operation, explicit budgets, source provenance and
+truncation. It also identifies native incremental access paths as later roadmap
+work. The separate [context-maintenance document](https://github.com/rrflow/rrflow-development/blob/cfa0e8073c1a5479427beb29c7c88ee0a71f2f01/docs/reference/context/context-maintenance.md)
+is explicitly a target contract: reducing injected context while retaining
+canonical knowledge is design guidance, not proof of completed compaction or
+unbounded memory. Our demo claims remain tied to VibeGuard's own evidence.
+
 ## Domain map
 
 | Path | Responsibility |

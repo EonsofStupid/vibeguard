@@ -35,7 +35,7 @@ async function rootFor(t) {
     // Only fixture processes created by this test are eligible for cleanup.
     for (const child of owned) if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL');
     for (const name of ['child.pid', 'grandchild.pid']) {
-      try { const pid = Number(await readFile(path.join(root, name), 'utf8')); if (alive(pid)) process.kill(pid, 'SIGKILL'); } catch {}
+      try { const pid = Number(await readFile(path.join(root, name), 'utf8')); if (Number.isInteger(pid) && pid > 0 && alive(pid)) process.kill(pid, 'SIGKILL'); } catch {}
     }
     await delay(100);
     await rm(root, { recursive: true, force: true });
@@ -43,8 +43,15 @@ async function rootFor(t) {
   return { root, start(mode, command) { const child = launch(root, mode, command); owned.add(child); return child; } };
 }
 async function pids(root) {
-  await until(async () => { try { await access(root + '/grandchild.pid'); return true; } catch { return false; } });
-  return Promise.all(['child.pid', 'grandchild.pid'].map(async (name) => Number(await readFile(root + '/' + name, 'utf8'))));
+  let ids;
+  await until(async () => {
+    try {
+      ids = await Promise.all(['child.pid', 'grandchild.pid'].map(async (name) => Number(await readFile(root + '/' + name, 'utf8'))));
+      // File creation precedes the asynchronous write. An empty file is not PID 0.
+      return ids.every((pid) => Number.isInteger(pid) && pid > 0);
+    } catch { return false; }
+  });
+  return ids;
 }
 async function gone(ids) { await until(() => ids.every((pid) => !alive(pid))); }
 

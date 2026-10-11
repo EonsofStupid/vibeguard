@@ -104,11 +104,13 @@ npm ci
 Copy-Item .env.example .env
 # Fill existing Atlas, model and Agent Engine service-account values.
 npm run build
-$env:PORT = '3000' # Choose an available port for this manual run.
-node --env-file=.env scripts/start.mjs
+cd ..
+node tools/start-workbench.mjs
 ```
 
-The existing Next.js development launcher remains available with `node tools/start-chat.mjs`; it chooses an available port and owns cleanup. Its `status` and `stop` commands inspect and stop that owned process tree. The Modelence workbench is the main submission UI.
+The launcher reads `web/.env`, selects an available port, verifies the built page, and prints its URL. Keep the terminal open. `node tools/start-workbench.mjs status` reports that owned workbench; `node tools/start-workbench.mjs stop` or Ctrl+C stops it and its workers. A second launch reuses the running instance. An explicit `--port` remains available. The launcher does not stop manually started servers.
+
+The older Next.js development launcher remains available with `node tools/start-chat.mjs` and has its own ownership record. The Modelence workbench is the main submission UI.
 
 For hosted memory, use the installed Agent Engine CLI. Docker is needed only for the separate local memory stack.
 
@@ -131,7 +133,11 @@ After deployment, verify **App Started**, load the custom domain, send a real ch
 
 ## RRFlow research and original work
 
-The design draws on [rrflow/rrflow-development](https://github.com/rrflow/rrflow-development) at `cfa0e80`: ADR-0002's governed durable effects, paired evaluation fixtures, and bounded context assembly. This is architectural inspiration; the Rust engine is not imported. Specific ADR and context-contract file paths have not been verified in this checkout.
+The design draws on [rrflow/rrflow-development at `cfa0e8073c1a5479427beb29c7c88ee0a71f2f01`](https://github.com/rrflow/rrflow-development/commit/cfa0e8073c1a5479427beb29c7c88ee0a71f2f01), verified through the public GitHub API and the files at that revision. The Rust engine is not imported.
+
+- [ADR-0002: adaptive reasoning with governed durable effects](https://github.com/rrflow/rrflow-development/blob/cfa0e8073c1a5479427beb29c7c88ee0a71f2f01/docs/decisions/0002-adaptive-reasoning-governed-effects.md) separates adaptive exploration from authorized, checked and receipted durable changes. Drafts have no mutation authority. VibeGuard applies that principle through explicit human activation of an exact tested policy.
+- [Context assembly contract](https://github.com/rrflow/rrflow-development/blob/cfa0e8073c1a5479427beb29c7c88ee0a71f2f01/docs/architecture/engine-data-flow.md#context-assembly-contract) defines `POST /v1/context/assemble`: one provider-neutral operation with request budgets, source evidence, a shared read stamp and explicit truncation. This guides VibeGuard's scoped memory and context-policy boundary; it does not establish that VibeGuard implements RRFlow's engine or its scale targets.
+- [Paired evaluation prompts](https://github.com/rrflow/rrflow-development/tree/cfa0e8073c1a5479427beb29c7c88ee0a71f2f01/eval/prompts) and the [2026-08-18 result artifact](https://github.com/rrflow/rrflow-development/blob/cfa0e8073c1a5479427beb29c7c88ee0a71f2f01/eval/results/2026-08-18-summary.json) inform the before/after fixture pattern. That prior artifact reports a small controlled sample and explicitly rejects a universal efficiency claim. Its measurements are not VibeGuard results.
 
 VibeGuard's contributions are the experiment/proposal loop, frozen evaluation and promotion checks, Atlas transactions and version-bound receipts, hosted RRFlow review implementation, memory-backed chat, and contextual explanations. The research boundary and claims are documented in [FOCUS.md](docs/FOCUS.md).
 

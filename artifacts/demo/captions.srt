@@ -1,0 +1,11 @@
+﻿1
+00:00:00,000 --> 00:00:16,000
+Local Modelence build | Real chat + Atlas memory receipts
+
+2
+00:00:16,000 --> 00:00:40,000
+RSI | Live model proposal, incident replay evaluation
+
+3
+00:00:40,000 --> 00:01:04,000
+RRFlow | Actual review pending; activation is not claimed
