@@ -1,0 +1,44 @@
+{
+  "checked_at": "2026-10-11T22:50:13.971Z",
+  "statement": [
+    1,
+    2
+  ],
+  "example": "memory-recall-cooldown human review service",
+  "workspace_id": "ws-6acc09b7f638d6502445e5d5",
+  "build_id": "bld_01M4PHEFCVPK6RZAJM8B00BPN8",
+  "deployment_id": "deploy-01d61e09",
+  "deployment_status": "succeeded",
+  "version": "0.1.1",
+  "all_components_serving": true,
+  "rollout_complete": true,
+  "readiness": {
+    "orchestration_engine": "2/2",
+    "agent_sandbox": "4/4",
+    "tool_sandbox": "4/4",
+    "hosted_memory": "ready"
+  },
+  "pending_reviews": {
+    "checked_at": "2026-10-11T22:49:42.974Z",
+    "http_status": 200,
+    "count": 1,
+    "execution_id": "34008f55-5e7a-434e-a3ca-762988bfa269",
+    "session_id": "rrflow-context-replay-20261011T224404Z-proposal-v1-v1",
+    "interrupt_id": "6acc1285ef21c356fd9a78c8",
+    "proposal_id": "context-replay-20261011T224404Z-proposal-v1",
+    "policy_hash": "800fe2e7e50fc730b6c252c758cba7509edf1b0d1e8683cd31418895395b92df"
+  },
+  "invoke_url": "https://agentengine.mongodb.com/api/v1/projects/6acbc84c07e49c5b0f33c510/workspaces/ws-6acc09b7f638d6502445e5d5/invoke",
+  "isolated_transaction_tests": {
+    "passed": 7,
+    "failed": 0,
+    "real_atlas_decisions_written": 0
+  },
+  "live_human_decision_verified": false,
+  "reason": "Actual incident-replay proposal loaded and suspended for a human through the deployed Agent Engine workflow. No decision or active policy has been fabricated.",
+  "source_sha256": {
+    "agent.yaml": "5a1c30484f4f1b662115b367b54b8e53e6e98031c2f1b4cc7d6f03bcfd31c021",
+    "src/agent_rrflow/main.ts": "59e63a9a1a89100eb1213616203892fbd37775f81081048e703f1b5db18eb493",
+    "src/agent_rrflow/harnessReview.ts": "33dcce9c11dc240538687606cada340be6abcca0c6a96a91ef3d058aba1d0817"
+  }
+}

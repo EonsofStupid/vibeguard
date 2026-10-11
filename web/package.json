@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "modelence build",
-    "start": "node .modelence/build/app.mjs",
+    "start": "node scripts/start.mjs",
     "dev": "modelence dev",
     "dev:mobile": "cd mobile && npm run start",
     "postinstall": "node scripts/postinstall.mjs",
@@ -18,6 +18,7 @@
     "clsx": "^2.1.1",
     "lucide-react": "^0.575.0",
     "modelence": "^0.26.0",
+    "mongodb": "^6.21.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "react-hot-toast": "^2.6.0",

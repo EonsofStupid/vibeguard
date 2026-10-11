@@ -1,35 +1,58 @@
-# VibeGuard — 1-minute demo (live app)
+# VibeGuard — one-minute demo
 
-URL: https://vibeguard-mv4df1w6qok-prod.cloud.modelence.app
-Record on the live page with audio. Before recording: press **Reset** → **Confirm reset** → **Seed memory**, so the curve is built on camera.
+Demo URL: https://vibeguard.shippin.ai/  
+Existing Modelence app: `vibeguard-mv4df1w6qok` / `prod`.  
+Repository: https://github.com/EonsofStupid/vibeguard
 
-| Time | Do | Say |
+**Current evidence:** a live model proposed a context policy; a frozen incident replay improved. Human approval, activation and the approved-version rerun are still pending. This is progress toward a complete RSI cycle, not a claim that the cycle has finished.
+
+## Before recording
+
+1. Verify the deployed page shows **Make the next attempt better**, chat, and **RRFlow · human review**. The old page with **Reset** and **29 paid attempts** is the recorded-fixture release; a GitHub push alone does not prove the new release is live.
+2. Send: **“What is our VibeGuard goal, and what must happen before a proposed policy becomes active?”** Wait for the actual reply. Open its memory receipt and check that both turns were saved. If recall is unavailable, show that state and do not describe it as successful recall.
+3. Refresh evidence. Confirm experiment `context-replay-20261011T224404Z` and the status actually displayed. Preserve the existing experiment and receipts; do not reset or approve anything for the sake of the recording.
+
+## Walkthrough
+
+| Time | Show | Say |
 | --- | --- | --- |
-| 0–8s | Page open, empty chart. | "VibeGuard is a harness that learns its own guardrails. The twist: the guardrails protect the *vibecoder's* money and time, and only a human can loosen them." |
-| 8–20s | Click **Run evaluation**. Point at the first dot (1/6) and the amber **VG-0001** in the rule queue. | "The agent attempts 16 coding tasks. A deterministic judge scores them. One failure category — unbounded paid API calls — becomes a *proposed* rule. Nothing is enforced yet." |
-| 20–30s | Click **Approve**. Point at the receipt. | "I approve it. That's the only way a rule goes live: agents propose, humans approve. Every transition writes a receipt. Nothing is ever deleted — a revert keeps the rule and the record." |
-| 30–45s | **Run evaluation** → Approve → **Run evaluation** → Approve → **Run evaluation**. Point at the curve climbing with the CI whiskers. | "Each run loads the approved rules. Held-out pass rate goes 1 of 6 → 3 → 5 → 6 of 6, with Wilson intervals because N is small. Zero false blocks — the rules never stopped a correct answer." |
-| 45–55s | Point at **Memory types**; paste a prompt in COSTAR, click **Check prompt**. | "Everything lives in MongoDB Atlas as the Agent Engine's four memory types: procedural rules, episodic runs, semantic lexicon with Voyage embeddings and `$vectorSearch`, taxonomic failure categories. The COSTAR check decides at runtime which two questions to ask a vibecoder before any money is spent." |
-| 55–60s | Scroll to the footer. | "Limits are on the page: scripted agent, shared detectors, small N. What's real: a deployed, governed, measured self-improving loop. Agents tighten their own leash; only humans loosen it." |
+| 0–10s | Chat reply and saved-turn receipt. | “VibeGuard helps a builder keep their goal and improve how their agent works. Atlas stores the conversation and evidence.” |
+| 10–20s | A relevant learning card; the memory-rate-limit example. | “We observed memory retrieval hit a rate limit. A live model proposed pausing repeated retrieval for sixty seconds, within the same user, session and provider.” |
+| 20–35s | Before/trial results and evidence details. | “On seven frozen replay scenarios, avoidable retrieval attempts fell from eight to zero. All fifty-one simulated turns stayed recorded. Held-out cases improved from one of four to four of four.” |
+| 35–50s | The exact proposal, version and fingerprint in RRFlow review. | “This is a shadow trial. It has not changed the running policy. A human reviews this exact version; the decision needs an Atlas receipt before later chats can use it.” |
+| 50–60s | Pending status and source of results. | “This adapts the harness and protects goal continuity. The next proof is an approved-version rerun. We have not demonstrated billion-token scale or live cost savings.” |
 
-## Judge lines (have ready)
+If the human chooses to approve during the demo, show the returned receipt and active version. Only describe the cycle as completed after a rerun tied to that same policy fingerprint succeeds. Approval alone is not a measured rerun. If no decision is made, end with the pending status above.
 
-- **Recursive harnessing:** the harness rewrites its own rule set from eval failures; the rule set is versioned, gated and reloaded on the next run. The context the agent sees also grows: `build_context()` on Agent Engine memory selects more procedural/episodic memories as rules are approved (`context_memories` per run).
-- **Hard metric signal:** held-out pass rate with 95% Wilson CI, never training tasks; promotion requires train improvement, no held-out regression, zero false blocks.
-- **Governance:** monotonic ratchet — `direction: loosen` and `revert` are rejected for any `agent:` actor; receipts are append-only.
-- **MongoDB:** Atlas collections per memory type, transactions for rule+receipt, Atlas Vector Search on Voyage `voyage-code-4` 1024-d, Agent Engine hosted memory via the service-account SDK.
-- **RSI (Raindrop):** the improvement signal comes from the harness's own evals; the loop proposes, measures and (with a human) commits. No model weights change — the *harness* does.
+## Evidence and limits
 
-## Q&A
+Source: [`context-replay-20261011T224404Z.json`](../artifacts/improvement/context-replay-20261011T224404Z.json).
 
-- *Why not an LLM judge?* Reproducibility. Every number re-runs identically; an LLM agent plugs into `attempt()` and the judge stays the same.
-- *Isn't the detector the rule?* Yes — stated on the page. The loop proves governance + generalisation to held-out tasks, not detector discovery. Next: rules proposed from judge *explanations*, scored the same way.
-- *Why Modelence?* TypeScript + React + MongoDB in one deploy; the harness module is 10 files; Cloud builds from source and injects the Atlas URI.
-- *What's the vibecoder angle?* The lexicon maps "make it take payments" → `payment-integration`; COSTAR asks at most two plain questions, most expensive gap first; rules speak in money/time, not CVEs.
+| Measurement | Baseline | Candidate trial |
+| --- | ---: | ---: |
+| Training cases passed | 1/3 | 3/3 |
+| Held-out cases passed | 1/4 | 4/4 |
+| Avoidable retrieval attempts, all cases | 8 | 0 |
+| Total simulated retrieval calls | 26 | 18 |
+| Simulated turns recorded | 51 | 51 |
 
-## Submission checklist
+The candidate had zero recorded regressions and zero false blocks. The policy fingerprint is `800fe2e7e50fc730b6c252c758cba7509edf1b0d1e8683cd31418895395b92df`.
 
-- [x] Public repo: https://github.com/EonsofStupid/vibeguard
-- [x] Deployed URL (above), MongoDB Atlas data
-- [ ] 1-minute video with audio (record off the live page)
-- [ ] Short description (use the README's first two paragraphs)
+- **Real:** the [source rate-limit incident](../artifacts/hosted-memory-search-limited.json), one completed model request proposing the policy, and earlier independently verified Atlas chat/memory persistence.
+- **Simulated:** follow-up request timing, provider responses, turn writes and replies in this experiment. The real incident recorded one failure and no recovery duration or `Retry-After` value. Sixty seconds is a proposed bounded tradeoff.
+- **Provenance:** the initial transport failure and subsequent proposal-validation failure remain in their artifacts. The completed replay reused the model response verbatim after allowing cited training controls alongside failing cases; it made no new model request. Fixtures, behavioral judge and model input were unchanged.
+- **Not claimed:** model-weight training, live throughput or money saved, automatic extraction of all memory types, a billion-token session, or active self-improvement before human approval and rerun. The retry-budget baseline passed 3/3 training and 4/4 held-out cases already; it supplied no improvement claim.
+
+## Research and problem statements
+
+**Statement 1 — adaptive harness:** a measured failure produces a proposed, versioned context policy; human review governs activation. **Statement 2 — long-term coherence:** scoped memory, saved turns, goal recall and outcome receipts preserve continuity; rate-limit handling keeps the current conversation usable while long-term recall is unavailable.
+
+The governance design draws on RRFlow's “adaptive reasoning, governed durable effects,” as attributed in the [prior-work section](../README.md#prior-work--rrflow). That section cites [`rrflow/rrflow-development` at `cfa0e80`](https://github.com/rrflow/rrflow-development/tree/cfa0e80) and ADR-0002. The cited ADR file was not independently located in this checkout during this demo-doc update. VibeGuard applies the research; it does not import the Rust engine.
+
+## Submission status
+
+- [ ] Latest combined chat/review UI verified on the custom domain.
+- [ ] Real chat reply and saved-turn receipt visible in that deployment.
+- [ ] One-minute recording with audio and accurate proposal status.
+- [ ] If claiming a completed cycle: human receipt, matching active policy fingerprint and measured rerun attached.
+- [ ] Public repository and recording links checked before submission.

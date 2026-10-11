@@ -1,7 +1,7 @@
 {
   "name": "rrflow",
-  "version": "0.1.0",
-  "description": "Insurance agent demo built on @mongodb-js/agent-engine-sdk-langgraph, showcasing deep-agent orchestration and long-term memory (TypeScript)",
+  "version": "0.1.1",
+  "description": "RRFlow human review for versioned VibeGuard harness proposals, with Atlas transaction receipts",
   "license": "Apache-2.0",
   "type": "module",
   "packageManager": "pnpm@11.2.2",
@@ -15,9 +15,9 @@
     "dev": "tsx watch src/agent_rrflow/main.ts"
   },
   "dependencies": {
-    "@mongodb-js/agent-engine-sdk": ">=0.11.3 <1",
-    "@mongodb-js/agent-engine-runner-shared": ">=0.11.3 <1",
-    "@mongodb-js/agent-engine-sdk-langgraph": ">=0.11.3 <1",
+    "@mongodb-js/agent-engine-sdk": "0.11.8",
+    "@mongodb-js/agent-engine-runner-shared": "0.11.8",
+    "@mongodb-js/agent-engine-sdk-langgraph": "0.11.8",
     "@langchain/anthropic": "^1.4.0",
     "@langchain/core": "^1.1.48",
     "@langchain/google-genai": "^2.1.0",

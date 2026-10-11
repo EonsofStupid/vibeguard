@@ -2,19 +2,15 @@
 import z from 'zod';
 import { Module } from 'modelence/server';
 import { dbRules, dbRuns, dbLexicon, dbFailures, dbAudit, dbCostar } from './db';
-import { allRules, approve, revert, GateError } from './gate';
+import { allRules } from './gate';
 import { runOnce } from './loop';
 import { scorePrompt, missing, sideConversation, uiSpec } from './costar';
 import { vectorResolve, embedLexicon, vectorIndexStatus, ensureVectorIndex, overlapResolve } from './semantic';
-import { Actor, RunResult } from './schemas';
+import { RunResult } from './schemas';
 import { SEED_FAILURES, SEED_LEXICON } from './seed';
+import { liveImprovement } from './live-improvement';
 
 const strip = (d: any) => d.record;
-
-/** A signed-in Modelence user is the actor of record; an anonymous dashboard viewer acts as the `human:` actor it names.
- *  The gate only checks the human/agent prefix — binding identity to auth is the production hardening, not the demo. */
-type Ctx = { user?: { handle?: string } | null } | undefined;
-const whoIs = (ctx: Ctx, fallback: string) => (ctx?.user?.handle ? `human:${ctx.user.handle}` : fallback);
 
 export default new Module('harness', {
   configSchema: {
@@ -23,6 +19,7 @@ export default new Module('harness', {
   stores: [dbRules, dbRuns, dbLexicon, dbFailures, dbAudit, dbCostar],
 
   queries: {
+    liveImprovement,
     summary: async () => {
       const runs = (await dbRuns.fetch({}, { sort: { 'record.at': 1 } })).map(strip).map((r: any) => ({ ...r, traces: undefined }));
       const rules = await allRules();
@@ -62,13 +59,11 @@ export default new Module('harness', {
       const r = await runOnce(`run_${String(n).padStart(3, '0')}`);
       return { ...r, traces: undefined };
     },
-    approveRule: async (args: unknown, ctx: Ctx) => {
-      const { ruleId, actor } = z.object({ ruleId: z.string(), actor: Actor }).parse(args);
-      try { return await approve(ruleId, whoIs(ctx, actor)); } catch (e) { if (e instanceof GateError) throw new Error(e.message); throw e; }
+    approveRule: async () => {
+      throw new Error('Review the exact proposal with RRFlow to approve a harness change.');
     },
-    revertRule: async (args: unknown, ctx: Ctx) => {
-      const { ruleId, actor, reason } = z.object({ ruleId: z.string(), actor: Actor, reason: z.string().default('') }).parse(args);
-      try { return await revert(ruleId, whoIs(ctx, actor), reason); } catch (e) { if (e instanceof GateError) throw new Error(e.message); throw e; }
+    revertRule: async () => {
+      throw new Error('Reversion requires a version-bound human review and an audit receipt.');
     },
     seed: async () => {
       for (const c of SEED_FAILURES) await dbFailures.upsertOne({ _id: c.category_id } as any, { $set: { record: c, body: c.why_it_matters } });
@@ -78,8 +73,7 @@ export default new Module('harness', {
     },
     ensureIndexes: async () => ensureVectorIndex(),
     reset: async () => {
-      for (const s of [dbRules, dbRuns, dbAudit, dbCostar]) await s.deleteMany({});
-      return { ok: true };
+      throw new Error('Rules and audit receipts are retained. Start a new experiment instead.');
     },
   },
 });

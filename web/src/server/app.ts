@@ -1,10 +1,12 @@
 import { startApp } from 'modelence/server';
 import exampleModule from '@/server/example';
 import harnessModule from '@/server/harness';
+import chatModule from '@/server/chat';
+import reviewModule from '@/server/review';
 import { createDemoUser } from '@/server/migrations/createDemoUser';
 
 startApp({
-  modules: [exampleModule, harnessModule],
+  modules: [exampleModule, harnessModule, chatModule, reviewModule],
 
   email: {
     // Without this the reset link redirects to the site root and dead-ends.

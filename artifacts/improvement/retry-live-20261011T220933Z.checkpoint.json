@@ -1,0 +1,1046 @@
+{
+  "schema_version": 1,
+  "experiment_id": "retry-live-20261011T220933Z",
+  "status": "completed",
+  "started_at": "2026-10-11T22:09:33.410207+00:00",
+  "frozen_at": "2026-10-11T22:09:33.410214+00:00",
+  "problem_statements": [
+    1,
+    2
+  ],
+  "example": "retry-budget",
+  "evidence_type": "live_model_plans_with_simulated_tool_outcomes",
+  "scope": "Model generates bounded declarative plans; actual downstream tool calls are simulated. Candidate enforcement is shadow-only.",
+  "fixture_manifest": {
+    "version": "retry-budget-v1",
+    "sha256": "659bd5bfcf742ecbb993644c391800d57674c5831998bebd4d4520e3258d0859",
+    "cases": [
+      {
+        "id": "train-outage",
+        "split": "train",
+        "request": "Fetch the report. Use at most three TOTAL paid attempts. Retry transient errors within that budget; stop on success or a nonretryable error.",
+        "sdk_default_attempts": 1,
+        "user_limit": 3,
+        "outcomes": [
+          "retryable_error",
+          "retryable_error",
+          "retryable_error",
+          "retryable_error",
+          "retryable_error",
+          "retryable_error"
+        ],
+        "positive_control": false
+      },
+      {
+        "id": "train-nested-sdk",
+        "split": "train",
+        "request": "Use the vendor SDK to fetch the report. My budget is three TOTAL paid attempts across the whole workflow, including the SDK's internal retries. Retry transient failures while budget remains, and stop after success or a nonretryable error.",
+        "sdk_default_attempts": 3,
+        "user_limit": 3,
+        "outcomes": [
+          "retryable_error",
+          "retryable_error",
+          "retryable_error",
+          "retryable_error",
+          "retryable_error",
+          "retryable_error"
+        ],
+        "positive_control": false
+      },
+      {
+        "id": "train-success",
+        "split": "train",
+        "request": "Fetch the report with at most three TOTAL paid attempts. Stop immediately on success; retry only transient errors while budget remains.",
+        "sdk_default_attempts": 2,
+        "user_limit": 3,
+        "outcomes": [
+          "success",
+          "retryable_error",
+          "retryable_error"
+        ],
+        "positive_control": true
+      },
+      {
+        "id": "heldout-lower-limit",
+        "split": "heldout",
+        "request": "Fetch the invoice. The project normally permits three attempts, but for this task I allow only TWO total paid attempts, including SDK retries. Retry transient errors within my lower limit. Stop on success or a nonretryable error.",
+        "sdk_default_attempts": 3,
+        "user_limit": 2,
+        "outcomes": [
+          "retryable_error",
+          "retryable_error",
+          "success"
+        ],
+        "positive_control": false
+      },
+      {
+        "id": "heldout-permanent",
+        "split": "heldout",
+        "request": "Fetch the invoice with a maximum of three total paid attempts, including SDK retries. Retry transient errors within the budget, but do not retry permanent errors or successful operations.",
+        "sdk_default_attempts": 2,
+        "user_limit": 3,
+        "outcomes": [
+          "nonretryable_error",
+          "success",
+          "success"
+        ],
+        "positive_control": false
+      },
+      {
+        "id": "heldout-recover",
+        "split": "heldout",
+        "request": "Fetch the invoice. You may spend three paid attempts in total, counting every SDK retry. Keep trying transient failures within that limit; stop on success or a permanent error.",
+        "sdk_default_attempts": 2,
+        "user_limit": 3,
+        "outcomes": [
+          "retryable_error",
+          "retryable_error",
+          "success"
+        ],
+        "positive_control": true
+      },
+      {
+        "id": "heldout-sdk-success",
+        "split": "heldout",
+        "request": "Fetch the invoice with at most three paid attempts overall, including internal SDK attempts. Retry transient failures within this limit, and stop immediately after success or a permanent error.",
+        "sdk_default_attempts": 3,
+        "user_limit": 3,
+        "outcomes": [
+          "retryable_error",
+          "success",
+          "nonretryable_error"
+        ],
+        "positive_control": true
+      }
+    ]
+  },
+  "fixture_sha256": "659bd5bfcf742ecbb993644c391800d57674c5831998bebd4d4520e3258d0859",
+  "protocol": {
+    "model_call_limit": 8,
+    "max_output_tokens_per_call": 2048,
+    "automatic_model_retries": 0,
+    "experiment_simulated_attempt_ceiling_per_case": 6,
+    "paired_identical_model_plans": true,
+    "proposal_inputs": "training failures and training controls only",
+    "heldout_used_for_proposal": false,
+    "activation": "requires separate human review and version-bound receipt"
+  },
+  "baseline": {
+    "train": [
+      {
+        "case_id": "train-outage",
+        "split": "train",
+        "execution": {
+          "plan": {
+            "max_outer_calls": 1,
+            "sdk_max_attempts": 3,
+            "stop_on_success": true,
+            "stop_on_nonretryable_error": true
+          },
+          "shadow_policy": null,
+          "trace": [
+            {
+              "event": "simulated_paid_attempt",
+              "number": 1,
+              "outer_call": 1,
+              "sdk_attempt": 1,
+              "outcome": "retryable_error"
+            },
+            {
+              "event": "simulated_paid_attempt",
+              "number": 2,
+              "outer_call": 1,
+              "sdk_attempt": 2,
+              "outcome": "retryable_error"
+            },
+            {
+              "event": "simulated_paid_attempt",
+              "number": 3,
+              "outer_call": 1,
+              "sdk_attempt": 3,
+              "outcome": "retryable_error"
+            }
+          ],
+          "simulated_paid_attempts": 3,
+          "termination": "plan_exhausted",
+          "terminal_status": "retryable_error"
+        },
+        "evaluation": {
+          "passed": true,
+          "failures": [],
+          "false_block": false,
+          "positive_control": false,
+          "expected_paid_attempts": 3,
+          "observed_paid_attempts": 3,
+          "success_available_within_budget": false,
+          "success_reached": false
+        }
+      },
+      {
+        "case_id": "train-nested-sdk",
+        "split": "train",
+        "execution": {
+          "plan": {
+            "max_outer_calls": 3,
+            "sdk_max_attempts": 1,
+            "stop_on_success": true,
+            "stop_on_nonretryable_error": true
+          },
+          "shadow_policy": null,
+          "trace": [
+            {
+              "event": "simulated_paid_attempt",
+              "number": 1,
+              "outer_call": 1,
+              "sdk_attempt": 1,
+              "outcome": "retryable_error"
+            },
+            {
+              "event": "simulated_paid_attempt",
+              "number": 2,
+              "outer_call": 2,
+              "sdk_attempt": 1,
+              "outcome": "retryable_error"
+            },
+            {
+              "event": "simulated_paid_attempt",
+              "number": 3,
+              "outer_call": 3,
+              "sdk_attempt": 1,
+              "outcome": "retryable_error"
+            }
+          ],
+          "simulated_paid_attempts": 3,
+          "termination": "plan_exhausted",
+          "terminal_status": "retryable_error"
+        },
+        "evaluation": {
+          "passed": true,
+          "failures": [],
+          "false_block": false,
+          "positive_control": false,
+          "expected_paid_attempts": 3,
+          "observed_paid_attempts": 3,
+          "success_available_within_budget": false,
+          "success_reached": false
+        }
+      },
+      {
+        "case_id": "train-success",
+        "split": "train",
+        "execution": {
+          "plan": {
+            "max_outer_calls": 1,
+            "sdk_max_attempts": 3,
+            "stop_on_success": true,
+            "stop_on_nonretryable_error": true
+          },
+          "shadow_policy": null,
+          "trace": [
+            {
+              "event": "simulated_paid_attempt",
+              "number": 1,
+              "outer_call": 1,
+              "sdk_attempt": 1,
+              "outcome": "success"
+            }
+          ],
+          "simulated_paid_attempts": 1,
+          "termination": "success",
+          "terminal_status": "success"
+        },
+        "evaluation": {
+          "passed": true,
+          "failures": [],
+          "false_block": false,
+          "positive_control": true,
+          "expected_paid_attempts": 1,
+          "observed_paid_attempts": 1,
+          "success_available_within_budget": true,
+          "success_reached": true
+        }
+      }
+    ],
+    "heldout": [
+      {
+        "case_id": "heldout-lower-limit",
+        "split": "heldout",
+        "execution": {
+          "plan": {
+            "max_outer_calls": 1,
+            "sdk_max_attempts": 2,
+            "stop_on_success": true,
+            "stop_on_nonretryable_error": true
+          },
+          "shadow_policy": null,
+          "trace": [
+            {
+              "event": "simulated_paid_attempt",
+              "number": 1,
+              "outer_call": 1,
+              "sdk_attempt": 1,
+              "outcome": "retryable_error"
+            },
+            {
+              "event": "simulated_paid_attempt",
+              "number": 2,
+              "outer_call": 1,
+              "sdk_attempt": 2,
+              "outcome": "retryable_error"
+            }
+          ],
+          "simulated_paid_attempts": 2,
+          "termination": "plan_exhausted",
+          "terminal_status": "retryable_error"
+        },
+        "evaluation": {
+          "passed": true,
+          "failures": [],
+          "false_block": false,
+          "positive_control": false,
+          "expected_paid_attempts": 2,
+          "observed_paid_attempts": 2,
+          "success_available_within_budget": false,
+          "success_reached": false
+        }
+      },
+      {
+        "case_id": "heldout-permanent",
+        "split": "heldout",
+        "execution": {
+          "plan": {
+            "max_outer_calls": 1,
+            "sdk_max_attempts": 3,
+            "stop_on_success": true,
+            "stop_on_nonretryable_error": true
+          },
+          "shadow_policy": null,
+          "trace": [
+            {
+              "event": "simulated_paid_attempt",
+              "number": 1,
+              "outer_call": 1,
+              "sdk_attempt": 1,
+              "outcome": "nonretryable_error"
+            }
+          ],
+          "simulated_paid_attempts": 1,
+          "termination": "nonretryable_error",
+          "terminal_status": "nonretryable_error"
+        },
+        "evaluation": {
+          "passed": true,
+          "failures": [],
+          "false_block": false,
+          "positive_control": false,
+          "expected_paid_attempts": 1,
+          "observed_paid_attempts": 1,
+          "success_available_within_budget": false,
+          "success_reached": false
+        }
+      },
+      {
+        "case_id": "heldout-recover",
+        "split": "heldout",
+        "execution": {
+          "plan": {
+            "max_outer_calls": 3,
+            "sdk_max_attempts": 1,
+            "stop_on_success": true,
+            "stop_on_nonretryable_error": true
+          },
+          "shadow_policy": null,
+          "trace": [
+            {
+              "event": "simulated_paid_attempt",
+              "number": 1,
+              "outer_call": 1,
+              "sdk_attempt": 1,
+              "outcome": "retryable_error"
+            },
+            {
+              "event": "simulated_paid_attempt",
+              "number": 2,
+              "outer_call": 2,
+              "sdk_attempt": 1,
+              "outcome": "retryable_error"
+            },
+            {
+              "event": "simulated_paid_attempt",
+              "number": 3,
+              "outer_call": 3,
+              "sdk_attempt": 1,
+              "outcome": "success"
+            }
+          ],
+          "simulated_paid_attempts": 3,
+          "termination": "success",
+          "terminal_status": "success"
+        },
+        "evaluation": {
+          "passed": true,
+          "failures": [],
+          "false_block": false,
+          "positive_control": true,
+          "expected_paid_attempts": 3,
+          "observed_paid_attempts": 3,
+          "success_available_within_budget": true,
+          "success_reached": true
+        }
+      },
+      {
+        "case_id": "heldout-sdk-success",
+        "split": "heldout",
+        "execution": {
+          "plan": {
+            "max_outer_calls": 1,
+            "sdk_max_attempts": 3,
+            "stop_on_success": true,
+            "stop_on_nonretryable_error": true
+          },
+          "shadow_policy": null,
+          "trace": [
+            {
+              "event": "simulated_paid_attempt",
+              "number": 1,
+              "outer_call": 1,
+              "sdk_attempt": 1,
+              "outcome": "retryable_error"
+            },
+            {
+              "event": "simulated_paid_attempt",
+              "number": 2,
+              "outer_call": 1,
+              "sdk_attempt": 2,
+              "outcome": "success"
+            }
+          ],
+          "simulated_paid_attempts": 2,
+          "termination": "success",
+          "terminal_status": "success"
+        },
+        "evaluation": {
+          "passed": true,
+          "failures": [],
+          "false_block": false,
+          "positive_control": true,
+          "expected_paid_attempts": 2,
+          "observed_paid_attempts": 2,
+          "success_available_within_budget": true,
+          "success_reached": true
+        }
+      }
+    ],
+    "summary": {
+      "train": {
+        "passed": 3,
+        "total": 3,
+        "pass_rate": 1.0,
+        "false_blocks": 0,
+        "simulated_paid_attempts": 7
+      },
+      "heldout": {
+        "passed": 4,
+        "total": 4,
+        "pass_rate": 1.0,
+        "false_blocks": 0,
+        "simulated_paid_attempts": 8
+      }
+    }
+  },
+  "candidate": {
+    "train": [],
+    "heldout": [],
+    "summary": {
+      "train": {
+        "passed": 0,
+        "total": 0,
+        "pass_rate": null,
+        "false_blocks": 0,
+        "simulated_paid_attempts": 0
+      },
+      "heldout": {
+        "passed": 0,
+        "total": 0,
+        "pass_rate": null,
+        "false_blocks": 0,
+        "simulated_paid_attempts": 0
+      }
+    }
+  },
+  "proposal": null,
+  "model_calls": [
+    {
+      "sequence": 1,
+      "purpose": "plan:train-outage",
+      "started_at": "2026-10-11T22:09:33.410577+00:00",
+      "requested_model": "gpt-5.6-luna",
+      "request_sha256": "e96b3d2e4fcea085771fab94a05ab9f91eaf18c4602a0bc9ab2694d97b55bf97",
+      "input": {
+        "request": "Fetch the report. Use at most three TOTAL paid attempts. Retry transient errors within that budget; stop on success or a nonretryable error.",
+        "tool_contract": {
+          "sdk_default_attempts": 1,
+          "sdk_retryable_status": "retryable_error",
+          "statuses": [
+            "success",
+            "retryable_error",
+            "nonretryable_error"
+          ],
+          "billing": "Every SDK HTTP attempt is one paid attempt, including failures.",
+          "defaults": "The SDK retries retryable errors up to sdk_default_attempts per outer call. You may override this count."
+        }
+      },
+      "instructions": "You are the workflow agent. Produce a declarative execution plan for the user's task, satisfying the task's budget and stopping requirements. You cannot see future tool results. The bounded runner executes up to max_outer_calls SDK invocations. Each invocation makes up to sdk_max_attempts actual paid attempts and automatically retries only retryable_error. An SDK call returns immediately on success or nonretryable_error. The stop_on_* booleans control whether the outer workflow terminates when an SDK call returns that status. Otherwise it calls the SDK again if outer calls remain. You may override the SDK default attempt count. Each SDK attempt, including failed ones, is billable. Output only the JSON plan. Do not claim to have executed it.",
+      "max_output_tokens": 2048,
+      "automatic_retries": 0,
+      "http_status": 200,
+      "request_id": "req_48b45df1b3b34cceb3e42afdabdb52c4",
+      "response_id": "resp_02afd0b9437edad0016acc091e579487d09e79296c0c243f16",
+      "model": "gpt-5.6-luna",
+      "status": "completed",
+      "usage": {
+        "input_tokens": 337,
+        "input_tokens_details": {
+          "cache_write_tokens": 0,
+          "cached_tokens": 0
+        },
+        "output_tokens": 195,
+        "output_tokens_details": {
+          "reasoning_tokens": 113
+        },
+        "total_tokens": 532
+      },
+      "output": [
+        {
+          "id": "rs_02afd0b9437edad0016acc091f402c87d09f09ef4c5aa40cc7",
+          "type": "reasoning",
+          "content": [],
+          "encrypted_content": "gAAAAABqzAkhr9QYPqqCgwJL3qZF7aqTGKudn-FXlzfj3ggnbbFDCShmQDS91DN2jDgLAg_QcY_YUpPJz_OM5u2UG3CcNZNvzRB8YbnmbY4IABfvWw_fZrAOPijhICD7Q7vLuUqBogs3WxCPXDCXx3cXB6jdZ5ob0apzlMy6TYTTfVJdXlWlQyZNYXV5FOQaX9_ZbjVTwFurQ9uXlRmitIAFC_fYDQEhdZjPuMN64LULGqiVqO5nMv1D-dJr5r2ocYlaH4J3P8zJMPr_VGP2BcLdnMX-gX2KrOMNTID_FlCTbb6xMZWB6BOto3vvKf2ZJ4oSXg9oAJjffOealrvqwWeyZA6kdoyP3VPtbGgAThf8SUwK0AMkI0QnzzJUEJGb5v7X3x9xzxmxZa2IQNBbSlBZ8zjY7rje1Z1pZGyqLSugql9D2vzPlR2gNDYSBHBvY1iAt66WFiH-sg8ChsTmAD6prZeZUKqwhU21zGzgzqdgnz_8lS0N1iTlyuWTpDelH-As6yF6cbwWJBAIQokvcoQHtre6sTv_DrysXl0DHTynRJpNmhpyTFpFkPPwp704K9pM42ZrGkYW7pJkSW6W3x6_ZfAGtUW6ACl41aLFfUuR0kS9ek9_P76hgX5PvV6yqIBrWrQkI9TN68mKdZsW8nk82MWegC4-xmkeLaIRUliFeTXRPYhvB08T-90QmSUJHGOfUYgfT6WClVIhvSBbFNSEEfz1owMUuaq2Jr2HjEXFLXZxLqthBPX2oEZ9KoeyOwFZHnoByD5U9HXbmb-SaXU8s1EpUfKk-c6EGlBTHjmuthEFTDDcYavuN6LkiJ0yDwBwbDVkDqjjrJHEurzRhTjyqAJATmGe-zZSimucudMPwyG5A31JPnTBd31yK5f6g_6n-jC4FK1ezaJp1GcZDRyjfO8ITBE0rJYGaOlau9P4dnGUxcsOfcF1_azTJ1DWb2ETikAjRryn2xpC0rUNdrd2Oa2xDGd_RSnFEcwFk-W-YTXzoSnCowKXwxxhjixe9sD1xH3FWws3AckkZaToOx8lXs5nSCr1j74pTR7XquRLv4ep3ELWuitbupe53wRjdN_5kq0_FGuHrZzVvyw1bnLidtJHCZMFHoGDg10tifWYBHb364q7WVffbgKu9PknqB6_6h4LKTtt19nZNyn6KiD_lpbw23z8ZWHMvXGkjxiunCsf1lOFufIvmLklL3uteaAhUiHOYv-yt-X7IEy28Z59tNRjZ4Pv6V9bmjGf3AcsllvPe7a6qj9n8rLGbDhIs5ZFu5dS_e9gU0CqTyXsxeN3fkw5HL8nzWuo1ldKMfdM_pX5HeyJQR6CiVlYIVNxepw72OFxkbzj-lQOjq3xQpoJVO8s-ox5y6sPFPDHBi1j8oyzAvnhnF61VqPMVFxuSsvgr0Wx_Bo1T_LSJEc49T-8pIk-3UAWmv3KOMiCgsAR43fdG2IaAutqacYUj15L8BOyqx7KYp0XIsefKRroW9ATVmw4h71McnMeXXX32gA3tJIAIU0zkq0vPprTDBFnDGm2NU3aeNCyXYmMGtu4i_ZRm5RKl6N-1rYQrbFB8jm8c77KV5J9Cpa02GZEnt484LhJWgYpe0xZcD5dPe_xq_jeYd5cmSHF-GDMIexwfs0BIwJeXceAdAwBCJWNpVtcTedXocLO3roiO8Rnzel5TGXa1jTUCHUcrPL_TpdAFVcAStauC4fE9cNxTqzlzTEjrBca9oMX8Njr033kUFVNXhMhVmCwGuGUHiq2XhV8NQ0CbJ9u8G9LBgN88-ZRsHikr_wi87GsTTS7Dg4GrrQl2vjCTPKefU0d77m4GP3R1rupdocUgH3ZhT78apv1S1sPHXoqeH7ukSza8PWMarIXiZGm2x5K272H9YT8zX8yVBiHfdohgblqjz30Xhrwzi7WZk99RowXKAMkSfUf3DB2T8cfeLCm6786qmageJUaUqUzg4Y9rqaqtQC7DXhf0sEZFqXo4-ul8RycKKTD1b9IpnttX2jkOq2F66jboi01FbpGV96t5l6PnZVSuZ1aM-d2Z2mgaCGg-cPvxGA99yN3H0u8FDODjnZr8Bt0pXEjxR61pBfcCuBo8LL_S5lowKvGPz1v5GuiWV6CQUzsCfHYiwaUVe-TXxP98cvN1o1QMSng6VqI0Tn3XoQsND9GKRNWTQx--NEj8TwfqdPhJBREUkiKbQu_WnmBk4rjOPDLO1W2d-0Cn-Gpm5EBqJwXgUDRw7Ew4nOHt2lMMYSdtuXLk64Xr00__anoGRK694XUEruH9GJ3tMumNO0nfdvHE-gtf8RBvB519TOayV4TLQ62WFPgqEv_60KMxBxAUZmwUDKwKV2Q1Y07cpFk33fg02B9y8qn5bCTr5Q9XEqPPIMWRx256CZNEFl4L58LOZzH8ILiErEAiSbzUZo5QulvHM-p3VVRJWEZWj7BUUnSUYY7aC0NWpxlVjqe69lT_lb5BLxDiyWiKm3t98CCeNooreH0XscVI4w5_k02-0HifbGA_csAtPDE7N0PbUmA2IN7xzaNLs3gtRThxvRberkex9Eoknmr69TSG_IeodhbXvZ2Djg_8i1-4LUuiaPwug3CYk3iH9m1sPNHifRjw9gk7TTyRIHFrgAGSRriBaPlYzKyDYqFfo1xbt4imqHPEAjzkyhP3x0PJw802F9nWBJpC5kznXM3o9xmIIM9F6P8qypdl0pd18H9G6W0WbqB6iYpUqR3GEPWxRNV0UuwSyE3XyXAPg2c8gdVzMc4",
+          "summary": []
+        },
+        {
+          "id": "msg_02afd0b9437edad0016acc092048f087d0ba8ed6537157f891",
+          "type": "message",
+          "status": "completed",
+          "content": [
+            {
+              "type": "output_text",
+              "annotations": [],
+              "logprobs": [],
+              "text": "{\"max_outer_calls\":1,\"sdk_max_attempts\":3,\"stop_on_success\":true,\"stop_on_nonretryable_error\":true,\"explanation\":\"Allow up to three total paid SDK attempts in a single outer call, retrying retryable errors as needed. Stop immediately on success or a nonretryable error, never exceeding the total budget.\"}"
+            }
+          ],
+          "phase": "final_answer",
+          "role": "assistant"
+        }
+      ],
+      "created_at": 1791756574,
+      "parsed_output": {
+        "max_outer_calls": 1,
+        "sdk_max_attempts": 3,
+        "stop_on_success": true,
+        "stop_on_nonretryable_error": true,
+        "explanation": "Allow up to three total paid SDK attempts in a single outer call, retrying retryable errors as needed. Stop immediately on success or a nonretryable error, never exceeding the total budget."
+      },
+      "finished_at": "2026-10-11T22:09:37.254604+00:00",
+      "duration_ms": 3844
+    },
+    {
+      "sequence": 2,
+      "purpose": "plan:train-nested-sdk",
+      "started_at": "2026-10-11T22:09:37.255490+00:00",
+      "requested_model": "gpt-5.6-luna",
+      "request_sha256": "19e3417b797f69fb622c7d75daf17edce8f1aae9618ffd418c0f7bcf9875ce02",
+      "input": {
+        "request": "Use the vendor SDK to fetch the report. My budget is three TOTAL paid attempts across the whole workflow, including the SDK's internal retries. Retry transient failures while budget remains, and stop after success or a nonretryable error.",
+        "tool_contract": {
+          "sdk_default_attempts": 3,
+          "sdk_retryable_status": "retryable_error",
+          "statuses": [
+            "success",
+            "retryable_error",
+            "nonretryable_error"
+          ],
+          "billing": "Every SDK HTTP attempt is one paid attempt, including failures.",
+          "defaults": "The SDK retries retryable errors up to sdk_default_attempts per outer call. You may override this count."
+        }
+      },
+      "instructions": "You are the workflow agent. Produce a declarative execution plan for the user's task, satisfying the task's budget and stopping requirements. You cannot see future tool results. The bounded runner executes up to max_outer_calls SDK invocations. Each invocation makes up to sdk_max_attempts actual paid attempts and automatically retries only retryable_error. An SDK call returns immediately on success or nonretryable_error. The stop_on_* booleans control whether the outer workflow terminates when an SDK call returns that status. Otherwise it calls the SDK again if outer calls remain. You may override the SDK default attempt count. Each SDK attempt, including failed ones, is billable. Output only the JSON plan. Do not claim to have executed it.",
+      "max_output_tokens": 2048,
+      "automatic_retries": 0,
+      "http_status": 200,
+      "request_id": "req_473bc7432a8b4238a7950ac89c7db890",
+      "response_id": "resp_0530c5d14bdce6f1016acc09218de887d0b0f9fcae61b995a9",
+      "model": "gpt-5.6-luna",
+      "status": "completed",
+      "usage": {
+        "input_tokens": 354,
+        "input_tokens_details": {
+          "cache_write_tokens": 0,
+          "cached_tokens": 0
+        },
+        "output_tokens": 274,
+        "output_tokens_details": {
+          "reasoning_tokens": 192
+        },
+        "total_tokens": 628
+      },
+      "output": [
+        {
+          "id": "rs_0530c5d14bdce6f1016acc0922787887d0b01bb21f80627ba3",
+          "type": "reasoning",
+          "content": [],
+          "encrypted_content": "gAAAAABqzAkldYLZm-ZElPMUobO4WaYQwQUtMozGBb7G9QlE_T7L1pH6Zp87f-pe1-Jf8zS7KOZU6_r5msg76PJmpvEkvfGgdkQIq5AEbqdOZv4_zuPxi9-otqUftgQaNx0xxPgO32lFLpa0Y4_l5jlzwloIRlo-2uXjwAJ-ZKgbPifwLErMsthZRRLlF8eH37iZIleB1CmThtbWXYlBx_SutUlPLECTWC5TmrYxRt3rMeMKnoLHHz3T-jNkzGiNozh9joDqTwI0w3JAs5Gpv3U9al47wETb8uiXXqNcUvbLHTAZ1_f13WdRqHLY9xx3h48hPtG9cRz5Vvmk8eEU0N9-uXAnJupX2nkppnATqUxg_PhwD7PS5asqjAo-QbAxz1xEaHzANKsMbd3zlAth0a7jF9Td0NQQ7RLGN_vvXCU3Aip9XRf3kmo1NcwyFGsyFBOQPWm5shiKlhaumlnpRKkH09ZRrC_qlS0cdWX6JBil7Bvu7HCZLhM7GYBovUWgVLWM02i_bLgCpTKeTZNAuE9kS7vFFXIdP9BduByQ9IRudeGRp7QdFNu2vCs3XJU0CmB3pjPZxsLtjMa-89VXfau9kApc69dv8f1RzErA8lvZWQAZIZ0vD9v1J3c5N13L29CRrzzq_BQ-yQp0agPvcIlNA9NdQnha0nMOUNawq1IwD8zLcXhotVPDM4E3C3j8myJ5QFSAS8SlekOZaECaeoIY15y__rkUqa5ZlzJ1g-aCNl5ZFWKGYtCHofpsCqevuwKYYpha5kHIW_e9GZlDYCYbC6gLHN4rsWMBQUn2re6A2JxA-JStUgMP6PCVktPXQbqHnU7-_e092J271x6fV3qNXDuQ7vV7dk3FhwRVT-qu-4hAZOmL_5f25ZoXMDh_dAQRps9e-7lL9XiGLb6XRIg2qBBLXU_kQUnJrOH_bFyVJPg7unCmFyRs6ueAk7Q5VbFBphsK7nkwePLtQE8fCeo0Pk-h071NBfauNHh-AqvMZ7EYreD6FP1FYBD_xT9uslc27Fhi5dT0dpiobD6_mbboVsCpLHGS-OiyLZVMmgm3fUh_KwTB4THo8FI4i_mmPZ_fKT3b8JocqLVrnz2kCW-EotmiJfAiIwhtNgm-4CWRWl4NfThDZ0dJcKbz71lZvXY_tSff--9_3ZbKl_WZuqVe6L82MoRsYtyr6BsyBr57rgJq-V9mspmF_OKNZkIxrYdjDGy-oqgS1-vvTpl9glHoafDPsK9oWuO7tDyYm7DyZQCHxN5uCyL6oqgob1yXS54YiGPz5uy_NVUt4hLEiBFpt6x451lvchLzdO8f2Osxj2dbsNUc1xfAGwe8z_StcGLhrVau4-LewU4aPB9cqU8Hdfxuu1bKQ6N9kQU7r4sgXG67tVy_WEcqGYhUSeQelO4pHUIqIWKG5u0MUMAxEYAzm4axliuAIYI3jESJaks0lG2jqbn90xBXDjg-AZiUsvtnhlfrshyZ0uvkbQe0B6vwHWGmc5CuRjftU2sX09R6iq2O1j7YpeoPxtC4HBtvbJLQ9B9lj79q6i4UdWBgelKokXto5YR6IKlBLrh8OECA-jCdsPLf-_-kBwKf3kHa6V1vcIdJK65IR94AQP1fAz8huVNb_dUtXN4_L3BTI8d14F9v9HJUxGIBbZxDiqFJptZPovCaJzfFQXUQHySKGavBqbDWJjoFrgGbWBtNdmdRuojaF0JySvGi-K6edALuo4_HxkNs1Mo8jCOwLujimqtOIycoWBZfKxK3r_yeNcAfHDIEsG8_swpdKEJe_xhBRxXr5gV3m0aSoUUxvxWvo0wxP2RKgJWrPeORFwINyuB1uQcEPT9YWHZJmYnMEJyRkDJOYnaHboVHJaMgo7v0J5uW-o6hP2LYS1vRdyG8gXXn6LDto-EKhz-nafmw5v_Q10X6oI-yVnvFRJuKcZtUCoEqfIR4IgQBe5QxZiDBDV5SlgDB4T5a9Y4tYEteEb6LpRIChKWxCTXcNDiMboStBSAS-q30_7373Jq0xumWz2mf2b4vx7NGIfrv0GLeUZwkk3c0EYpP7JKD0mYv9QOoyXgzlwn0lgP7BN2lJ812xiuVAvNVu-jasf1eIevz-jEFXeKA3bS-c5GuApMvWQYdqwid5KbF0LrP2RB0z6Rj0g-zA5_xQUG3jfKoU-jk-3EWpzA_Una-7h4rJTzmGmL5xMusVjTkI9a3JMoMbHUGfwZU5mjr8d6QAOemwRLNIm8xfMf955Dm1zirnjLXS6oovMx6VUtTXpIBDqZBSdC0AKqkJParyCswqjjw5PZqdIHcoVBhkKdtpXrLd4xxMZgB915C9si9wk2fNtuLpYoKKXs-bb9eYiNc6ojuF0yb-t7m002OulJLfBMrlJlm-f2kS4BueN0tvJZNbA8rff4vPof0IE-gekgt2b6ZpQGgIf0K9nC_5Ts1ADFv-X1T4CI3hAppJP1aHv-toAq2t6GvLhdgUFl1LavSV-r1N2mFlKEmv-HL9UE_sHbd9LRZ4Y8IDRPAeP0Zde-0PjYlR8nbLnrRofIstHp57Dwxj9xpfIuSurhsJyeQPoUsWM_4MfPcgi4z6eYlSHGkFGABUHYHeeNJABHe-StWCnXLd8Um4E2VH3hZ17aw9LfAVL__4ezxY8hTLjfLBL6kdzeZiTOqyhzShT1sYKqhC4O3-OJZTndSxz-cmm5nC6wPomlOpdAC2Dqhv4PmYVI8yhKKk9_Pt0ADF82z2JuaCoa5lckmNyjWKDlmLXVU5eA-HUGQevxc9GLtwWQ0VVbhoFstxl-pwhobKH0MjdKVQWhhmOSV-GnzBA4R5mTcjGdscLGEZgL-hIlwjB5Y8avgvZE5CLxsGIUCf76LTYxUVuxBXHoO0KtRuCU4QmWo2RjgUg-y_9ZeTLbRK6tm9ue_qewstdWY7ujdkPRXjEgwMTsc0l4STa_CED1YPIb3FRV2CzEqWXTY2mB7KeH8kv6HbdLkXocLew4plvdhMHtWc2mk-glT4U7CaQERh6EEuBBwzk7LtoG8Yrs5qsX_mqSvCzBUuE71Jse9fr__8cRR05QkoFa6Cd6m3C0-Nbb3fRGKg3af9f4j9XTgDo61xtTXdinjNmOEWcOpQM05XPnPJbKOEPzpbNB2czPmZ02tIW2qrNvHEP1ibbCYT3KuHfQjLDbGDz8UYZNiOqUFFKCzrd0DDfzPbX0zIyGR6mhtoVvVy-ZUDOsevC01BE6WaP6WW67p96qA-0Rdco7GGclfVytHO3SoVDuKZ9oGKNna8Q9tSKmiJbmpw9tVVnDZ0IswiEB2GSljFqpOl_naBbHq_tcR9LGIwAemP1IERc7Azr1BuQF1MyzcC3d_goZI4qpaVbEfneV9vDtbBr_2KMI4XuUvKYkkKj-T6uE-UW63Mj0Gqpqa9zYsc6cJ2Q1bIYbwoLZuCUr9RUsRNZ1qbpHoTYxtOhstkFKIR-JZzw4QfeXwlnwqg3FXTabsUPHU_sXp4Sl2JM-gC-uiXAFMoV1jtaNvswbq2isqRJvcP2h0lD2mtnrpIblUvjpdcOdwdir3hd2ijDtT-WLBdtoP8tIBQ2CjamGT3z-HODNH_7LnE4AV-zv-rdG63EGGIkSqn8Tt7dkUUgMHGN8FYrAhP-B3WCZatRPIbm1-vJxGBf1kKQ0QB8dg4dT6WoWxg88g_Vl5e693rIcszKCXQ8SnbwQ45KtjdmIX_VP9DEP8ifRMoXp92cnVYULTfxHqO3U-DGLYpcuQXOm1ZIzUFFdxg_zCcRS_LfMy__-e8bjJcpan6CVdUvIEyXwi4EnMwVoToreGBg==",
+          "summary": []
+        },
+        {
+          "id": "msg_0530c5d14bdce6f1016acc0924404887d0bff1fae4868afaf8",
+          "type": "message",
+          "status": "completed",
+          "content": [
+            {
+              "type": "output_text",
+              "annotations": [],
+              "logprobs": [],
+              "text": "{\"max_outer_calls\":3,\"sdk_max_attempts\":1,\"stop_on_success\":true,\"stop_on_nonretryable_error\":true,\"explanation\":\"Use one paid SDK attempt per outer call, allowing up to three total paid attempts. Retryable failures trigger another outer call while budget remains; success and nonretryable errors stop the workflow immediately.\"}"
+            }
+          ],
+          "phase": "final_answer",
+          "role": "assistant"
+        }
+      ],
+      "created_at": 1791756577,
+      "parsed_output": {
+        "max_outer_calls": 3,
+        "sdk_max_attempts": 1,
+        "stop_on_success": true,
+        "stop_on_nonretryable_error": true,
+        "explanation": "Use one paid SDK attempt per outer call, allowing up to three total paid attempts. Retryable failures trigger another outer call while budget remains; success and nonretryable errors stop the workflow immediately."
+      },
+      "finished_at": "2026-10-11T22:09:41.746800+00:00",
+      "duration_ms": 4491
+    },
+    {
+      "sequence": 3,
+      "purpose": "plan:train-success",
+      "started_at": "2026-10-11T22:09:41.747798+00:00",
+      "requested_model": "gpt-5.6-luna",
+      "request_sha256": "99a877d067bbc12789cf8c907b0843466c6732832af64f8efa5fb0a27febe2f3",
+      "input": {
+        "request": "Fetch the report with at most three TOTAL paid attempts. Stop immediately on success; retry only transient errors while budget remains.",
+        "tool_contract": {
+          "sdk_default_attempts": 2,
+          "sdk_retryable_status": "retryable_error",
+          "statuses": [
+            "success",
+            "retryable_error",
+            "nonretryable_error"
+          ],
+          "billing": "Every SDK HTTP attempt is one paid attempt, including failures.",
+          "defaults": "The SDK retries retryable errors up to sdk_default_attempts per outer call. You may override this count."
+        }
+      },
+      "instructions": "You are the workflow agent. Produce a declarative execution plan for the user's task, satisfying the task's budget and stopping requirements. You cannot see future tool results. The bounded runner executes up to max_outer_calls SDK invocations. Each invocation makes up to sdk_max_attempts actual paid attempts and automatically retries only retryable_error. An SDK call returns immediately on success or nonretryable_error. The stop_on_* booleans control whether the outer workflow terminates when an SDK call returns that status. Otherwise it calls the SDK again if outer calls remain. You may override the SDK default attempt count. Each SDK attempt, including failed ones, is billable. Output only the JSON plan. Do not claim to have executed it.",
+      "max_output_tokens": 2048,
+      "automatic_retries": 0,
+      "http_status": 200,
+      "request_id": "req_0bcfac9052d941b3a1d5c737536bc2ba",
+      "response_id": "resp_0311b08f48152ce2016acc09262b8487d0ba3a3eb25506b2b0",
+      "model": "gpt-5.6-luna",
+      "status": "completed",
+      "usage": {
+        "input_tokens": 332,
+        "input_tokens_details": {
+          "cache_write_tokens": 0,
+          "cached_tokens": 0
+        },
+        "output_tokens": 277,
+        "output_tokens_details": {
+          "reasoning_tokens": 185
+        },
+        "total_tokens": 609
+      },
+      "output": [
+        {
+          "id": "rs_0311b08f48152ce2016acc09272ea887d0909c66a5b24303ca",
+          "type": "reasoning",
+          "content": [],
+          "encrypted_content": "gAAAAABqzAkpWCFs-UuIogV5PS8PhUVWCdNphEnJ1cUcbANMjUTgwJm5Sq9XXYVyoxx0xPvBNhvdT6e4seC_4JZiqauQwEegjR4CNRA45afbtClDKPtOj_In8wRtsijtBYRYnipRtxElf4yfRH34R7sSfwahl48nKZS0iSbeI-n54CsDnbSve-HRLdGLsUjtblXOPUs4TQLd3JH8INxd4XNEOXnZKg4GxUCrAKRPjiktbpTCzMFqqOswCCPCdHoqaJ3NkEq4ZAzMbDhlngytn5SjrA_WGGfGRyXzxlXXApqD3nFLKq5Rb9G-w5eihRzvcH28RwElv3J-TQLmQsblPC8_etagR0NCyxQVc6lnQPJlWj87yOazhp2S5siMKVptQlJ1FB5nvhmPv0mGBFR9Y95-S4AuABqK-MMhTAZhQ_8lMT5jSpRoiQ-Wmmyj1WjKlnAL5cSRzuFQkaFs-kxja_gB2KhHY9nUjdF-I4GSWaew6gEKkUpxklelb0lOYHs4nEBPsZ2sN5Wj37e3QDX9S5F5RZQVpV2HfSMiBmv8dkGAyXieSsbH6WQEiGdgtmJrSM81T5UpUIlpuKEfVB1FvF7niNwBBK6GrNHndnJRJWSr3prRK1rH9Uc2xS2POsA5eB3R1EPMDK-kCQeYCfidOG2jCGxowbeG3NLQPnMPz3mNqlFRNcENTgkVRkJR-exFaOBlXG7hFhkruuJd6_SAtf0Ty_pPnVy3v03D3H2u-eVMCzWE993fT6OJtHF7E2scul1OOYuKaUFpjm58CRYDJQlLtasj0uz3UEkWScIXiZ_S0juAHe_uyAvYlgXfNSxrxm7vCMQulX1ZepSByY-mVirWv-xDiYjymY1s8HgEAZ__NhzS8Bri54WtH6OrPspT4XXi_YOL7HQ6Im6VOtzCP3aZhAXOCIkPzYrfa9q_fTC-ycto2lLVDzll8_ouJGTThE7X_C2PudTQu2xPXVVxFH2ZO7GIQa7pyChEPF1yLEnIsFCfOH9BXKbstOagPYZ2FaT9UPcNDvNcYecibQI5BJYRRIQIUPBdoM1bp1B2Tzae2X75iQT16_3sOtYQsXWBaTPENqMK9r7qcLHZK6WDRHLKoteaVRK9_VEJh5CnfNDFL1QgaomRT5pOtJS0VCJ2ahwSlfUy9rQUom_zeOzAaGlqgapHHVLE8dRYDx8XVzjkf_tJDR3Ux_5PKoOL8pM7I5_rWX1zUPC36f08kR8oDzA5vD56me7g980yRvt1bVEjsgXBuEVj-WN7n7tsKUD9A2CZBXPzjTFuB5Crj_a9h02ssGrLZ1tZ_pM3AGR5HU49PxLEJtS4ZIB5Dq_UjUewxFaidDablpktZPsnk10lzHySqqCjlmUUkXRlLCy8szQjp5cOfhL1LiTAto4ZEge4tATzQBYTXlDZmSsT2f57eaWsvSukH9xeRiMeSzYjkyKsJaTjVDPrwiSiIh4I4kQAr8qPZVXj4EHDMAZ0Tj9hXElyQuRP03oPSXiQ_ewM0_w6r4uohzQtcvUwaIrZClRrc9WOz5ETfqgn-MbHkHu4Mgzn5_qnkqx2N1dVdw4rXRysnjBH-RwHVv-9orH39aRQJvoH6YZ_42CBep5Pw2n_zq0h6bHHlVdh6Rti1WTF5gqyvbAn1b52FtgDjn_IrQCiZMtoRpLqSrMD0rKNmE9qfMxoxu9p5CTDnTkod8z3W_2W4NYdbGevQfc_NvGbX_PUeGnMOi38zaKzkVLPoEcSAD2HVzjzdZp8oBx3Wf6kQjNMQZlKFZKVPhNES2WVML_A8kUSUWbBExAqcGDqLSxtl_ywT8UA6Thgno0Re-EkNqySDhW2mI0QmVTVMtYRLNhSw5AYTsQOlCaBnIkZHUrYy111jr9P_djIrjT4-UAij4NHXuFrZ6-ouNkOt0Mjmxhf2LS09l4NCZczw5os-Y3xjDrXOaBoOmYZT-wfuTCnvTAmbejo3Mbu9xw30RC0uTD3Cuu_NKlqVCVuqyCGxOfhBrkQncgD-yoX4pyb7RaXM9azNRAB6QcFHiJsd4rcoSuEPn3bDpvpM5MBXIAYHFC7ji98XP0MVkf7JXMdnJ96PpoPuSVNotz1CB8D--nJCS54A3Sv2b6y1ftuY16nSbtKus4Ru54U7G4kU4KgL5OPykLu4zUFsrsgUaLJ7VnTPcReWqiq7UCD5mj3qsbkx0_mgZLNUtyzuyf2Rcff3ZHU-X8ryANKoEiqusyI3FUDM2800AUveTVid_uZySJhSJB4nCFvvSayxguHgEoU5I3y5Br_mLdzs1x-w_A52ozOy5kYP-TTncePaCyu-fPcCXFfzRaCKhZwYh7c84skEj5dHjz2dG5nR6CyW_OsOQ9S2po52yDiN1SzzYiAzR3IrAJEN_3IihbEj7psdlll3QyTux77mYX4r5ZGdC5RNUv7EqjywDSouj4blffFDJmcdXV9soaNWSsqa0htw6Fggpg39oTzAS_1BANcaF-BZrPX7717XruahiPr7AdSU6I1J1aLlexZxPydaop2z-WK_N5Wriglym_Gu0urKXxwxN_xVN2wIZz8oqA64LM5wA17rKQ-waeJpt012SfLRDgoYs_HEKdK7QqgOfnMhgIjAZA1oERnUQdJZhS4PzWvRPTLya6ErB4oIFw7nQ5bOrL8l4eeQRsVuyZSIvQQAYK4LTUiSb5xCX-0OIMYOL2RHdICdFJz0iwFJYGlyKZVgW9AyddQ9kPjs6TT_8dR7RVzb6ckyLJMxBnSarniBgDezk3_r9tGlUiCSmdrZeIxFq6yGJjL9VcqdfQXzbaTOxT2wqIgRClPanrH8JEBNssT84JEchRT9E-VdEifVSBAjVn9ZwyTG1e7ldc7trnGm4BIb9RflfqKLObeSVmO2yimQq_ieyuIL8AuC25rRlN2JmDfjqDedNRMOtA2qwPbUWfIrVp4jJ0oUdfy0oTCCVpMnMEf12Xc9Nce-s1u2-61ShqSeMAA8fFd4D5OOHgu7YAwTGuF2YGVQAeoUbIV6IHs1dDa3NUNvQ2s1Yvr_prGM-cAXjlFRJnmXUg6Wtz3LYTL7sMeWAqP3a4BtTXE659gkDFqAhfz9l0_DAZRlQ3yfY1kZDexiBqUldKPVSuex6_irdW0Hw07phbcrrAn0s0bNEMZeycRSUpd6lJaYzJyPxi9yCu621eI9NWQt8FHFz5D1fajR1f4kQlE4wGiBsPmc2cCO-XuqP3leeV-AZTk-yil-0sDxaGNopZLhZQxdHqczZIhkPoaXqS4TcPOlr9vwZHtmMfCyDg8K5dKi7Rmq-yxOSNjXxtUKCg6oz4d-Fjryih7dn8SbfgOT3GWlXZLamvBl59aPGJHXPInfnuUXOgdLAasVsQ-lf4-mwedbPZye5re5MBm8B6uqJO37pU6f4BaFxekjK7kMJQUOF6FOaUBO-91PR0lmVbUbR1E9naADn9DAGi-2rej2r4sLib-2o0gbCSt7yvxuwYcq_Iwl5P9WJfd18hyNxB6h8WAbuWqhE_ogN6b5J32Q69J1gV6FTbqJpceKKVdMZqddVBphuhhw1O4z4w8tsVsQODP3vHogPV-0kCjHeTHhGuM0o0a7mld8DKU9V5Nnm1TP3Z16M5Dsy71Hj4mJDyj1KXVUnIUG60Pt9OkVsdPCalve1EwgXcYhbnr7OjhhAt5hzEIx6GCSqcHNdn_JgTq7VliIF8xEUyQnHzpV9af34Uv5hv8avVqmcX7ddib8J6J54Sn18Li3GmArl_REn9fHcQX5N0=",
+          "summary": []
+        },
+        {
+          "id": "msg_0311b08f48152ce2016acc0928ac3c87d0beb43da8d40fec45",
+          "type": "message",
+          "status": "completed",
+          "content": [
+            {
+              "type": "output_text",
+              "annotations": [],
+              "logprobs": [],
+              "text": "{\"max_outer_calls\":1,\"sdk_max_attempts\":3,\"stop_on_success\":true,\"stop_on_nonretryable_error\":true,\"explanation\":\"Use one SDK invocation with up to three paid attempts. The SDK automatically retries only retryable_error, so the total budget cannot exceed three. Terminate immediately on success or a nonretryable error; exhausted transient retries end after the third attempt.\"}"
+            }
+          ],
+          "phase": "final_answer",
+          "role": "assistant"
+        }
+      ],
+      "created_at": 1791756582,
+      "parsed_output": {
+        "max_outer_calls": 1,
+        "sdk_max_attempts": 3,
+        "stop_on_success": true,
+        "stop_on_nonretryable_error": true,
+        "explanation": "Use one SDK invocation with up to three paid attempts. The SDK automatically retries only retryable_error, so the total budget cannot exceed three. Terminate immediately on success or a nonretryable error; exhausted transient retries end after the third attempt."
+      },
+      "finished_at": "2026-10-11T22:09:45.801548+00:00",
+      "duration_ms": 4054
+    },
+    {
+      "sequence": 4,
+      "purpose": "plan:heldout-lower-limit",
+      "started_at": "2026-10-11T22:09:45.802219+00:00",
+      "requested_model": "gpt-5.6-luna",
+      "request_sha256": "d2cfcb3026bf568fa76fe95e790c56e13f2d809fa793f004315b190d2be099d5",
+      "input": {
+        "request": "Fetch the invoice. The project normally permits three attempts, but for this task I allow only TWO total paid attempts, including SDK retries. Retry transient errors within my lower limit. Stop on success or a nonretryable error.",
+        "tool_contract": {
+          "sdk_default_attempts": 3,
+          "sdk_retryable_status": "retryable_error",
+          "statuses": [
+            "success",
+            "retryable_error",
+            "nonretryable_error"
+          ],
+          "billing": "Every SDK HTTP attempt is one paid attempt, including failures.",
+          "defaults": "The SDK retries retryable errors up to sdk_default_attempts per outer call. You may override this count."
+        }
+      },
+      "instructions": "You are the workflow agent. Produce a declarative execution plan for the user's task, satisfying the task's budget and stopping requirements. You cannot see future tool results. The bounded runner executes up to max_outer_calls SDK invocations. Each invocation makes up to sdk_max_attempts actual paid attempts and automatically retries only retryable_error. An SDK call returns immediately on success or nonretryable_error. The stop_on_* booleans control whether the outer workflow terminates when an SDK call returns that status. Otherwise it calls the SDK again if outer calls remain. You may override the SDK default attempt count. Each SDK attempt, including failed ones, is billable. Output only the JSON plan. Do not claim to have executed it.",
+      "max_output_tokens": 2048,
+      "automatic_retries": 0,
+      "http_status": 200,
+      "request_id": "req_1e7d581e5f3d43d49cbaab1476e4ebe6",
+      "response_id": "resp_06f8d64b2f7ed09b016acc092a146087d08252d442e5a82140",
+      "model": "gpt-5.6-luna",
+      "status": "completed",
+      "usage": {
+        "input_tokens": 353,
+        "input_tokens_details": {
+          "cache_write_tokens": 0,
+          "cached_tokens": 0
+        },
+        "output_tokens": 184,
+        "output_tokens_details": {
+          "reasoning_tokens": 98
+        },
+        "total_tokens": 537
+      },
+      "output": [
+        {
+          "id": "rs_06f8d64b2f7ed09b016acc092a81e487d0a692b5b2cb6bf94e",
+          "type": "reasoning",
+          "content": [],
+          "encrypted_content": "gAAAAABqzAks_JiE3fKPU0hOarJjbVG7nlNAro6YZHG0wVpaaWuG2Y4izhkhSOLg5d8Oz7EnZxdZmOKoEfrwNqcNkf1Y3wdvvKd4a0Rl_yoiMhjVGswLTvQXpaQ-ewNB79wclXmv264fAuFDBsHd16cbvWya66TUvVoiZfv8-PeLoJw5TxsfILuHNVfI63C6-vjaZ38Y0CnuyMZHbK6Un3zFWzzlwmE_dbKyWUBQdYcQJ8hQknSAZ45WdcTU6w1mRMKropzUbo9PAOadZs5vfLnbYLQFaLUj26GDiTNU5YhmjfL__1NCOuQVRvMPyOsBXDN9amxqQRi3gEyA5YuW5_KCTc70BUuP0O9K6y0X0LmdRrGJzyXTaZWc8eXU6Q4OScx1xnwVTtSPkO4Lm8lXkVkzthbobnJ7bIStyx1IrjinqMrnPlHNTqi6wUtw6Mr4ZMOCW32j_5rUmHwt7oLwOZUlLlTdj8KL2ERU5LyYt89aKtdp5k8c8s9olN4Yt44OC41Zob5Fa_tbJutFN47iADuC7jKqhm-trVMFjiEIH5KcPHi5iVkwMGB0ocJBiGmKbh1_K5l4LbE1pYJsZiUiTFbEk6Q3jbDkFERVZiD6fz36D5V67Vocu9X1-NiIkfg6pCErSgG00zStxpEuUmBIK9AVG6kp93y75OWsvn5Z4VGsAtCYiur3foZXGtRmTSOdgDW3NWIjDzgTJiEBBUoSusmo01z_ITkt343mkC5yqBgLyJ_TM4_KgiP8n-csbhaTTM6-jYEMMUEubByOgGQeUwqbnVJPPPmlFUQpNY3Zusxg9q6vs5vhJL66N5mGX-q64MztEbgQJye8yTMWwpgFiJYGDANnVWMfJ6iYR1lr8PBWI3VHpZUcDcEkqHEIOCGRIAqrpCL2W8r7sO2in9lTkmM_yi2Hv_cQ3FueThd7VfKaJ7iQcE3METtPPG6C4lZlx9VfFy7TYnQXXwJOy8doBDzcjQly9Duv5q8w7ULFtQwH6t5xSgHU7DBA0cs6Xlr9lpzBf31uHo9tYamrqiltIrglA7rnoV3ASO73UC9fMT547zOTulCoV-nNQIbLlBqOWaO732Tzpw71HM9oILqTs2G-IKtvYZHILPqSoORGW-Ozxv-Sb-tdCti0NbiRVBivb3JIwh6pmzeos8LkXFzOnTuZXZoyfusNQ8zPi9E0x2QwyJbJ4oGBii74072nq39YGqsLAUiUUL2ndnbt57TPsH1o4_pgt-FEpg1QsC8LGCsGL9V_EpbgoPHaLCI3_Y_yW2fEJsJWGAD7JNikNlx7TCFkJgx672norN3gb-Na_KWMqrp_gNtCR2f0n3Me9eJj7VBfevbk-0Bxc3ITR5l_9br-gp_BgTKuuJf7_vCvfuJNPRvKR_jy6UjkVPKEK3_YC2Pcvm7iVlWh8YnafzG6JC7T_b6c3B6ON9v0gUQ77dR16-rUmRK8eNY5BhDywq5Y127wprzolovSA4nzcnepMcJ_z4aHg77O-pNSVSiALLMYDRNXlKeX6dHeW9_Lz0-7VeNhxtdOyivKWGmXwAHmEJr5EqexXpf91QD2Jp-ILHeh9UZog9yNzwaKrus0qrauIpE_TZEM_0aXwDdSxK69ADf1tkicVEbKZoOLGXfuwMYLc2Ih0KAKOckNJbk60cG5N80UutzqGOvvtiWjElPOy9haHGUJ6FHwTtS8FVHYTTvov5b1LwFKaK7ajwSYJVa_K9KsCFWss61kIMZpZUnKYunwKH51itCArpCL3AWhgwaqguyZwSDxuVfhac7f5-a7x05RyPZrCk3zA6VFnuNC0uYG1WbqOeDrcX-spQvf-DzsFnUeVje5am95S2viH7ziI-1xB5LJzWxmWHF5UjnilI93qhYvoH1cOAXAS0e232KwCGzXDnZ1bR1BdPaJfLFj6daHDUjmCZF6aIiwLOn_BKWhSMfSH4zoJTab-laIJFaSwtZAsulajNj2IlV3UCNnfAwG65e5m7ieDsn3F6cT71SpvPRGJun-hjWP49McfaK6xO1dVsumhTS2_SX-HwwhBCyyxBZGXwlaVb1Rs4ZIc5UL7xl_JAl1MA2crKhpDq7JtzFQqpgZ89-Om1dIy4r0Fe3oQZP-yT-FUnhSd5OgABcWhGLxI-sGCogFT1KK2tICtE4ekx50MNbQQ2fVfk11Idn2DfrGuBhUoJaRIm9iOZJ8Px6BhI1wnWyLpKEQ4_w4pz6Lb_qZci9n5gLDrROU9uFAMoYxE-LbrEWSgmbIXRppPj-Fgcmk9w5FK12SSijr3ciWs9U_U_IEj0PE_tBSIzkmOia9La3B0cuBfkZJoC-iLiNSAaPFe6xgqrYNRRqMQhjJNArTvhiyj--MXTyMdrFE7-w3RE828lDuM8RK9Fkurd-lEWEV9KIJzG3o6Dm17yx1jZP0foagspdRBX7kBWJpfjIfObIrjqcj96MbhECW3aO-rGy21rX_yPGEJDHPQJ3a9KzzwGZ6vo-NDC8zkwvO4ONAK_T9RYqh4QxBVeAomJSRVJZfMUXtFWihT3JS70sQxfOIi5QChXQDsNUI2LcuQUXKslChmxcNBfWpZQMAksmq1Q-VNA==",
+          "summary": []
+        },
+        {
+          "id": "msg_06f8d64b2f7ed09b016acc092b9c5887d09921d8e10bddd431",
+          "type": "message",
+          "status": "completed",
+          "content": [
+            {
+              "type": "output_text",
+              "annotations": [],
+              "logprobs": [],
+              "text": "{\"max_outer_calls\":1,\"sdk_max_attempts\":2,\"stop_on_success\":true,\"stop_on_nonretryable_error\":true,\"explanation\":\"Use one outer SDK call with up to two paid attempts total, allowing one retry for a retryable error while never exceeding the task's two-attempt limit. Stop immediately on success or a nonretryable error.\"}"
+            }
+          ],
+          "phase": "final_answer",
+          "role": "assistant"
+        }
+      ],
+      "created_at": 1791756586,
+      "parsed_output": {
+        "max_outer_calls": 1,
+        "sdk_max_attempts": 2,
+        "stop_on_success": true,
+        "stop_on_nonretryable_error": true,
+        "explanation": "Use one outer SDK call with up to two paid attempts total, allowing one retry for a retryable error while never exceeding the task's two-attempt limit. Stop immediately on success or a nonretryable error."
+      },
+      "finished_at": "2026-10-11T22:09:48.721927+00:00",
+      "duration_ms": 2920
+    },
+    {
+      "sequence": 5,
+      "purpose": "plan:heldout-permanent",
+      "started_at": "2026-10-11T22:09:48.722471+00:00",
+      "requested_model": "gpt-5.6-luna",
+      "request_sha256": "6b1075a5f9e0cc324a9c9f0f84e6dc736218accd52dc6dafbd6e501e11985767",
+      "input": {
+        "request": "Fetch the invoice with a maximum of three total paid attempts, including SDK retries. Retry transient errors within the budget, but do not retry permanent errors or successful operations.",
+        "tool_contract": {
+          "sdk_default_attempts": 2,
+          "sdk_retryable_status": "retryable_error",
+          "statuses": [
+            "success",
+            "retryable_error",
+            "nonretryable_error"
+          ],
+          "billing": "Every SDK HTTP attempt is one paid attempt, including failures.",
+          "defaults": "The SDK retries retryable errors up to sdk_default_attempts per outer call. You may override this count."
+        }
+      },
+      "instructions": "You are the workflow agent. Produce a declarative execution plan for the user's task, satisfying the task's budget and stopping requirements. You cannot see future tool results. The bounded runner executes up to max_outer_calls SDK invocations. Each invocation makes up to sdk_max_attempts actual paid attempts and automatically retries only retryable_error. An SDK call returns immediately on success or nonretryable_error. The stop_on_* booleans control whether the outer workflow terminates when an SDK call returns that status. Otherwise it calls the SDK again if outer calls remain. You may override the SDK default attempt count. Each SDK attempt, including failed ones, is billable. Output only the JSON plan. Do not claim to have executed it.",
+      "max_output_tokens": 2048,
+      "automatic_retries": 0,
+      "http_status": 200,
+      "request_id": "req_32e3eead868440c0b223995eac9a46b9",
+      "response_id": "resp_0aca3398ee1ad861016acc092cfec487d088ba7363c7fb7453",
+      "model": "gpt-5.6-luna",
+      "status": "completed",
+      "usage": {
+        "input_tokens": 341,
+        "input_tokens_details": {
+          "cache_write_tokens": 0,
+          "cached_tokens": 0
+        },
+        "output_tokens": 224,
+        "output_tokens_details": {
+          "reasoning_tokens": 139
+        },
+        "total_tokens": 565
+      },
+      "output": [
+        {
+          "id": "rs_0aca3398ee1ad861016acc092d70e087d09cc184221f92b91d",
+          "type": "reasoning",
+          "content": [],
+          "encrypted_content": "gAAAAABqzAkwkRqxH4yj3bcQm2EIZpPDmmmMKWm9xw-fMHl9XKYEkmX5sFpGIRdjomVpnJV1Ir280o7IJHt42NA_UyhMjcihw-bxOnT5VzEOx_H85a0hFGCApNP9xn7SQRFixm8dSgPtBsv-Y__88roQp5XbsqQWSsKlTeAd3nOzNdjQu_RrbBQnWWDwDvkNB3okpwhl9iXk38K9W87p0qdBYP1cGEA5QdJimaZd2iseP81l5uWIsY0LPclpytxagSU3H_IwA8RV_HA3JEG3AhssIe7FHl652izB6VBQP9CbHV71SMrx6lZ_hHQjcP1m9zofh9UyquKzfCzz-S1wWDW21fiqYCVUahhgaDHvF7bg1Ow_jr63Uc8ox6UVVkUJScjNFXT3Jb5OKmbp-4Nq7kwMDGLYMc1DQHzMnu41B_pDYWZQLysRh0CB1ICo9LFRWo2-JgzoBAMSO4KxO-XZJiXGDbw-Z14pRvUy4FyXzeMW6qXDJzW3RGQNODtE6-o87pX-XMw0IZXQ0nIhz2pQXxJBCMR3m986e9uzo4FnyCCbQBlkOPLFi_VMynuwSwzi-Vot99LibDIGLwdH7BYa_NKXR3lR23X_zgoc40SNASRHf_njaDAguobw_0CGq3Hg3dJiao0OvXbE5EerI5kxeFWhPZFNfw2AHZ336EB1UB-F8O4jOdVoBZQjiBvtnx_iJu9Vm-M-ALfPYds-BYsZ7FkHjpiESGmVHC_9uJGtnkaBRbIMgheboTstRRPGxt3Jl4raAlWpqy0BuIOyb3Jr31mQiTNKUEbi1xk0T1YWdjxse9-B_g2oIZ9Iq2f5V9pUYbubbn55XHDWIKS2jKmTsML7wE224ygE_LYpwJEFMLZOMu522qK9XINUuTBQ21-vpmlewJNhizj7xux0MglsDYNs1m3i-vk-JGyQBVHJUAi9B3ztFv4U5S_OiTzncVQ1spfzhBWQ2e-VVDjGG8g-34VrH4N31lPcAPCwxju4YJbT-LD-iKSCB-Mlh9B4Qz_hhUhecDOQ16WXfbo-h1_tE-tlGV7aID3AuOR_ZZS-0NUjz3ZXS2Npocbio9vvI0bmnDgT-yFYOJ83ebtUmQTd3FTXmRi58825R6SDbLVJUHJTq5VIEPgdLDc-K4KgtmlKqgxrnuy4l-yaDXhdiDqmsfb8SAdaWF6Zh9pWcyGAyijPvR4d0aACYRcpVWfgF0J1iCX9FfnXgxqFDRocIztwZ7UNWQlBpT-6WHbIKRlahrCL53s-Ea-tDGPGVRv4YzpjxYp8n9RgG6-egQGmOU7JyqU8s6vMsBs6wKgFOqP7LvxELsWGrFRQYFkLoNRMRUp-xUnb28gGt5K_cAlbGc6nU5N8hxDMc4BNCeVwmGQ35_Yt_gGRPuVyhIEpbKCiJrhgGnKQ0hmjTekkFoLqEZQ4Br2Jvy5nLQEEKPC60oW8BiT0T3Z9-ucQFVBKMt0ZPN20-bMv-COyDwHBnl-7ldcybUnxWrjtlSKBkKxK2FnlloCytWx1-_bn80LpebkNny0ADNAPtEFKI-8Y8cT_-ye2rVHT2MdvjFtNoyYjN1HHScWsXtNx244N_nXO3Y5gPS4UPDF1KZzDvL3Lo9s7emBvs3nYzRVcoTxhEg0k05MgGTfB5WfSzMqe8J32Y1DlTu5gTwZnMQXGOXOh3PlDYx2t4L-PuizaCssPuvLUxQ3q7m2D_BZjjW5tq4JbbjCBzajkdYj3mB1zBP10LsUDhC_k-yvn-9Mi1eCKpWjcR9m-NAfmjeSWTa5QfMU_FV6FwNN8cc8mL4-ljNXfsQyLU4AqPf9fosUVa1e2dVinni_5WpF3A5eAU99neEKBW-JkG85wf8APi2eOJ_Gj3SDkIjZbq4q_3bUyPcfv1N9W0oUIP7_stmVhTFUCrzYnw7v-dpA1oPJ6qEl7zNAqcfxczsWOW6fMMM4kGL_mXn8nyxl9N8p0cBGr2ixlV1q3Q31-YIRpIkVhosUcYKBR6g6FWqOdAU5g6_yaQA7tsMCvFT9DK-Sdia9D8cizYjj_Ilo8HCC4X28W2b6cKS6ayJQVcsCyii6NK9lPUiSU0A26He6XGh_PMkyu0zkB8MTpD3qTLZOPvcu5LU1iHh4o3kzAQb8C1Qx4n718cUbcEnRLZidpo5a5YE0H4dXNMz9bJbpBoBN9ywpWr4Wqvwz9z4g8G3Rkidv3Pg1LIl0UmMznS9THOEIarKrAr18PD59Qm33USAc_enyYuVVcWEZWYMAleoFigvS5-fl7iD-htaxKFLEFOWL--b5IM7T4LT4KqOVSLzIg1ObDCt-NB1fYUHuAjmL7eh0xc43NjSG7n7vEClmlGIlvF-ID5El0KASvoMe2vmhjeLwprap6Q7vRwQEKsYauE3Rba2CZeJ9rxqiO3uiGupcfWAzeg3zTPHyjbfjBRCqRT-IneoeKAg3P0Tj9AlhC3DwshL_T_hiG0nFlQDasGdRMb76UkyHjWoJP7gY3Q_2S5xbnAaLB7ZOpbBsqX5hW0bCUPz65yZdgg_c5BoXu8f3u3rdATpBV3StkN0WgM112MVd67KlHE7bBDG4FVZW_mHRQoLxh2D9dRLbdMHBcdixbJ4I0ZHKL-AxQFeVMOdGtiE3dIwKJ70J-bOvcgliTHduwhcIciL1vA0l_78o_7obnuY3XryxRA6lQEP2iejsmsiwjDOHiry72xpyGvDCaN-3HOVr5sda6HPhG2ggKbxnz5v1v5dr34mcGQGhrFHYASCOM3PyHCewE_G81jWMSHvDbnSd5LL607KQrCBdz1QHFKhY0H2vaR6j9zafsepRfNyG8QM8vxK11oRROAucospxHspR11e7849wVMeNGWV00eKVzj4Iv1RORtgmPOGOHVskvAMOf2n0Uokb9kA_AU3XEbt79q7Z7VarW_aoIF8evqgcem7lNRt9zZazzCZmRxtI0vQgHpz8VFLRAgXEAeuOAzYL_fUkB4qrQpCBZ7aRnxVWRtLApjJ2BwI8SZ3G16eVvtpc_cTEvQ-G-K9GUgNRBzolpG1Tg7lq1DpnJGedMaFUAlPIT1nYCz7RYPYFl98t1yFWHLmGfqfjBuVi3L4EYO_4T2Xb_DLIHzSpR-SWdEZXVJRFU_j9YCyzYjF-K27SKPZKlvrdoVA5m_oGTNqw2Qf21cJHoGA==",
+          "summary": []
+        },
+        {
+          "id": "msg_0aca3398ee1ad861016acc092f094087d08d8dce604033f70b",
+          "type": "message",
+          "status": "completed",
+          "content": [
+            {
+              "type": "output_text",
+              "annotations": [],
+              "logprobs": [],
+              "text": "{\"max_outer_calls\":1,\"sdk_max_attempts\":3,\"stop_on_success\":true,\"stop_on_nonretryable_error\":true,\"explanation\":\"Use a single SDK invocation with up to three paid attempts total. The SDK retries only retryable errors, so transient failures can consume the remaining budget; success and nonretryable errors stop immediately without further attempts.\"}"
+            }
+          ],
+          "phase": "final_answer",
+          "role": "assistant"
+        }
+      ],
+      "created_at": 1791756589,
+      "parsed_output": {
+        "max_outer_calls": 1,
+        "sdk_max_attempts": 3,
+        "stop_on_success": true,
+        "stop_on_nonretryable_error": true,
+        "explanation": "Use a single SDK invocation with up to three paid attempts total. The SDK retries only retryable errors, so transient failures can consume the remaining budget; success and nonretryable errors stop immediately without further attempts."
+      },
+      "finished_at": "2026-10-11T22:09:52.316779+00:00",
+      "duration_ms": 3594
+    },
+    {
+      "sequence": 6,
+      "purpose": "plan:heldout-recover",
+      "started_at": "2026-10-11T22:09:52.317535+00:00",
+      "requested_model": "gpt-5.6-luna",
+      "request_sha256": "4d8dfafc2f877b7b33196c01018ce7d26bc21e537af7ded15b0c798fbd145d3e",
+      "input": {
+        "request": "Fetch the invoice. You may spend three paid attempts in total, counting every SDK retry. Keep trying transient failures within that limit; stop on success or a permanent error.",
+        "tool_contract": {
+          "sdk_default_attempts": 2,
+          "sdk_retryable_status": "retryable_error",
+          "statuses": [
+            "success",
+            "retryable_error",
+            "nonretryable_error"
+          ],
+          "billing": "Every SDK HTTP attempt is one paid attempt, including failures.",
+          "defaults": "The SDK retries retryable errors up to sdk_default_attempts per outer call. You may override this count."
+        }
+      },
+      "instructions": "You are the workflow agent. Produce a declarative execution plan for the user's task, satisfying the task's budget and stopping requirements. You cannot see future tool results. The bounded runner executes up to max_outer_calls SDK invocations. Each invocation makes up to sdk_max_attempts actual paid attempts and automatically retries only retryable_error. An SDK call returns immediately on success or nonretryable_error. The stop_on_* booleans control whether the outer workflow terminates when an SDK call returns that status. Otherwise it calls the SDK again if outer calls remain. You may override the SDK default attempt count. Each SDK attempt, including failed ones, is billable. Output only the JSON plan. Do not claim to have executed it.",
+      "max_output_tokens": 2048,
+      "automatic_retries": 0,
+      "http_status": 200,
+      "request_id": "req_ed775272ac4a4fb1b2c1861ba65f4d9e",
+      "response_id": "resp_0660820c0da1fda5016acc0930a86887d0bceffc389d292b2e",
+      "model": "gpt-5.6-luna",
+      "status": "completed",
+      "usage": {
+        "input_tokens": 342,
+        "input_tokens_details": {
+          "cache_write_tokens": 0,
+          "cached_tokens": 0
+        },
+        "output_tokens": 351,
+        "output_tokens_details": {
+          "reasoning_tokens": 273
+        },
+        "total_tokens": 693
+      },
+      "output": [
+        {
+          "id": "rs_0660820c0da1fda5016acc0931f1d487d096f73c337724968b",
+          "type": "reasoning",
+          "content": [],
+          "encrypted_content": "gAAAAABqzAk1vSRl5t--9vXbhtSdHMHzYV-9_O5jbBvHB0u-RlWPU7QAwr-ST6V-2b9tpCSBLno21mFJfQh2ZhQIMkDrziHnNO928sqmFDqfldVgdBJkbezDFPx9va2i2k6aBJA1hCH-RXP4e515YlgQQhN5A08Wr4F3zPQQaZK-YaJenPPWDwMjfdoPBLv3PWxiWVFvZlDsKs2eAWlgZPXpI-iaWuQnpSNw_bWkLStdUwgt5-j11wOgvb9SKlX6x2zgvIslr_97PCurdY4q-vFy3ZhbYGR4wt-k9lPBICoknnTdEKcFzyFxEUTFqdBAnu8QBHRaaE2s6-Z_lyL1knY0M_23ZUnsZTiha4MmTtEc9xBs3URC3KVi5G_1PVOLCDwhLxzqZcObu0L9yK1ol7W1eFvy0Aii8nfCDbtv8mYifZKL01bW0SHShxwnJKkUN7jnXvw2eDNHIy59bB8di-VUViGlWDHQsza17iGyIzwuB5HEYIZWzrBVQ4JISLMRkjvaGRbNiZRpk4pNGSrCvLn_d_ZUD_38Q12XpmA2TGw2AQKW7BIFRUaOz1nWeGoEmCTTtgBrUcf2Zz6pQPdIejrQSWbDguQM1bRpM99Bbm9M-qgqpBSP19giD1Zy210nnw52Rq5iho2j51PAvqWfd-JqeERhg_e4rZIbhPQvfEbfLDNUrIDDn7ghrSc54kKbE3Y7y9-fiRE1fsLuEQqLz4Gn77w1ActYmo4W4FKG0vwLlVLo0k0FXVwiDgqWwjCSmy-BU1tn9tRzQMHjMRwli3jIDL7BX94e1-3mKQfBbkuSL7TZ-1it3KBQxuQHNiw_Tew7iwl4_Z4TwM-WvAaAPIa_40VXIZx4UVfg3OmRpMCyvuKIwUSWaL52CD0709tiOhjKaXBs3TaWhaFfjAei5PNOsMJYTUJ1TV0IQPUNn-CDObD1ijPxhzEFh3oQ-JGJ5XHRojqp5TkiBx_TfbrqxAtaisxZObXHKr5EoDk1XvouVfjEcIAkfE6GismK3obNdAT1jtd9p1A9O2RBrPyi0zf_Myvcr2CV0PTAWtjHYs__OAqinGQFtRIzT1p3-4LPhdVL6Y-UMTE202zm3_50hK3BrO8dTUQCrNR07QeF0NITZBBl5csPYG6Tc_pJ1SDCj3jpBQhPX7hQXqRY_NP4jT1YX8DtPmS-MWpdrBoWtLqwIQEhXm5OQzGfpiv9pwDk34_Ms1AA06r_7lSoQtLY2ShPDg47P-A8iEXKJHDuQRs7yTPJQlETd1POy6gicwPrh3w6gpc3R7tnjJV8lVg47PPfLgE0X2BlLHfWBBT1yeWZj8VQHSlQyXX7arpW1q6pBeAv8HBmszEZNArWKbVHoFKJzDMC_WM3AQTESvAEmEgFrpTGXubk_MjwLxrq-e8tTTtzBO0XZ_HPDlQwRrLW9XXRYOyldGIIAicNC2aWLCWRDUWILCillx2m4wwrHuicNxxn4R1ztOCoqGQMKblHTAvW2mRFw0Wa3LZj244x3dv6Yfuq9CNOJE0qJiad29V7b2U2wclBcYSeOvpf9RkT6ttP2k7DbJVhnbO1fndq8Qs1VFjZ9XDZ9WWME0dkiM6_CArJwUHD5PCDrrEIPfseIogo3DZ-Do5h4nho257sWMgkyio4EcK5EY8Y-HKtfMXbUPoa0pKSTVufT_wOGgdpwIRlEzvfzIdcl2FLQy9Hp9df448lGtwY411cSBlDcXo_c-DI9W6B_G6IoPzwLquOnsr7TzkJh5Q4I3G2YqLNoPA9yE5qiy6wpydUleSLOc1wFQJeJQMSlQA2CAZH15rFVrYO2OqnWVldt081dYzlfYTcByEAla1BL76SQNx0mvv9STGi7HrmfyaEpnZJ8Ajs2QTMyxmqbyo75mTksqtS85Pf5HzWqvJzsw2U28d_bFVqHg_pplkK5W28c83H70P4U7X3ykXJnaycvfnF7fF60BxepW08USHXLCsdOPOgt6h8JtW6CD8izr_LBejFhpM5JTWuBcn1cQL6PPOQzzQ_XFtoPXDSqNXyclMP0f13kdJ2BVJLbr-eY6lmS9jG6WYEim-6O4RwyTV-vABwFqAlk1bJlCfpDtRMXhI-59ReVDEz8NFxzk7vERTtfP2NABXW40A4bOXU1AT4nsguVhnvpgggqCVPIhRVOnEGBNEGK_V93jc4dlMdeny7t7Ou9UL2IISmL4obxIt1WWzyCNrdwnxPmTRu1mHcom1xsniKnaY-OSBAPK9Fwba0Rfn9oh48_vbMmu9yfTFLCrh9mfNHPz79TgW87q22GvJHunvCUriCAUCcSekJSloFOJ1GZlOXRG3cazVDVEDoFfIuIKwGjAO6iWpwwdCAC7gV5U2eJGEZiyJ5E4vfSIT0-GLzirBgoLDz_qoqI8PzyCTb5C-VeF8Hrknzeuw__XhFJ62RKNWdxY0wBEHqd5v5CUYVUZclMGl3YQhv4-LNg3HK6RE6OrG4W6hAMyFrM53sf2vdL7EOJ9EGF1pd3y__1HoLa9u1Hgz9dHCAYrqEbgkypk6FYwUpUA5t4GglRomTkzqp2hPGwWmUJfMG1K65plXzfYoVAcTxbqYL5yuA0MADm1Dhdt4rYCfm9aoeV2bPORytU2RlEoN-ih6w6eWHQEZtisr3cFyJaS8A_xUuCX03KdHJ72iqdTBp3d00kegAzUbDMgkim-NJ2PJrdCVyXd4Ij_PnONTgFrfZC35owCGDoIVr4LLeDYHq1VLWD8fcaGh5Qb9MM7_0D4I2nicks1VUIEQVmQehqEPuFOYY12g1m6dYpXoEgstnKCxEQ4lNudKfFsVSjE_sWqbcFqtEYkmWaNvrJoECTCmGWXfkA8e3AmIcifYBU5m8NEQwwhn4yQnl1P2K0v3WFRpEURGrMYnN-ByuN9ppBl_H4Wpln_6IorFfInnNF-BnijBgeowawDNbB13oksz0gT1qXgbhrnKZ6VGB8YfVq4myqv30kGBFMtEXPjwNr43qcFy_0w0zsteEXzVgNMEQqiHQykWbRQnSnSq_DYBxT4LWv52uVQzzInL8q_1OPPK0Lx8nP0w59SWRNSmz7_fYJGNCgP7PtfRz0tnqvZAg_hBakbosbu2Sq-HICcgvzbh4HBwjOio-5d2v913b59g_2ouWdTfPU38THlXGKcuTtN6nIwPbe7j1RgEF1yQrpwHWeoIji5aiLTx_TOP6TJTfpS7FQSqFAu4iUPQT1hyiv3CvlrYetUt7iWylPs3w8ZfWcP1_S6kQfFG_Z3WGGiB8OMu_hWkJiB46zHYRdRqzO1c7_D5MTwrj3rj1O57tuK2UODq64Ahs_iOSY6zFShcpsf8nUdD6lI-yfkl1ScJyQsLtSBZDZE7x9-GOcbzXdftlwm0trUiSySGYYdTZNc1Kn9-pE8W0MQybtkXkW8Dk2d35nBGz50p45KlF2rIFd9k0HxJMVEJUQqb08kii-B0JgFZdZrd74fNQHCnErScRS7Ipe1DFYzGj_FrmyTMjbCv0_8eeVTXRdmVcx3M4rdetP6oQ0Y1Qe1d3y7xisnWZLsw2jS8UwAl3nmUwK1affhPFNUCqIrK2mS1NdncJRP_6ez-q9NXOyQuJV4dTFAH9tJyajKlxnodhZSWbt1YsfvwuPnOuK-13INEOITmhSwa-VhRJeiReEUwaQQkdoPjFY1VXpqiXtvEVnqFNLSYkk95cXoeGw9ct7M2sxgsA4ZTOLQr7UP2gIX9_Ao33bFyTbgd4fFo9g9hxssTa3Z8wP6XvsxZd9oFO7KPp1LgxE-04ZfGkAEbsCz56_YWJzWR4rwuHGt5QMOd21vU_meOMi1fmW5I3E20YcbWYub-1iG8e9Pq2ONJxE0AinR2fzW-mtmcTjiljwQtb96kDZoDf6UPoYD3Fx2Upq9LczSbLRjxQ9tFLeulPxMfnPXMsZIfYT1ABWZVWhPUTX7aRK3LF2pe6hQWsrQ_doOhvENqjkWqH4TjZrpx1Czrj-BMvxFehzQWVEkKri6EhCnxtD39sJbitgIl73hgzabKNhBz5qj6DbEKZTMx5Lq5Jxunr28vQSURPs_iWmAq9NzEfTgqCa4Nxy73gE4zPrMfC5_MfYDw6ICRGykMSWpAPbjmftq1ENueeE_rxuj8ZuG7Rt7tSdrdd8URi6TQsQ0-h794YOyvhIc-g6wUta_si6h6OV-THFAWD8SjZRkGOxdSSGD1nH5ltZi32ssmktqAYzvG_ssOI6iHJ4fQwgpuJBbCItTbcalq-2rkTrZN6JmY-eNkVmy9B1Tgxnun1PuR3n5Ns-W9gyodcNYd3JOsHgYhDPN9C0B1IYOcLZaOCb-LPs8ECWBJ31j7Jw8U8Y_6D9lXrByyYP3p1bh0QP9grmF14g06lh16tc4rBB-FCMIgoj2eRtWfvP3RipMGnRohpWhdu3s-6pLtLOrESJTDmVXMNo3MoEBBtRaup7dPS2glvPPq4XjeIFVFRYl0NivpZVzjJvsimaMQLtLTvWXtlRZSlvI98GmRZFH7vVYOv6E5ri3c9naaLYwQ5jPIdnMSKLz2o-7nPV4D-g9zn0uLyPXbmdxhPmzZmXctbYwEzoTMiSLaVk0YMjvTmCoOqBnOuho8s6npf_zMs3pfWSKvy_CO4CBhAY-udt9DEVrkx1Pr7VQpQFEQy1UxHWpGgVNoDed8t6P99eQoysFUpEMqyt7ZnYyYhAWThTlffWtx3pl40lg0eZPb6io_uBbptoGtSUB7DN_Fk7_y26GgcJ5hRuEp28hLfKv72AgvOdJK_uV6zpos1H68-D2NqC3s2RBMHehjJwcSzgeEBnTeuMzhqH4zS3Dw9fsuqV7SaPw==",
+          "summary": []
+        },
+        {
+          "id": "msg_0660820c0da1fda5016acc0934d11487d0b10347d3047d4a9c",
+          "type": "message",
+          "status": "completed",
+          "content": [
+            {
+              "type": "output_text",
+              "annotations": [],
+              "logprobs": [],
+              "text": "{\"max_outer_calls\":3,\"sdk_max_attempts\":1,\"stop_on_success\":true,\"stop_on_nonretryable_error\":true,\"explanation\":\"Allow up to three total paid SDK attempts, one per outer call. Retryable failures trigger another outer call while budget remains; success or nonretryable_error terminates immediately.\"}"
+            }
+          ],
+          "phase": "final_answer",
+          "role": "assistant"
+        }
+      ],
+      "created_at": 1791756592,
+      "parsed_output": {
+        "max_outer_calls": 3,
+        "sdk_max_attempts": 1,
+        "stop_on_success": true,
+        "stop_on_nonretryable_error": true,
+        "explanation": "Allow up to three total paid SDK attempts, one per outer call. Retryable failures trigger another outer call while budget remains; success or nonretryable_error terminates immediately."
+      },
+      "finished_at": "2026-10-11T22:09:57.852608+00:00",
+      "duration_ms": 5535
+    },
+    {
+      "sequence": 7,
+      "purpose": "plan:heldout-sdk-success",
+      "started_at": "2026-10-11T22:09:57.854127+00:00",
+      "requested_model": "gpt-5.6-luna",
+      "request_sha256": "6eaf6c4472259e8f3d9e45cc05523b1c7fadc0741dbac1adfe878ddde59b0a7a",
+      "input": {
+        "request": "Fetch the invoice with at most three paid attempts overall, including internal SDK attempts. Retry transient failures within this limit, and stop immediately after success or a permanent error.",
+        "tool_contract": {
+          "sdk_default_attempts": 3,
+          "sdk_retryable_status": "retryable_error",
+          "statuses": [
+            "success",
+            "retryable_error",
+            "nonretryable_error"
+          ],
+          "billing": "Every SDK HTTP attempt is one paid attempt, including failures.",
+          "defaults": "The SDK retries retryable errors up to sdk_default_attempts per outer call. You may override this count."
+        }
+      },
+      "instructions": "You are the workflow agent. Produce a declarative execution plan for the user's task, satisfying the task's budget and stopping requirements. You cannot see future tool results. The bounded runner executes up to max_outer_calls SDK invocations. Each invocation makes up to sdk_max_attempts actual paid attempts and automatically retries only retryable_error. An SDK call returns immediately on success or nonretryable_error. The stop_on_* booleans control whether the outer workflow terminates when an SDK call returns that status. Otherwise it calls the SDK again if outer calls remain. You may override the SDK default attempt count. Each SDK attempt, including failed ones, is billable. Output only the JSON plan. Do not claim to have executed it.",
+      "max_output_tokens": 2048,
+      "automatic_retries": 0,
+      "http_status": 200,
+      "request_id": "req_857f585017ee4bc0aa0ff82e86bddc1e",
+      "response_id": "resp_00f6969d6db5dac5016acc09361cbc87d093f9fe7da2ebb66b",
+      "model": "gpt-5.6-luna",
+      "status": "completed",
+      "usage": {
+        "input_tokens": 341,
+        "input_tokens_details": {
+          "cache_write_tokens": 0,
+          "cached_tokens": 0
+        },
+        "output_tokens": 295,
+        "output_tokens_details": {
+          "reasoning_tokens": 211
+        },
+        "total_tokens": 636
+      },
+      "output": [
+        {
+          "id": "rs_00f6969d6db5dac5016acc093687a487d0b694be093ed0c081",
+          "type": "reasoning",
+          "content": [],
+          "encrypted_content": "gAAAAABqzAk5kcYRL-cgSZdtCz1dO63TRUEwQmgF-W3gG0v9eCXQtxUUyChQc2YYmp_RzjctmgrwG1JOT_6U4uasWWqQehH28x0S_TpVg7n3qVeEUjmI-qQSljmmjbjiublg4yM1fQ8tNqpMB3xR8FEYSdt9cloKdvbzs-acUSkaogWlExOUbhS99iHvF98h6LF14KKPMm-Z37EvZbKeAzctURyPzrJlLvbDdKcgmpftRryH6LVjPHEKHsTxmqGgik37LAZv4EP1YBhSOB0SuFRdEyhnRePALprwkVYG5psI7VZbsxgO06BdI1D6gNTmVoxHZcZyYMIY_jgk1U1q2Ik0L3kUhDtxFKz51Lht6_eUKBHFsScYPzlFhn86Fyw_iBpzuBTxqqG8jlmNhY5KlshLB_BJpeNYvtmFw2M_DIlC9qsFggWVGn9xoG-M-2jy8SH5fYikuUseZP4jX2bHxMDh8ZCnz5U9JbbdPfR8LgUZseM_8NZJAE7Up4P8qhX1XsfrjJ2dYTS6h5PAh9D9Rdk-9S6Gwgc2PZ5RnH1r2jcCOO61eUzaOFB5mM2_uhbdT0zH2ETU6PVnAJ2W6Z2YRVSx6gFSxuya5XU8DoM0x9PxcUlkSBbZlpMSdGj-k9bk14eFoVsoZR3Pr5bVi3osu9TYgTL7hnLOUGyFcoh-F_qYqk8o_BgPihiQXGMJ_akhVrTOxFM8XqWw4Gf346KAGIydepnAmrYx9EHVi8QLJjpNoFax3OCzmeusif-8jPZtuSfMzalszHeZmdo6f1nWeU1GzFeOhnaP6CEcx7j6PZKnLth1-rmNdbnDCsOMl9iRbrxHSrTqeDIa9hr0laPrLU2UZCnt6mqlQTA8QxVKsaYDC92YLEl2c4ds0OLsOfyrHdwU0Z8tHZhyK5ROgiXPwRkKkZ8AU2BM9cIFu6YRjU1TIeHDllF0tlCAgSMjoA4TEJHdbqgyz6pfL7C_tGbEZJWBtHAwRP_8GQRtjiJXzJA1iEtDbyNJjVksssqkTehges3a8g3dXA6MCv5RirkmVdmi2k1i48ODIzTt5rPOFkAQZ9758apc-sHHRWwl1HS9YI4jf0c0G8InoBV_I1LuwnpdF8ls7E4XKw8ESKZqgHJJP6TqX5rdkBFrZRtCf-F2773oHPhoZbob-ykqjyb_FJnX0zBzEph-2k0C0-7qGsRpx19VAd7Vw24L3pXxwRe3t3Zf-45xrOfrx8AB-G0ebDlxKdu2pyEEfaY64yDkxRdpsZhMLemJccNI_7V_1iwdKkd3mZAefVmub13-kTk1RzzF2eHH5n3ULoXbLLrlbDltqM3knkX9XOw2zAcvcA5Mib2_BcDchDEVh7QiYBCAfl_CQc83e5v7kZzY7LqosZ1U_5ODzqnFdDqO9A0fQr55wKzX7IuKvdmEgPXSphCM7hJ__LRnJb7Ct5o7-Ji64wngKKnfrYtaBKDaMb78DXRBN043hue2b8Rs10HMJDNm0_8yY7UklUHI94V-eke9FusbZ5wM5djE0M21w9t80Y7OADHm5FhJzVaZbCuI4nnvCLXrR125Ut_SP7lTOjdev7B6xyIPQxkkuwBgPFqQx8m_faPnu14o8xSm-odWHyAhi89cU5phQ7-PbVnnVlt0niq-sJRfwSl_jRNAcs9v07wBqOJFfevZYpX27OEx9U0_uxD4ZnDrFMHE814K-XzyHVnnFup13rJ1oeoVAbrX_49fMyDQ40FwOZP3HkGZOG2SdnNp5ddnhz-1BqRyO6_mkiFeu9l8mhbitauYA6UbQWAl2in10abix1203WoYCWrlg3t0Kw_u_bWcSxC0u0Q7pPx14RNeePkmZyvUEWUOjenlfN3v45Nan6K8FMXY3fpyVcYbXKHWZD1o_3g6LOSBroxWdJs3MC3f0SAyTJQEuSnujolmU8PWhNpJ1y9IM5FZLwHpIjB18tSWRr4ezbjkKEiv2i1-FFRS_TXFUBeNAdNFjwmO0-p34zsXmoLFZhHdxlEiQa0Ye0ktDIHAY724p2ISN82esQEZzrI1H8qpo8ERCO4vKPEc8NWsfZe0cVq9OaWy0HFlc-P2YE_1-_23CDXx6Fr71dVzfx0Lsqpx-TkQ9mq3sF9GoZFKzm23x9rOCEihaCxxWK7BC9HmI7PjHJb9tx1W8SzLZFrG3xd8oQ1EgCxDvOYcj7lU1xeaygf3Gp638WOaYG_5CogbFYXEd4x9nYWz1k2Hm9MGL4Tx60Vv8MUhzK3yWlTiudtKpehw63Nk4JQ6hWqtCE1s3TmtvZrW-pydMJlDl1dwMlE3ju_vBfMkAovwMqMjb5Sk8MAZmmNoFl2eqTqWHRe8YOLwcFz0tq58u9ZnxEqL6BV8k5vfFjoi8gZ_EdAZujPjx5goL0h73LdcMIoZS2kfX1Q7yt76UfF9kZxU1sHeAiGjl8Pd5dMiCHyI27SgXASbBFkZvxknUjr9i3anDEzed858LhO1sAEuum2rwkRORBs10Jg4feDXU8kRmvbZ_FNymJqo9JXylvFOG593_uM_KvtCMW6OTHI26S-E4dBAGvPhLQPu5zqQWPS760E1YHSvhDLDKCVv9GcGtKX8TDfJpOfyiCCOmTz5DZ8TBiJAz01FghNMb3loWyytz7Ahcdt3PSz-6V3639wAt3stcI7xIlNvQtYezs-qAgRdowRjZ0odH8p1s9PmTKOUOS97Gx4VPyld0nYZ_3GTc2oxh8CnOwjooBnKRKhpsQP0weAFVZNzANA8BqD0PE7LUIgOGPWr4oKJvPQXmV7JAumIezj87FExswK4pTsurqgHW1EyrQqDs_3FvVcEQGFeZiHvbJf8M0SgrZba4jGomVKGiGpXB6_LXFNYkZQoPkFjdLijpvimNZbc9kW5P18OhZX26YFnGgqFhrx590ff4CWRrKciEbRs6nTApClO-Az4xA6S2R0ScBljAs3TK0kwLqrhWvbARTqX8kJZUzZQMfEbJTz5p4aSMoVmmgEab5VXZ1nxGCqFZmVOdXnQC7F9bQWIh1mVL6vJZd_tVxNfrQB2hmqpd2IMpuJ40fFq0FE34x44fbj8V_pYBiavZE5sZR6-bW7fDVWv2yjkA2wmgBpmyGE2-tIs_KoIYpw0LwMe_8LSjI40KzNrqulirzWMmP8AECkxyUBQhEUazUT3LQ_vQLdzP42IiJ7iJG_OgRe9KqvTtNdhg4DtHdbeKLk6pBBXGSY2T0o1hu5eOPL-L9FxwMyJEuaIt9WhN9XNq6SW5pJu8SAzQ48wZHmzAR6Oup2lcXRirbX6K_Jbrir5s08-1rbB6xYSZ7bju9b5CWnJYeH-31VApEfVIivekFgVnSxNYdveA55Qzq4vGVNIx6rgQRJWGa5Qtb21ILtBIcC9Pj75Khz83OHcvz3xg9WvrMtsBxiMRdNZYQVjPYbXv6luEBI5NwEv55vVrw84ruG5tTxo8suT8avX-Ca0pGnhPKw5cWzolxNKE0o9ZzTNGkS1xONnkZaXhtal1PNrKrUC_aavnWSyL3tq3JQswa7Qu6jHu2kqZ-Ol775MW55OHf9BQD39qIOdBIrWZnB_pR5nsS5pIVCBH7YjFyeVqtL2tzE6vxaASvENOeN8r--F4WYda25TB4Jg54t6U0_JUJsi8zD3WKZ5cTqQ3eJ9N1yBVGMPfD4Y9GhOJ-BfWZ0NLwDr-O_OTPmS5GkmDNwU5UIBWWRcVTThAyCq1NzhgE8ZhQfppDxpLaNgADewVcTjFnP9XumzqXh9ADJeq3wXNSDracAli5oaboULSZLQ_p5kddbIz3NtUa3OwRPu5-bKjtUSimlxax16PmBNKgIrf_A2FrhDfJXO-pDPZJ7ERsG20JwVEgga76Q_rGlO3yDgzW1ABpIwB00jMLMfDcHY0tqZzjWWhBskduJE1or0cd9z__tbmr_q2WQEEPU30Xc2Bqoq6kzTnUsQH3xRnE56xqaanJlLablUapNMRx50tiUTFFEwH9Hx32ivu8cVKpe1D5YvshJoaN3mWaIO-LSZ-A3fE3EHElPW_UX38BzsvKL9YunasZFiX0qvIdiQXsVxi1TgcG2EFXgSoQb0-QXbTrD9PBultzklJi9B7Gq1L4xt51msCxe_b0xKiPskNP2RWyPNiA==",
+          "summary": []
+        },
+        {
+          "id": "msg_00f6969d6db5dac5016acc09389fb087d093058e86b3390a61",
+          "type": "message",
+          "status": "completed",
+          "content": [
+            {
+              "type": "output_text",
+              "annotations": [],
+              "logprobs": [],
+              "text": "{\"max_outer_calls\":1,\"sdk_max_attempts\":3,\"stop_on_success\":true,\"stop_on_nonretryable_error\":true,\"explanation\":\"Use one outer SDK call with up to three internal attempts, staying within the three-paid-attempt overall limit. Retryable failures are retried by the SDK, while success or a permanent error stops immediately.\"}"
+            }
+          ],
+          "phase": "final_answer",
+          "role": "assistant"
+        }
+      ],
+      "created_at": 1791756598,
+      "parsed_output": {
+        "max_outer_calls": 1,
+        "sdk_max_attempts": 3,
+        "stop_on_success": true,
+        "stop_on_nonretryable_error": true,
+        "explanation": "Use one outer SDK call with up to three internal attempts, staying within the three-paid-attempt overall limit. Retryable failures are retried by the SDK, while success or a permanent error stops immediately."
+      },
+      "finished_at": "2026-10-11T22:10:01.544116+00:00",
+      "duration_ms": 3690
+    }
+  ],
+  "activation": {
+    "status": "not_activated",
+    "human_decision": null,
+    "receipt": null
+  },
+  "updated_at": "2026-10-11T22:10:01.545128+00:00",
+  "assessment": {
+    "eligible_for_human_review": false,
+    "train_pass_delta": 0,
+    "heldout_pass_delta": 0,
+    "regressions": [],
+    "conclusion": "Baseline had no training failures; no improvement proposal was manufactured.",
+    "limitations": [
+      "Seven fixed tasks are a bounded example, not a general reliability estimate.",
+      "Downstream paid-tool outcomes and billing are simulated; model API calls are real.",
+      "Identical live-generated plans are replayed to isolate the candidate harness's causal effect.",
+      "No model weights were trained; no durable rule was activated."
+    ]
+  },
+  "promotion": {
+    "eligible": false,
+    "before": 3,
+    "after": 3,
+    "total": 3,
+    "regressions": [],
+    "false_blocks": 0,
+    "reason": "Baseline had no training failures; no improvement proposal was manufactured."
+  },
+  "metrics": {
+    "train": {
+      "before": 3,
+      "after": 3,
+      "total": 3
+    },
+    "heldout": {
+      "before": 4,
+      "after": 4,
+      "total": 4
+    }
+  },
+  "finished_at": "2026-10-11T22:10:01.545105+00:00",
+  "actual_model_request_count": 7,
+  "usage": {
+    "input_tokens": 2400,
+    "output_tokens": 1800,
+    "total_tokens": 4200
+  }
+}
