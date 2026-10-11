@@ -19,7 +19,7 @@ type Run = {
 type Rule = {
   rule_id: string; version: number; status: 'proposed' | 'approved' | 'reverted'; direction: 'tighten' | 'loosen';
   category: string; trigger: { type: string; pattern: string }; action: string; user_message: string;
-  origin: { run_id: string; task_id: string; failure_category: string }; proposed_by: string;
+  origin: { run_id: string; task_id: string; failure_category: string; evidence?: { prompt: string; matched: string; snippet: string; detector: string } }; proposed_by: string;
   approved_by?: string | null; created_at: string; updated_at: string;
 };
 type Audit = { at: string; event: string; rule_id: string; version: number; status: string; actor: string; reason?: string };
@@ -47,7 +47,7 @@ function Label({ children }: { children: ReactNode }) {
   return <div className="text-[11px] uppercase tracking-[0.14em] text-muted">{children}</div>;
 }
 function Card({ className, children, style }: { className?: string; children: ReactNode; style?: CSSProperties }) {
-  return <section style={style} className={cn('animate-fade-up rounded-xl border border-line bg-surface p-4 md:p-5', className)}>{children}</section>;
+  return <section style={style} className={cn('animate-fade-up rounded-xl border border-line bg-surface/90 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.03),0_8px_30px_rgba(0,0,0,0.25)] backdrop-blur transition-colors hover:border-muted/60 md:p-5', className)}>{children}</section>;
 }
 function Btn({ className, tone = 'neutral', ...props }: ButtonHTMLAttributes<HTMLButtonElement> & { tone?: 'neutral' | 'go' | 'stop' | 'accent' }) {
   const tones = {
@@ -97,7 +97,11 @@ export default function HomePage() {
       {/* headline */}
       <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
-          <h1 className="font-display text-2xl font-bold tracking-tight md:text-3xl">Recursive harness, governed.</h1>
+          <div className="mb-2 flex flex-wrap items-center gap-2 text-[11px] font-mono uppercase tracking-[0.14em] text-muted">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-verdant/40 bg-verdant/10 px-2 py-0.5 text-verdant"><span className="size-1.5 animate-pulse-soft rounded-full bg-verdant" />live</span>
+            <span>MongoDB Atlas</span><span className="text-line">·</span><span>Atlas Agent Engine memory</span><span className="text-line">·</span><span>Modelence Cloud</span>
+          </div>
+          <h1 className="font-display text-2xl font-bold tracking-tight md:text-4xl">Recursive harness, <span className="text-verdant">governed</span>.</h1>
           <p className="mt-1 max-w-2xl text-sm text-muted">
             The agent attempts coding tasks → a deterministic judge scores them → each failure category writes a <em>proposed</em> guardrail →
             a human approves or reverts → the next run loads the approved rules. Agents may tighten their own leash; only humans loosen it.
@@ -118,6 +122,9 @@ export default function HomePage() {
 
       {/* operator guidance: the harness tells the human what the loop needs next */}
       <NextStep runs={runs} proposed={proposedCount} />
+
+      {/* the loop, as a strip: observe → judge → propose → govern → reload */}
+      <LoopStrip runs={runs} rules={rules} audit={audit} />
 
       {/* KPIs */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
@@ -160,7 +167,7 @@ export default function HomePage() {
         ) : (
           <ul className="mt-3 divide-y divide-line">
             {[...rules].sort((a, b) => (a.status === 'proposed' ? -1 : 1) - (b.status === 'proposed' ? -1 : 1) || a.rule_id.localeCompare(b.rule_id)).map((r) => (
-              <li key={r.rule_id} className="flex flex-col gap-2 py-3 md:flex-row md:items-start md:justify-between">
+              <li key={r.rule_id} className={cn('my-2 flex flex-col gap-2 rounded-lg border-l-2 bg-raised/40 px-3 py-3 md:flex-row md:items-start md:justify-between', r.status === 'approved' ? 'border-verdant' : r.status === 'reverted' ? 'border-ember' : 'border-signal')}>
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-mono text-sm">{r.rule_id}</span>
@@ -176,6 +183,7 @@ export default function HomePage() {
                     origin {r.origin.run_id} / {r.origin.task_id} · proposed by <span className="font-mono">{r.proposed_by}</span>
                     {r.approved_by ? <> · approved by <span className="font-mono text-verdant">{r.approved_by}</span></> : null}
                   </div>
+                  {r.origin.evidence && <Evidence e={r.origin.evidence} />}
                 </div>
                 <div className="flex shrink-0 gap-2">
                   {r.status === 'proposed' && (
@@ -242,6 +250,47 @@ export default function HomePage() {
         pass rate carries a Wilson interval. Governance pattern cites RRFlow ADR-0002 (governed durable effects).
       </p>
     </Page>
+  );
+}
+
+function LoopStrip({ runs, rules, audit }: { runs: Run[]; rules: Rule[]; audit: Audit[] }) {
+  const latest = runs[runs.length - 1];
+  const stages: { k: string; label: string; value: string; sub: string; tone: string }[] = [
+    { k: '1', label: 'Attempt', value: String(runs.reduce((a, r) => a + r.paid_attempts, 0)), sub: 'paid attempts replayed', tone: 'text-text' },
+    { k: '2', label: 'Judge', value: latest ? `${latest.train.passed + latest.heldout.passed}/16` : '—', sub: 'tasks passing now', tone: 'text-cobalt' },
+    { k: '3', label: 'Propose', value: String(rules.length), sub: 'rules written from failures', tone: 'text-signal' },
+    { k: '4', label: 'Govern', value: String(audit.filter((a) => a.event === 'approve' || a.event === 'revert').length), sub: 'human decisions, receipted', tone: 'text-verdant' },
+    { k: '5', label: 'Reload', value: latest ? String(latest.rules_active.length) : '0', sub: 'rules live next run', tone: 'text-text' },
+  ];
+  return (
+    <ol className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+      {stages.map((st, i) => (
+        <li key={st.k} className="relative rounded-lg border border-line bg-surface px-3 py-2">
+          <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.14em] text-muted"><span className="font-mono text-signal">{st.k}</span>{st.label}{i < stages.length - 1 && <span className="ml-auto text-line">→</span>}</div>
+          <div className={cn('font-display text-xl font-bold', st.tone)}>{st.value}</div>
+          <div className="truncate text-[11px] text-muted">{st.sub}</div>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+function Evidence({ e }: { e: { prompt: string; matched: string; snippet: string; detector: string } }) {
+  const [open, setOpen] = useState(false);
+  const i = e.snippet.indexOf(e.matched);
+  return (
+    <div className="mt-2">
+      <button type="button" onClick={() => setOpen(!open)} className="text-[11px] text-cobalt underline-offset-2 hover:underline">{open ? '▾ hide' : '▸ why this rule exists'} — evidence from the failing attempt</button>
+      {open && (
+        <div className="mt-1.5 space-y-1.5 rounded-md border border-line bg-ink p-2.5 text-xs">
+          <div><span className="text-muted">vibecoder asked:</span> “{e.prompt}”</div>
+          <pre className="overflow-x-auto whitespace-pre-wrap rounded bg-raised p-2 font-mono text-[11px] leading-snug">
+            {i >= 0 ? <>{e.snippet.slice(0, i)}<mark className="rounded bg-ember/30 px-0.5 text-text">{e.matched}</mark>{e.snippet.slice(i + e.matched.length)}</> : e.snippet}
+          </pre>
+          <div className="truncate font-mono text-[10px] text-muted" title={e.detector}>detector: {e.detector}</div>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -349,8 +398,16 @@ function PassRateChart({ runs }: { runs: Run[] }) {
           <text x={L - 6} y={y(g) + 3} textAnchor="end" fontSize={10} fill="var(--color-muted)" fontFamily="var(--font-mono)">{pct(g)}</text>
         </g>
       ))}
+      <defs>
+        <linearGradient id="heldoutFill" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0%" stopColor="var(--color-cobalt)" stopOpacity={0.35} />
+          <stop offset="100%" stopColor="var(--color-cobalt)" stopOpacity={0} />
+        </linearGradient>
+        <filter id="glow"><feGaussianBlur stdDeviation="2.5" result="b" /><feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge></filter>
+      </defs>
+      {n > 1 && <path d={`${path((r) => r.heldout)} L${x(n - 1).toFixed(1)},${y(0).toFixed(1)} L${x(0).toFixed(1)},${y(0).toFixed(1)} Z`} fill="url(#heldoutFill)" />}
       <path d={path((r) => r.train)} fill="none" stroke="var(--color-muted)" strokeWidth={1.5} strokeDasharray="4 3" />
-      <path d={path((r) => r.heldout)} fill="none" stroke="var(--color-cobalt)" strokeWidth={2.5} strokeLinejoin="round" />
+      <path d={path((r) => r.heldout)} fill="none" stroke="var(--color-cobalt)" strokeWidth={2.5} strokeLinejoin="round" filter="url(#glow)" />
       {runs.map((r, i) => (
         <g key={r.run_id}>
           <line x1={x(i)} x2={x(i)} y1={y(r.heldout.ci95[0])} y2={y(r.heldout.ci95[1])} stroke="var(--color-cobalt)" strokeOpacity={0.55} strokeWidth={1.5} />
