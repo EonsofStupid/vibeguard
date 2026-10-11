@@ -5,7 +5,7 @@ import { dbRules, dbRuns, dbLexicon, dbFailures, dbAudit, dbCostar } from './db'
 import { allRules, approve, revert, GateError } from './gate';
 import { runOnce } from './loop';
 import { scorePrompt, missing, sideConversation, uiSpec } from './costar';
-import { vectorResolve, embedLexicon, vectorIndexStatus, ensureVectorIndex } from './semantic';
+import { vectorResolve, embedLexicon, vectorIndexStatus, ensureVectorIndex, overlapResolve } from './semantic';
 import { Actor, RunResult } from './schemas';
 import { SEED_FAILURES, SEED_LEXICON } from './seed';
 
@@ -40,7 +40,11 @@ export default new Module('harness', {
       const scores = scorePrompt(prompt); const gaps = missing(scores);
       let resolver = 'atlas-vector-search+voyage'; let lexicon: any[] = [];
       try { lexicon = (await vectorResolve(prompt, 3)).map(({ record, score }) => ({ ...record, score })); }
-      catch (e: any) { resolver = `unavailable: ${e?.message ?? e}`; }
+      catch (e: any) {
+        // degrade honestly: token-overlap over the seed lexicon, labelled as such (recall@3 0.625 vs 1.0 for vector search)
+        lexicon = overlapResolve(prompt, 3).map(({ record, score }) => ({ ...record, score }));
+        resolver = `token-overlap fallback (vector search unavailable: ${String(e?.message ?? e).slice(0, 80)})`;
+      }
       await dbCostar.insertOne({ record: { prompt, scores, missing: gaps, at: new Date().toISOString() }, body: '' } as any);
       return { scores, missing: gaps, ask: sideConversation(gaps), ui: uiSpec(gaps), lexicon, resolver };
     },

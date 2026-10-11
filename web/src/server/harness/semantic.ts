@@ -59,3 +59,12 @@ export async function ensureVectorIndex(): Promise<{ created: boolean; indexes: 
   } as any]);
   return { created: true, indexes: await vectorIndexStatus() };
 }
+
+/** Offline fallback: token-overlap (Jaccard) over the seed lexicon. Used when the embedding service is unavailable or rate-limited. */
+const tokens = (t: string) => new Set(t.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter((w) => w.length > 2));
+export function overlapResolve(text: string, k = 3, entries: LexiconEntry[] = SEED_LEXICON): { record: LexiconEntry; score: number }[] {
+  const q = tokens(text);
+  return entries
+    .map((e) => { const p = tokens(`${e.phrase} ${e.canonical_label}`); const inter = [...q].filter((w) => p.has(w)).length; const union = new Set([...q, ...p]).size; return { record: e, score: union ? +(inter / union).toFixed(4) : 0 }; })
+    .filter((x) => x.score > 0).sort((a, b) => b.score - a.score).slice(0, k);
+}
