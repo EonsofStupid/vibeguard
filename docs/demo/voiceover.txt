@@ -1,10 +1,11 @@
   1.0s  VibeGuard: a harness that learns its own guardrails. They protect the vibecoder's money and time; only a human can loosen them.
   9.1s  Memory seeded into Atlas: failure taxonomy and the vibecoder lexicon, embedded with Voyage for vector search.
- 12.7s  Run 1, no rules: the agent fails most tasks. Each failure category becomes a proposed rule, nothing is enforced yet.
- 15.0s  A human approves. Agents propose, humans approve; every transition writes a receipt and nothing is ever deleted.
- 18.7s  Held-out tasks only get measured, never used to write rules. Wilson intervals because N is small.
- 27.0s  Three rules live: runaway paid calls, hardcoded secrets, destructive commands. Zero false blocks.
- 35.2s  Held-out pass rate 1 of 6 to 6 of 6 over five runs. The next run loads the approved rules automatically.
- 37.2s  Every run is episodic memory with per-task traces: which rule blocked what, and whether it ever blocked a correct answer.
- 40.6s  COSTAR: the harness scores the prompt and emits a form, which questions to ask, in priority order, before any money is spent. The lexicon maps 'take payments' to payment integration via Atlas Vector Search.
- 47.2s  Each answer re-scores live. Four memory types in MongoDB Atlas, mirrored into Agent Engine memory, deployed on Modelence. Agents tighten their own leash; only humans loosen it.
+ 12.8s  Run 1, no rules: the agent fails most tasks. Each failure category becomes a proposed rule, nothing is enforced yet.
+ 15.2s  A human approves. Agents propose, humans approve; every transition writes a receipt and nothing is ever deleted.
+ 18.9s  Held-out tasks only get measured, never used to write rules. Wilson intervals because N is small.
+ 27.2s  Three rules live: runaway paid calls, hardcoded secrets, destructive commands. Zero false blocks.
+ 35.5s  Held-out pass rate 1 of 6 to 6 of 6 over five runs. The next run loads the approved rules automatically.
+ 37.6s  Passive provenance: the exact failing attempt, the matched code and the detector, attached to the rule at proposal time.
+ 39.6s  Every run is episodic memory with per-task traces: which rule blocked what, and whether it ever blocked a correct answer.
+ 43.0s  COSTAR: the harness scores the prompt and emits a form, which questions to ask, in priority order, before any money is spent. The lexicon maps 'take payments' to payment integration via Atlas Vector Search.
+ 49.7s  Each answer re-scores live. Four memory types in MongoDB Atlas, mirrored into Agent Engine memory, deployed on Modelence. Agents tighten their own leash; only humans loosen it.
