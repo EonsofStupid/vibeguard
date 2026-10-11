@@ -12,6 +12,32 @@ VibeGuard brings a working conversation, MongoDB Atlas memory, measured harness 
 
 Built for the MongoDB Harness Engineering & Model Wrangling hackathon, October 11, 2026. Our two targets are **adaptive harness architecture** and **coherent memory with metric-driven progress toward long-term goals**. A short demo establishes a bounded improvement cycle; billion-token continuity remains an unmeasured scale goal.
 
+## What is live right now (the guardrail loop)
+
+The product is a loop, not a page: `attempt → deterministic judge → propose rule → human gate → next run loads it`. It runs headlessly through the harness API; the web page is the **human gate and the loop's instrumentation**. State lives in MongoDB Atlas as the Agent Engine's four memory types (procedural = versioned rules, episodic = run traces, semantic = vibecoder lexicon with Voyage embeddings + `$vectorSearch`, taxonomic = failure categories) plus an append-only audit log, and is mirrored into Atlas Agent Engine hosted memory, where `build_context()` returns the approved rules as procedures ([docs/RESULTS.md](docs/RESULTS.md)).
+
+Numbers from the deployed loop (2026-10-11, 16 frozen tasks: 10 train / 6 held-out, scripted agent replay, Wilson 95% CI):
+
+| Run | Rules active | Train | Held-out | Held-out CI | False blocks |
+| --- | --- | --- | --- | --- | --- |
+| run_001 | none | 1/10 | 1/6 | 3%–56% | 0 |
+| run_002 | VG-0001 (cost) | 4/10 | 3/6 | 19%–81% | 0 |
+| run_003 | + VG-0002 (secrets) | 7/10 | 5/6 | 44%–97% | 0 |
+| run_004 | + VG-0003 (destructive) | 9/10 | 6/6 | 61%–100% | 0 |
+| run_005 | same | 9/10 | 6/6 | 61%–100% | 0 |
+
+Each rule was proposed by the agent from a *training* failure with passive provenance (the failing attempt, matched snippet, detector) and approved by a human before the next run; held-out tasks are only ever measured. The gate rejects any `agent:` actor that approves, reverts, or proposes `direction: loosen` — server-side, not in the page.
+
+```bash
+U=https://vibeguard.shippin.ai/api/_internal/method
+curl -X POST $U/harness.runEvaluation -H 'content-type: application/json' -d '{"args":{}}'                       # proposes VG-0001
+curl -X POST $U/harness.approveRule   -H 'content-type: application/json' -d '{"args":{"ruleId":"VG-0001","actor":"human:you"}}'
+curl -X POST $U/harness.runEvaluation -H 'content-type: application/json' -d '{"args":{}}'                       # loads VG-0001, held-out climbs
+curl -X POST $U/harness.costar        -H 'content-type: application/json' -d '{"args":{"prompt":"make it take payments"}}'  # COSTAR form spec + lexicon recall
+```
+
+Honest limits: scripted agent (no live model calls), judge and rule writer share regex detectors (proves governance + held-out generalisation, not detector discovery), small N. Python reference harness: `VIBEGUARD_STORE=atlas python -m vibeguard demo --approver human:you --memory`.
+
 ## The improvement example
 
 A real memory-recall request encountered an embedding rate limit. A live model proposed a scoped **60-second recall cooldown**: avoid repeated recall calls during that pause, continue recording turns, explain unavailable recall, and resume afterward. The proposal is evaluated against frozen cases before a human decides whether it becomes active.
