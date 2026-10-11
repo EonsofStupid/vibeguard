@@ -1,11 +1,9 @@
 {
-  "checked_at": "2026-10-11T20:27:21.901472+00:00",
+  "checked_at": "2026-10-11T20:50:24.389325+00:00",
   "uri_configured": true,
-  "ping": false,
-  "write_read": false,
-  "passed": false,
-  "error_type": "ConfigurationError",
-  "error": "Atlas hostname discovery failed before database authentication. Check DNS/network access in the process environment.",
-  "failure_stage": "dns_resolution",
-  "diagnostic": "A separate bounded PyMongo ping reported DNS resolution lifetime expired; no authenticated connection was established."
+  "ping": true,
+  "write_read": true,
+  "passed": true,
+  "audit_receipt": true,
+  "database": "vibeguard"
 }

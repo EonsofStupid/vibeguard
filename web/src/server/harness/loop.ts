@@ -1,0 +1,69 @@
+/** One harness run: attempt → guard → judge → (train only) propose rules. Writes an episodic record to `runs`. */
+import { dbRuns } from './db';
+import { judge, matches, DETECTORS } from './judge';
+import { wilson } from './metrics';
+import { approvedRules, allRules, nextId, propose } from './gate';
+import { TASKS, SEED_FAILURES } from './seed';
+import type { EvalTask, GuardrailRule, RunResult, Verdict } from './schemas';
+
+const NUDGE: Record<string, string> = {
+  'cost.unbounded_api_calls': 'This keeps calling a paid service with no stopping point. Want a limit of a few tries?',
+  'security.hardcoded_secret': "There's a key written straight into the code. Let's move it to an environment variable.",
+  'safety.destructive_command': 'This deletes more than it needs to. Want to narrow it to just the target?',
+};
+const WHY = Object.fromEntries(SEED_FAILURES.map((c) => [c.category_id, c.why_it_matters]));
+
+export interface Agent { attempt(task: EvalTask, n: number, feedback: string[]): string | null }
+export const scriptedAgent: Agent = { attempt: (t, n) => (n < t.candidates.length ? t.candidates[n] : null) };
+
+export function runTask(task: EvalTask, agent: Agent, rules: GuardrailRule[]) {
+  const feedback: string[] = [], blocked: string[] = []; let falseBlocks = 0, n = 0, code = '';
+  for (;;) {
+    const cand = agent.attempt(task, n, feedback); if (cand === null) break;
+    code = cand; n += 1;
+    const hit = rules.find((r) => matches(r.trigger, cand)); if (!hit) break;
+    blocked.push(hit.rule_id); feedback.push(hit.user_message);
+    if (judge(task, cand).passed) falseBlocks += 1;
+  }
+  const verdict = judge(task, code);
+  return { task_id: task.task_id, split: task.split, attempts: n, blocked_by: blocked, false_blocks: falseBlocks, verdict };
+}
+
+function split(traces: ReturnType<typeof runTask>[], s: 'train' | 'heldout') {
+  const ts = traces.filter((t) => t.split === s); const k = ts.filter((t) => t.verdict.passed).length;
+  return { passed: k, total: ts.length, pass_rate: ts.length ? +(k / ts.length).toFixed(3) : 0, ci95: wilson(k, ts.length) };
+}
+
+export async function proposeRules(runId: string, verdicts: Verdict[], maxNew = 1): Promise<GuardrailRule[]> {
+  const covered = new Set((await allRules()).filter((r) => r.status !== 'reverted').map((r) => r.category));
+  const counts = new Map<string, number>();
+  for (const v of verdicts) for (const c of v.failures) if (DETECTORS[c] && !covered.has(c)) counts.set(c, (counts.get(c) ?? 0) + 1);
+  const out: GuardrailRule[] = [];
+  for (const [category] of [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, maxNew)) {
+    const first = verdicts.find((v) => v.failures.includes(category))!; const t = new Date().toISOString();
+    out.push(await propose({
+      rule_id: await nextId(), version: 1, status: 'proposed', direction: 'tighten', category,
+      trigger: { type: 'regex', pattern: DETECTORS[category] }, action: 'block_and_explain',
+      user_message: `${NUDGE[category]} ${WHY[category]}`,
+      origin: { run_id: runId, task_id: first.task_id, failure_category: category },
+      proposed_by: 'agent:vibeguard', approved_by: null, created_at: t, updated_at: t,
+    }, 'agent:vibeguard'));
+  }
+  return out;
+}
+
+export async function runOnce(runId: string, agent: Agent = scriptedAgent, maxNewRules = 1): Promise<RunResult> {
+  const rules = await approvedRules();
+  const traces = TASKS.map((t) => runTask(t, agent, rules));
+  const trainFails = traces.filter((t) => t.split === 'train' && !t.verdict.passed).map((t) => t.verdict);
+  const proposed = await proposeRules(runId, trainFails, maxNewRules);
+  const result: RunResult = {
+    run_id: runId, at: new Date().toISOString(), rules_active: rules.map((r) => r.rule_id),
+    train: split(traces, 'train'), heldout: split(traces, 'heldout'),
+    paid_attempts: traces.reduce((a, t) => a + t.attempts, 0), blocks: traces.reduce((a, t) => a + t.blocked_by.length, 0),
+    false_blocks: traces.reduce((a, t) => a + t.false_blocks, 0), proposed: proposed.map((r) => r.rule_id), traces,
+  };
+  const body = `# ${runId}\n\n- rules active: ${result.rules_active.join(', ') || 'none'}\n- train: ${result.train.passed}/${result.train.total}\n- held-out: ${result.heldout.passed}/${result.heldout.total}\n- blocks: ${result.blocks} (false: ${result.false_blocks})`;
+  await dbRuns.upsertOne({ _id: runId } as any, { $set: { record: result, body } });
+  return result;
+}

@@ -6,7 +6,8 @@ import path from 'node:path';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const cli = path.join(root, 'agentengine.exe');
 const projectId = '6acbc84c07e49c5b0f33c510';
-const target = ['--context', 'hack', '--project-id', projectId, '--no-log'];
+// Named contexts and explicit project/org/base-url flags are mutually exclusive.
+const target = ['--context', 'hack', '--no-log'];
 let key = '';
 
 function readSetting(text, name) {
@@ -42,8 +43,11 @@ try {
   if (process.argv.includes('--check')) {
     console.log('Local OpenAI key found. Target: vibeguard / ' + projectId + ', context hack, PROJECT scope. No network calls or changes made.');
   } else {
-    console.log('1/3 Saving existing LLM_API_KEY at PROJECT scope.');
-    await run(['secret', 'set', 'LLM_API_KEY', '--stdin', '--project-scope', ...target], { input: key + '\n' });
+    console.log('1/3 Saving the existing OpenAI key and matching provider at PROJECT scope.');
+    await run(['secret', 'set', '--from-file', '-', '--on-empty', 'error', '--project-scope', ...target], {
+      input: 'LLM_API_KEY=' + key + '\nOPENAI_API_KEY=' + key + '\nMONGOMEM_LLM_PROVIDER=openai\n',
+      timeout: 60000,
+    });
     console.log('2/3 Applying the existing hosted memory configuration; waiting up to five minutes.');
     await run(['memory', 'apply', '--wait', ...target], { timeout: 330000 });
     console.log('3/3 Verifying memory runtime state.');
