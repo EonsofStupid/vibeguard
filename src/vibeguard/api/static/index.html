@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VibeGuard Workbench</title>
+<style>
+:root{
+  color-scheme:light;
+  --page:#f9f9f7;--surface:#fcfcfb;--ink:#0b0b0b;--ink-2:#52514e;--muted:#898781;
+  --grid:#e1e0d9;--axis:#c3c2b7;--ring:rgba(11,11,11,.10);
+  --s1:#2a78d6;--s2:#eb6834;
+  --good:#0ca30c;--good-ink:#006300;--critical:#d03b3b;--warning:#fab219;
+  --accent:#2a78d6;--accent-ink:#fff;
+}
+@media (prefers-color-scheme:dark){
+  :root:where(:not([data-theme="light"])){
+    color-scheme:dark;
+    --page:#0d0d0d;--surface:#1a1a19;--ink:#f0efec;--ink-2:#c3c2b7;--muted:#898781;
+    --grid:#2c2c2a;--axis:#383835;--ring:rgba(255,255,255,.10);
+    --s1:#3987e5;--s2:#d95926;--good-ink:#0ca30c;--accent:#3987e5;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --page:#0d0d0d;--surface:#1a1a19;--ink:#f0efec;--ink-2:#c3c2b7;--muted:#898781;
+  --grid:#2c2c2a;--axis:#383835;--ring:rgba(255,255,255,.10);
+  --s1:#3987e5;--s2:#d95926;--good-ink:#0ca30c;--accent:#3987e5;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--ink);font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+header{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;padding:16px 24px;border-bottom:1px solid var(--ring);background:var(--surface)}
+h1{font-size:18px;margin:0}
+.tag{color:var(--ink-2);font-size:13px}
+.controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+input,textarea{font:inherit;color:var(--ink);background:var(--page);border:1px solid var(--ring);border-radius:8px;padding:7px 10px}
+textarea{width:100%;min-height:76px;resize:vertical}
+button{font:inherit;border-radius:8px;border:1px solid var(--ring);background:var(--surface);color:var(--ink);padding:7px 12px;cursor:pointer}
+button.primary{background:var(--accent);color:var(--accent-ink);border-color:transparent;font-weight:600}
+button:disabled{opacity:.5;cursor:progress}
+main{max-width:1180px;margin:0 auto;padding:20px 16px 48px;display:grid;gap:16px;grid-template-columns:1fr}
+@media(min-width:960px){main{grid-template-columns:3fr 2fr}.span2{grid-column:1/-1}}
+.card{background:var(--surface);border:1px solid var(--ring);border-radius:12px;padding:16px;min-width:0}
+.card h2{font-size:14px;margin:0 0 4px}
+.sub{color:var(--muted);font-size:12px;margin:0 0 12px}
+.kpis{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+.kpi .v{font-size:26px;font-weight:650;font-variant-numeric:tabular-nums}
+.kpi .l{color:var(--ink-2);font-size:12px}
+.kpi .d{color:var(--muted);font-size:12px}
+.legend{display:flex;gap:16px;font-size:12px;color:var(--ink-2);margin-bottom:6px}
+.sw{display:inline-block;width:14px;height:3px;border-radius:2px;vertical-align:middle;margin-right:6px}
+.chartwrap{position:relative}
+svg{display:block;width:100%;height:auto;overflow:visible}
+.tip{position:absolute;pointer-events:none;background:var(--surface);border:1px solid var(--ring);border-radius:8px;padding:8px 10px;font-size:12px;box-shadow:0 4px 16px rgba(0,0,0,.12);display:none;min-width:170px}
+.tip b{font-variant-numeric:tabular-nums}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--grid);vertical-align:top}
+th{color:var(--muted);font-weight:500;font-size:12px}
+td.num{font-variant-numeric:tabular-nums}
+.pill{display:inline-flex;gap:4px;align-items:center;font-size:12px;border-radius:999px;padding:1px 8px;border:1px solid var(--ring);white-space:nowrap}
+.ok{color:var(--good-ink)} .bad{color:var(--critical)}
+.rule{border:1px solid var(--ring);border-radius:10px;padding:10px 12px;margin-bottom:10px}
+.rule .top{display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap}
+.rule .msg{margin:6px 0;color:var(--ink)}
+.rule .meta{color:var(--muted);font-size:12px}
+.rule .act{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+.tabs{display:flex;gap:6px;margin-bottom:10px}
+.tabs button[aria-pressed="true"]{border-color:var(--accent);color:var(--accent);font-weight:600}
+.dims{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin:10px 0}
+.dim{border:1px solid var(--ring);border-radius:8px;padding:6px 8px;font-size:12px}
+.bar{height:4px;border-radius:2px;background:var(--grid);margin-top:4px;overflow:hidden}
+.bar>i{display:block;height:100%;background:var(--s1)}
+.ask{margin:6px 0 0;padding-left:18px}
+.lex{font-size:13px;margin-top:8px;color:var(--ink-2)}
+.empty{color:var(--muted);font-size:13px;padding:8px 0}
+.banner{display:none;margin:0 24px;padding:8px 12px;border-radius:8px;border:1px solid var(--critical);color:var(--critical);background:var(--surface)}
+.audit li{font-size:12px;color:var(--ink-2);margin-bottom:4px;list-style:none}
+.audit{padding:0;margin:0;max-height:260px;overflow:auto}
+code{font-size:12px}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>VibeGuard</h1>
+    <div class="tag">Agents may tighten their own leash. Only humans loosen it.</div>
+  </div>
+  <div class="controls">
+    <label for="actor" class="tag">Acting as</label>
+    <input id="actor" size="16" value="human:jesse" aria-label="Human actor id">
+    <button class="primary" id="runBtn">Run evaluation</button>
+    <button id="themeBtn" aria-label="Toggle light or dark theme">Theme</button>
+  </div>
+</header>
+<div class="banner" id="banner" role="alert"></div>
+<main>
+  <section class="card span2"><div class="kpis" id="kpis"></div></section>
+
+  <section class="card">
+    <h2>Pass rate by run</h2>
+    <p class="sub">Held-out tasks never write rules; only human-approved rules change these numbers. Whiskers are Wilson 95% intervals.</p>
+    <div class="legend"><span><i class="sw" style="background:var(--s1)"></i>Held-out</span><span><i class="sw" style="background:var(--s2)"></i>Train</span></div>
+    <div class="chartwrap"><svg id="chart" viewBox="0 0 640 270" role="img" aria-labelledby="chartTitle"><title id="chartTitle">Held-out and train pass rate by run</title></svg><div class="tip" id="tip"></div></div>
+  </section>
+
+  <section class="card">
+    <h2>Rule queue</h2>
+    <p class="sub">Rules are written by failed evals. Nothing is deleted; reverts stay on the record.</p>
+    <div class="tabs" role="group" aria-label="Rule status">
+      <button data-tab="proposed" aria-pressed="true">Proposed</button>
+      <button data-tab="approved" aria-pressed="false">Approved</button>
+      <button data-tab="reverted" aria-pressed="false">Reverted</button>
+    </div>
+    <div id="rules"></div>
+  </section>
+
+  <section class="card">
+    <h2>COSTAR check</h2>
+    <p class="sub">Paste a vibecoder prompt. VibeGuard asks at most two questions, most expensive gaps first.</p>
+    <textarea id="prompt" placeholder="make it take payments"></textarea>
+    <div style="margin-top:8px"><button id="costarBtn">Check prompt</button></div>
+    <div id="costar"></div>
+  </section>
+
+  <section class="card">
+    <h2>Audit log</h2>
+    <p class="sub">Every propose, approve and revert, newest first.</p>
+    <ul class="audit" id="audit"></ul>
+  </section>
+
+  <section class="card span2">
+    <h2 id="runTitle">Latest run</h2>
+    <p class="sub">Per-task trace: attempts, which rule blocked a candidate before it shipped, and the judge's verdict.</p>
+    <div id="runTable" style="overflow-x:auto"></div>
+  </section>
+
+  <section class="card span2">
+    <h2>All runs</h2>
+    <p class="sub">The table behind the chart.</p>
+    <div id="runsTable" style="overflow-x:auto"></div>
+  </section>
+</main>
+<script>
+const $ = s => document.querySelector(s);
+let state = {runs: [], rules: [], audit: []}, tab = "proposed";
+const store = {get(k,d){try{return localStorage.getItem(k) ?? d}catch{return d}}, set(k,v){try{localStorage.setItem(k,v)}catch{}}};
+$("#actor").value = store.get("vg.actor", "human:jesse");
+$("#actor").addEventListener("change", e => store.set("vg.actor", e.target.value.trim()));
+const savedTheme = store.get("vg.theme", "");
+if (savedTheme) document.documentElement.dataset.theme = savedTheme;
+$("#themeBtn").onclick = () => {
+  const dark = document.documentElement.dataset.theme ? document.documentElement.dataset.theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+  document.documentElement.dataset.theme = dark ? "light" : "dark"; store.set("vg.theme", document.documentElement.dataset.theme); drawChart();
+};
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+function err(msg){const b=$("#banner"); b.textContent=msg; b.style.display=msg?"block":"none";}
+async function api(path, opts={}){
+  const r = await fetch(path, {headers:{"Content-Type":"application/json"}, ...opts});
+  const body = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(body.detail || `${r.status} ${r.statusText}`);
+  return body;
+}
+async function refresh(){
+  try { state = await api("/api/summary"); err(""); render(); }
+  catch(e){ err("Can't reach the VibeGuard API: " + e.message); }
+}
+function pct(x){return Math.round(x*100) + "%"}
+function render(){ kpis(); drawChart(); rules(); audit(); runsTable(); latestRun(); }
+
+function kpis(){
+  const r = state.runs.at(-1), first = state.runs[0];
+  const active = state.rules.filter(x => x.status === "approved").length;
+  const proposed = state.rules.filter(x => x.status === "proposed").length;
+  if (!r){ $("#kpis").innerHTML = `<div class="empty">No runs yet. Click <b>Run evaluation</b> to record a baseline.</div>`; return; }
+  const tile = (v,l,d) => `<div class="kpi"><div class="v">${v}</div><div class="l">${l}</div><div class="d">${d}</div></div>`;
+  $("#kpis").innerHTML =
+    tile(`${r.heldout.passed}/${r.heldout.total}`, "Held-out pass", `95% CI ${pct(r.heldout.ci95[0])}–${pct(r.heldout.ci95[1])} · baseline ${first.heldout.passed}/${first.heldout.total}`) +
+    tile(`${r.train.passed}/${r.train.total}`, "Train pass", `baseline ${first.train.passed}/${first.train.total}`) +
+    tile(active, "Rules active", `${proposed} awaiting a human`) +
+    tile(r.blocks, "Blocked before shipping", `in ${esc(r.run_id)}`) +
+    tile(r.false_blocks, "False blocks", r.false_blocks ? `<span class="bad">✗ good code blocked</span>` : `<span class="ok">✓ none</span>`);
+}
+
+function drawChart(){
+  const svg = $("#chart"), runs = state.runs, W=640, H=270, m={l:44,r:96,t:22,b:34};
+  const cs = getComputedStyle(document.documentElement), c = k => cs.getPropertyValue(k).trim();
+  svg.querySelectorAll(":scope > :not(title)").forEach(n => n.remove());
+  const NS = "http://www.w3.org/2000/svg", el = (t,a,p=svg) => {const n=document.createElementNS(NS,t); for(const k in a) n.setAttribute(k,a[k]); p.appendChild(n); return n;};
+  const iw=W-m.l-m.r, ih=H-m.t-m.b, n=runs.length;
+  const x = i => m.l + (n<=1 ? iw/2 : i*iw/(n-1)), y = v => m.t + ih*(1-v);
+  for (const v of [0,.25,.5,.75,1]){
+    el("line",{x1:m.l,x2:m.l+iw,y1:y(v),y2:y(v),stroke:v===0?c("--axis"):c("--grid"),"stroke-width":1});
+    const t=el("text",{x:m.l-8,y:y(v)+4,"text-anchor":"end","font-size":11,fill:c("--muted")}); t.textContent=pct(v);
+  }
+  if (!n){ const t=el("text",{x:m.l+iw/2,y:m.t+ih/2,"text-anchor":"middle","font-size":13,fill:c("--muted")}); t.textContent="No runs yet"; return; }
+  runs.forEach((r,i) => { const t=el("text",{x:x(i),y:H-12,"text-anchor":"middle","font-size":11,fill:c("--muted")}); t.textContent=r.run_id.replace("run_","Run "); });
+  let prev = [];
+  runs.forEach((r,i) => {
+    const added = r.rules_active.filter(id => !prev.includes(id)); prev = r.rules_active;
+    if (added.length){ const t=el("text",{x:x(i),y:12,"text-anchor":"middle","font-size":10,fill:c("--ink-2")}); t.textContent="+"+added.join(", +"); }
+  });
+  const series = [{k:"heldout",col:c("--s1"),name:"Held-out",ci:true},{k:"train",col:c("--s2"),name:"Train",dash:"5 4"}];
+  for (const s of series){
+    if (s.ci) runs.forEach((r,i) => { const [lo,hi]=r[s.k].ci95; el("line",{x1:x(i),x2:x(i),y1:y(lo),y2:y(hi),stroke:s.col,"stroke-width":1.5,"stroke-opacity":.55}); for (const v of [lo,hi]) el("line",{x1:x(i)-4,x2:x(i)+4,y1:y(v),y2:y(v),stroke:s.col,"stroke-width":1.5,"stroke-opacity":.55}); });
+    el("polyline",{points:runs.map((r,i)=>`${x(i)},${y(r[s.k].pass_rate)}`).join(" "),fill:"none",stroke:s.col,"stroke-width":2,"stroke-linejoin":"round","stroke-linecap":"round",...(s.dash?{"stroke-dasharray":s.dash}:{})});
+    runs.forEach((r,i) => el("circle",{cx:x(i),cy:y(r[s.k].pass_rate),r:4.5,fill:s.col,stroke:c("--surface"),"stroke-width":2}));
+    const last=runs.at(-1), lt=el("text",{x:x(n-1)+12,y:y(last[s.k].pass_rate)+(s.k==="train"?14:-6),"font-size":12,fill:c("--ink-2")});
+    lt.textContent=`${s.name} ${last[s.k].passed}/${last[s.k].total}`;
+  }
+  const cross = el("line",{x1:0,x2:0,y1:m.t,y2:m.t+ih,stroke:c("--axis"),"stroke-width":1,visibility:"hidden"});
+  const tip = $("#tip");
+  runs.forEach((r,i) => {
+    const w = n<=1 ? iw : iw/(n-1), hit = el("rect",{x:x(i)-w/2,y:m.t,width:w,height:ih,fill:"transparent"});
+    const show = ev => {
+      cross.setAttribute("x1",x(i)); cross.setAttribute("x2",x(i)); cross.setAttribute("visibility","visible");
+      tip.innerHTML = `<div><b>${esc(r.run_id)}</b></div>
+        <div>Held-out <b>${r.heldout.passed}/${r.heldout.total}</b> (${pct(r.heldout.ci95[0])}–${pct(r.heldout.ci95[1])})</div>
+        <div>Train <b>${r.train.passed}/${r.train.total}</b></div>
+        <div>Rules active: ${esc(r.rules_active.join(", ") || "none")}</div>
+        <div>Blocked before shipping: ${r.blocks} · false blocks: ${r.false_blocks}</div>`;
+      tip.style.display="block";
+      const box=svg.getBoundingClientRect(), sx=box.width/W, px=x(i)*sx;
+      tip.style.left = Math.min(Math.max(px+12, 0), box.width-190) + "px"; tip.style.top = "8px";
+    };
+    hit.addEventListener("mousemove", show); hit.addEventListener("focus", show);
+    hit.addEventListener("mouseleave", () => {tip.style.display="none"; cross.setAttribute("visibility","hidden");});
+  });
+}
+
+function rules(){
+  document.querySelectorAll(".tabs button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.tab===tab)));
+  const list = state.rules.filter(r => r.status === tab);
+  if (!list.length){ $("#rules").innerHTML = `<div class="empty">${tab==="proposed" ? "No rules waiting. Failed training tasks propose new ones after a run." : "None."}</div>`; return; }
+  $("#rules").innerHTML = list.map(r => `
+    <div class="rule">
+      <div class="top"><b>${esc(r.rule_id)} · ${esc(r.category)}</b>
+        <span class="pill">${r.status==="approved"?'<span class="ok">✓</span> approved':r.status==="reverted"?"↺ reverted":"● proposed"} · v${r.version}</span></div>
+      <div class="msg">${esc(r.user_message)}</div>
+      <div class="meta">From ${esc(r.origin.run_id)} / ${esc(r.origin.task_id)} · proposed by ${esc(r.proposed_by)}${r.approved_by?` · approved by ${esc(r.approved_by)}`:""}</div>
+      <div class="meta"><code>${esc(r.trigger.pattern.slice(0,90))}${r.trigger.pattern.length>90?"…":""}</code></div>
+      <div class="act">
+        ${r.status==="proposed" ? `<button class="primary" data-approve="${esc(r.rule_id)}">Approve</button>` : ""}
+        ${r.status==="approved" ? `<input placeholder="Reason for revert" data-reason="${esc(r.rule_id)}" size="22"><button data-revert="${esc(r.rule_id)}">Revert</button>` : ""}
+      </div>
+    </div>`).join("");
+}
+document.querySelector(".tabs").addEventListener("click", e => { if (e.target.dataset.tab){ tab = e.target.dataset.tab; rules(); } });
+$("#rules").addEventListener("click", async e => {
+  const id = e.target.dataset.approve || e.target.dataset.revert; if (!id) return;
+  e.target.disabled = true;
+  try {
+    const actor = $("#actor").value.trim();
+    if (e.target.dataset.approve) await api(`/api/rules/${id}/approve`, {method:"POST", body:JSON.stringify({actor})});
+    else await api(`/api/rules/${id}/revert`, {method:"POST", body:JSON.stringify({actor, reason: document.querySelector(`[data-reason="${id}"]`)?.value || ""})});
+    await refresh();
+  } catch(ex){ err(ex.message); e.target.disabled = false; }
+});
+
+function audit(){
+  const items = [...state.audit].reverse();
+  $("#audit").innerHTML = items.length ? items.map(a => `<li><b>${esc(a.event)}</b> ${esc(a.rule_id)} v${esc(a.version)} by ${esc(a.actor)} · ${esc(new Date(a.at).toLocaleTimeString())}${a.reason?` · “${esc(a.reason)}”`:""}</li>`).join("") : `<li class="empty">No governance events yet.</li>`;
+}
+
+function runsTable(){
+  if (!state.runs.length){ $("#runsTable").innerHTML = `<div class="empty">No runs yet.</div>`; return; }
+  $("#runsTable").innerHTML = `<table><thead><tr><th>Run</th><th>Rules active</th><th>Train</th><th>Held-out</th><th>Held-out 95% CI</th><th>Attempts</th><th>Blocked</th><th>False blocks</th><th>Proposed</th></tr></thead><tbody>${
+    state.runs.map(r => `<tr><td>${esc(r.run_id)}</td><td>${esc(r.rules_active.join(", ") || "none")}</td><td class="num">${r.train.passed}/${r.train.total}</td><td class="num">${r.heldout.passed}/${r.heldout.total}</td><td class="num">${pct(r.heldout.ci95[0])}–${pct(r.heldout.ci95[1])}</td><td class="num">${r.paid_attempts}</td><td class="num">${r.blocks}</td><td class="num">${r.false_blocks}</td><td>${esc(r.proposed.join(", ") || "none")}</td></tr>`).join("")
+  }</tbody></table>`;
+}
+
+async function latestRun(){
+  const r = state.runs.at(-1);
+  if (!r){ $("#runTable").innerHTML = `<div class="empty">No runs yet.</div>`; return; }
+  $("#runTitle").textContent = `Latest run · ${r.run_id}`;
+  try {
+    const d = await api(`/api/runs/${encodeURIComponent(r.run_id)}`);
+    $("#runTable").innerHTML = `<table><thead><tr><th>Task</th><th>Split</th><th>Attempts</th><th>Blocked by</th><th>Verdict</th></tr></thead><tbody>${
+      d.traces.map(t => `<tr><td>${esc(t.task_id)}</td><td>${esc(t.split)}</td><td class="num">${t.attempts}</td><td>${esc(t.blocked_by.join(", ") || "—")}</td><td>${t.verdict.passed ? '<span class="ok">✓ pass</span>' : `<span class="bad">✗ fail</span> <span class="tag">${esc(t.verdict.failures.join(", "))}</span>`}</td></tr>`).join("")
+    }</tbody></table>`;
+  } catch(ex){ $("#runTable").innerHTML = `<div class="empty">Couldn't load ${esc(r.run_id)}: ${esc(ex.message)}</div>`; }
+}
+
+$("#runBtn").onclick = async e => {
+  e.target.disabled = true; e.target.textContent = "Running…";
+  try { await api("/api/runs", {method:"POST"}); tab = "proposed"; await refresh(); }
+  catch(ex){ err(ex.message); }
+  finally { e.target.disabled = false; e.target.textContent = "Run evaluation"; }
+};
+
+$("#costarBtn").onclick = async () => {
+  const prompt = $("#prompt").value.trim(); if (!prompt) return;
+  try {
+    const d = await api("/api/costar", {method:"POST", body:JSON.stringify({prompt})});
+    const miss = new Set(d.missing);
+    $("#costar").innerHTML = `<div class="dims">${d.scores.map(s => `<div class="dim"><div>${miss.has(s.dimension) ? '<span class="bad">✗</span>' : '<span class="ok">✓</span>'} ${esc(s.dimension)} <span class="tag">${pct(s.p_present)}</span></div><div class="bar"><i style="width:${pct(s.p_present)}"></i></div></div>`).join("")}</div>
+      ${d.ask.length ? `<b>VibeGuard would ask:</b><ul class="ask">${d.ask.map(q => `<li>${esc(q)}</li>`).join("")}</ul>` : `<div class="ok">✓ Nothing to ask. This prompt is ready.</div>`}
+      ${d.lexicon.length ? `<div class="lex"><b>Words engineers use:</b> ${d.lexicon.map(l => `“${esc(l.phrase)}” → <b>${esc(l.canonical_label)}</b>. ${esc(l.teach)}`).join("<br>")}</div>` : ""}`;
+  } catch(ex){ err(ex.message); }
+};
+
+refresh();
+addEventListener("resize", drawChart);
+</script>
+</body>
+</html>

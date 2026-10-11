@@ -62,6 +62,17 @@ python -m vibeguard --wiki /tmp/vg revert VG-0001 --as human:yourname --reason "
 python -m vibeguard costar "make it take payments"
 ```
 
+### Workbench dashboard
+
+```bash
+pip install -e ".[api]"
+# Windows PowerShell: $env:VIBEGUARD_WIKI="wiki"   macOS/Linux: export VIBEGUARD_WIKI=wiki
+uvicorn --factory vibeguard.api:create_app --port 8000
+# open http://localhost:8000  (API docs at /docs)
+```
+
+Run an evaluation, approve or revert proposed rules as a named human, re-run, and watch held-out pass rate move. `VIBEGUARD_STORE=atlas` switches storage to the Atlas backend once it lands at `vibeguard.storage.atlas.AtlasStore`.
+
 ## Results
 
 Scores are reported only from runs executed in the current checkout. See [`docs/RESULTS.md`](docs/RESULTS.md).
