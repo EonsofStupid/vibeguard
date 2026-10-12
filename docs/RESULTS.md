@@ -48,6 +48,10 @@ Per-query detail: `artifacts/recall-at-k.json`.
 
 Caveats observed: the hosted embedding service rate-limits bursts (`retry later`, handled with backoff); the gateway briefly answered `NO_WORKSPACE_ENDPOINT` (~15:05–15:45 PT) while the runtime reported `ready`, then recovered. The bridge is additive: with the gateway down the loop runs with `context: null` per task.
 
+## Raindrop instrumentation (verified 17:04 PT)
+
+`web/src/server/harness/raindrop.ts`: `rule_proposed` → `trackAi` (input = the failing attempt + evidence, output = the rule), human approve/revert → `trackSignal` on that event (POSITIVE / NEGATIVE, actor in the comment), `harness_run` → `trackAi` (input = rules active, output = held-out metric). After one replay of the loop the Raindrop project shows 5 `harness_run` + 3 `rule_proposed` events from `agent:vibeguard` and `Rule approved` signals on VG-0002 and VG-0003 (`docs/demo/slides/slide-05-raindrop-events.png`). VG-0001's signal fired before Raindrop had ingested its proposal event and was dropped — signals must trail their event by a beat; fix: delay or retry the signal.
+
 ## Memory types on Atlas
 
 | Agent Engine type | Collection | Documents after the demo |

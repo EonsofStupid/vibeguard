@@ -41,7 +41,13 @@ html {
 }
 body {
   position: relative;
-  background: var(--color-ink);
+  background:
+    radial-gradient(1200px 600px at 15% -10%, rgba(91, 140, 255, 0.10), transparent 60%),
+    radial-gradient(900px 500px at 95% 0%, rgba(61, 220, 151, 0.07), transparent 55%),
+    var(--color-ink);
+  background-attachment: fixed;
   color: var(--color-text);
   font-family: var(--font-sans);
 }
+mark { color: inherit; }
+::selection { background: rgba(91, 140, 255, 0.35); }

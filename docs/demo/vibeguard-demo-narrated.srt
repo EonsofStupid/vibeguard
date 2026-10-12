@@ -1,0 +1,44 @@
+1
+00:00:00,986 --> 00:00:06,576
+VibeGuard: a harness that learns its own guardrails. Only a human can loosen them.
+
+2
+00:00:09,144 --> 00:00:14,284
+Memory seeded into Atlas: failure taxonomy and lexicon, embedded for vector search.
+
+3
+00:00:14,484 --> 00:00:19,834
+Run one, no rules: most tasks fail. Each failure proposes a rule.
+
+4
+00:00:20,034 --> 00:00:25,314
+A human approves. Every transition writes a receipt; nothing is deleted.
+
+5
+00:00:25,514 --> 00:00:29,254
+Held-out tasks are only measured, never used to write rules.
+
+6
+00:00:29,454 --> 00:00:36,394
+Three rules live: runaway paid calls, hardcoded secrets, destructive commands. Zero false blocks.
+
+7
+00:00:36,594 --> 00:00:40,654
+Held-out pass rate: one of six to six of six over five runs.
+
+8
+00:00:40,854 --> 00:00:44,834
+Provenance: the failing attempt and the detector, attached to the rule.
+
+9
+00:00:45,034 --> 00:00:48,414
+Every run is episodic memory with per-task traces.
+
+10
+00:00:48,614 --> 00:00:56,964
+COSTAR scores the prompt and emits a form: which questions to ask before money is spent. Vector search maps take payments to payment integration.
+
+11
+00:00:57,164 --> 00:01:05,494
+Four memory types in Atlas, mirrored into Agent Engine memory, deployed on Modelence. Agents tighten their own leash; only humans loosen it.
+

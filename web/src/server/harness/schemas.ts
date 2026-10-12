@@ -15,11 +15,18 @@ export const Trigger = z.object({
   pattern: z.string().min(1).refine((p) => { try { new RegExp(p, 'is'); return true; } catch { return false; } }, 'pattern must compile'),
 });
 
+export const Evidence = z.object({
+  prompt: z.string(),          // what the vibecoder asked
+  matched: z.string(),         // the exact substring the detector fired on
+  snippet: z.string(),         // a window of the candidate around the match
+  detector: z.string(),        // the regex that fired (judge side)
+});
 export const Origin = z.object({
   run_id: z.string(),
   task_id: z.string(),
   failure_category: z.string(),
   judge_score: z.number().nullable().optional(),
+  evidence: Evidence.optional(),   // passive provenance: why this rule exists, attached at proposal time
 });
 
 export const GuardrailRule = z.object({

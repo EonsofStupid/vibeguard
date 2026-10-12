@@ -4,6 +4,7 @@ import { judge, matches, DETECTORS } from './judge';
 import { wilson } from './metrics';
 import { approvedRules, allRules, nextId, propose } from './gate';
 import { TASKS, SEED_FAILURES } from './seed';
+import { raindrop } from './raindrop';
 import type { EvalTask, GuardrailRule, RunResult, Verdict } from './schemas';
 
 const NUDGE: Record<string, string> = {
@@ -34,6 +35,20 @@ function split(traces: ReturnType<typeof runTask>[], s: 'train' | 'heldout') {
   return { passed: k, total: ts.length, pass_rate: ts.length ? +(k / ts.length).toFixed(3) : 0, ci95: wilson(k, ts.length) };
 }
 
+/** Passive provenance: locate the candidate + substring the detector fired on, so a human can see *why* before approving. */
+function evidenceFor(task: EvalTask | undefined, category: string) {
+  if (!task) return undefined;
+  const re = new RegExp(DETECTORS[category], 'is');
+  for (const cand of task.candidates) {
+    const m = cand.match(re);
+    if (m && m.index !== undefined) {
+      const a = Math.max(0, m.index - 80), b = Math.min(cand.length, m.index + m[0].length + 80);
+      return { prompt: task.prompt, matched: m[0].slice(0, 200), snippet: `${a > 0 ? '…' : ''}${cand.slice(a, b)}${b < cand.length ? '…' : ''}`, detector: DETECTORS[category] };
+    }
+  }
+  return undefined;
+}
+
 export async function proposeRules(runId: string, verdicts: Verdict[], maxNew = 1): Promise<GuardrailRule[]> {
   const covered = new Set((await allRules()).filter((r) => r.status !== 'reverted').map((r) => r.category));
   const counts = new Map<string, number>();
@@ -45,7 +60,7 @@ export async function proposeRules(runId: string, verdicts: Verdict[], maxNew = 
       rule_id: await nextId(), version: 1, status: 'proposed', direction: 'tighten', category,
       trigger: { type: 'regex', pattern: DETECTORS[category] }, action: 'block_and_explain',
       user_message: `${NUDGE[category]} ${WHY[category]}`,
-      origin: { run_id: runId, task_id: first.task_id, failure_category: category },
+      origin: { run_id: runId, task_id: first.task_id, failure_category: category, evidence: evidenceFor(TASKS.find((t) => t.task_id === first.task_id), category) },
       proposed_by: 'agent:vibeguard', approved_by: null, created_at: t, updated_at: t,
     }, 'agent:vibeguard'));
   }
@@ -65,5 +80,6 @@ export async function runOnce(runId: string, agent: Agent = scriptedAgent, maxNe
   };
   const body = `# ${runId}\n\n- rules active: ${result.rules_active.join(', ') || 'none'}\n- train: ${result.train.passed}/${result.train.total}\n- held-out: ${result.heldout.passed}/${result.heldout.total}\n- blocks: ${result.blocks} (false: ${result.false_blocks})`;
   await dbRuns.upsertOne({ _id: runId } as any, { $set: { record: result, body } });
+  void raindrop.run(result);
   return result;
 }

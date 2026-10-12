@@ -5,6 +5,7 @@
  */
 import { dbRules, dbAudit } from './db';
 import { GuardrailRule, isHuman, type GuardrailRule as Rule } from './schemas';
+import { raindrop } from './raindrop';
 
 export class GateError extends Error {}
 const now = () => new Date().toISOString();
@@ -35,18 +36,18 @@ async function load(ruleId: string): Promise<Rule> {
 export async function propose(rule: Rule, actor: string): Promise<Rule> {
   if (rule.direction === 'loosen' && !isHuman(actor)) throw new GateError('Agents may tighten their own leash; only humans loosen it.');
   const r = { ...rule, status: 'proposed' as const, proposed_by: actor, updated_at: now() };
-  await save(r, 'propose', actor); return r;
+  await save(r, 'propose', actor); void raindrop.proposed(r); return r;
 }
 export async function approve(ruleId: string, actor: string): Promise<Rule> {
   if (!isHuman(actor)) throw new GateError('Only a human can approve a rule change.');
   const rule = await load(ruleId);
   if (rule.status !== 'proposed') throw new GateError(`${ruleId} is ${rule.status}, not proposed.`);
   const r = { ...rule, status: 'approved' as const, approved_by: actor, version: rule.version + 1, updated_at: now() };
-  await save(r, 'approve', actor); return r;
+  await save(r, 'approve', actor); void raindrop.decided(r, 'approve', actor); return r;
 }
 export async function revert(ruleId: string, actor: string, reason = ''): Promise<Rule> {
   if (!isHuman(actor)) throw new GateError('Reverting loosens the leash; only a human can do it.');
   const rule = await load(ruleId);
   const r = { ...rule, status: 'reverted' as const, version: rule.version + 1, updated_at: now() };
-  await save(r, 'revert', actor, reason); return r;
+  await save(r, 'revert', actor, reason); void raindrop.decided(r, 'revert', actor, reason); return r;
 }
