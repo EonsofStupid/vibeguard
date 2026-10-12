@@ -30,3 +30,10 @@ export const dbCostar = new Store('costar', {        // short-term: prompt captu
   schema: { record: schema.object({}), body: schema.string().optional() },
   indexes: [],
 });
+export const dbRaindrop = new Store('raindrop_log', {   // RRFlow on Raindrop: every emission (interaction, tool span, signal, self-diagnosis, eval run) mirrored here
+  schema: {
+    at: schema.string(), kind: schema.string(), name: schema.string(), event_id: schema.string(), status: schema.string(),
+    ref: schema.object({}).optional(), sentiment: schema.string().optional(), detail: schema.string().optional(), url: schema.string().optional(), error: schema.string().optional(),
+  },
+  indexes: [{ key: { at: -1 } }, { key: { event_id: 1 } }],
+});

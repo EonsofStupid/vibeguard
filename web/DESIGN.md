@@ -1,37 +1,59 @@
 # Design Style Guide — VibeGuard
 
-STATUS: ESTABLISHED (v2, 2026-10-11 evening)
+STATUS: ESTABLISHED (2026-10-11)
 
-## Aesthetic direction
+## Aesthetic Direction
 
-**An inspection ledger.** VibeGuard records decisions about an AI on a leash: what it proposed, what a human allowed, what it cost. The page is a ruled ledger on engineering paper, not a dashboard: content sits on rule lines, status is a word in a colour, evidence is stamped inline. One flourish only — the held-out curve plotted on graph paper as the hero, drawn once on load.
+**Control room / audit ledger.** VibeGuard is a governance surface: judges and
+founders read pass rates, confidence intervals, rule diffs and receipts. The UI
+is dark, dense and typographic — closer to an ops console than a marketing
+page. Every state has one color and one word (proposed / approved / reverted,
+pass / fail). Nothing decorative; the data is the decoration.
 
-Rejected on purpose: the dark console with an acid accent, the rounded-card kit with uniform shadows, tracked all-caps labels, middle-dot meta strings, monospace for anything that is not code.
+Rationale: the audience (hackathon judges, an experienced founder) scans
+numbers under time pressure. High contrast, monospace for identifiers and
+regex, and a single accent per semantic state make the gate's one-way ratchet
+legible at a glance.
 
-## Colour (`@theme` tokens in `src/client/index.css`)
+## Color Palette (`@theme` tokens in `src/client/index.css`)
 
-| Token | Value | Use |
+| Token | Value | Usage |
 |---|---|---|
-| `paper` | `#edf0f3` | page |
-| `sheet` | `#ffffff` | ledger sheets, inputs, chart |
-| `ink` | `#16213a` | text, rules between sections, the held-out line |
-| `rule` | `#c6ced8` | ledger lines, graph paper |
-| `mute` | `#5b6578` | secondary text |
-| `flag` | `#e8590c` | proposed / needs a human; evidence rail |
-| `pass` | `#1f7a4d` | approved / pass |
-| `stop` | `#9b1b30` | reverted / fail / wrongly blocked |
-| `wash` | `#dde3ea` | quiet fills (code blocks, meters) |
+| `--color-ink` | `#0f1115` | page background |
+| `--color-surface` | `#171a21` | cards |
+| `--color-raised` | `#1f232c` | inputs, table rows, hover |
+| `--color-line` | `#2a2f3a` | borders, chart grid |
+| `--color-text` | `#e6e8ee` | primary text |
+| `--color-muted` | `#8b93a7` | secondary text, axis labels |
+| `--color-signal` | `#f5b73d` | **proposed** rules, warnings, run markers |
+| `--color-verdant` | `#3ddc97` | **approved** rules, pass, human actions |
+| `--color-ember` | `#ff5c5c` | **reverted** rules, fail, false blocks |
+| `--color-cobalt` | `#5b8cff` | held-out series, links, focus ring |
 
-Status words are fixed: *Needs a decision* (flag), *In force* (pass), *Reverted* (stop).
+Semantic mapping is fixed: amber = agent proposed (waiting on a human),
+green = human approved, red = human reverted. Never reuse these for anything
+else.
 
 ## Typography
 
-One family: **Archivo** (variable width 62–125, weight 300–800). Headlines use the wide axis (`.display`: `font-stretch 112%`, 700, tight leading); body is 400/500 at 15px; numbers are tabular. **JetBrains Mono** appears only where the content is code (triggers, evidence). No typographic labels above content; headings are sentence case.
+- Display / headings: **Space Grotesk** (Google Fonts) — `font-display`
+- Body: **IBM Plex Sans** (Google Fonts) — `font-sans`
+- Identifiers, regex, numbers in tables: **JetBrains Mono** — `font-mono`
 
-## Layout
+Headings are tight (`tracking-tight`), uppercase micro-labels use
+`text-[11px] tracking-[0.14em] uppercase text-muted`.
 
-Max width 1180px, left-aligned. Statement headline (≤ 62ch body) with the three actions on the right → full-width hero: chart on graph paper with four facts in a ruled column → two-column workbench: Decisions ledger (7/12) | What the agent remembers + Ask the harness (5/12) → tabs for Runs, Receipts, Prompt check. Sections are separated by ink rules, rows by `rule` lines; corners are square except 2px on controls.
+## Spacing & Radius
 
-## Motion
+- Page gutter 16px on phones, 24px from `md:`; max content width 1200px.
+- Cards: `rounded-xl` (12px), 1px `border-line`, 16–20px padding.
+- Controls: `rounded-md` (6px). Badges: `rounded-full`.
+- Vertical rhythm in 8px steps (`space-y-2/4/6`).
 
-The held-out line draws once on load (`--animate-draw`, 1.2s). Everything else responds only to the person's action. `prefers-reduced-motion` disables the draw.
+## Motion & Animation
+
+- `--animate-fade-up`: cards and rows enter with a 320ms translate+fade. Apply
+  `animate-fade-up` to new content; stagger with inline `animation-delay`.
+- `--animate-pulse-soft`: running state indicator (eval in progress).
+- Transitions on hover/focus are 150ms `transition-colors`. No motion on data
+  updates besides the fade; charts redraw instantly.

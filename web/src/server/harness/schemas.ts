@@ -85,11 +85,26 @@ export const TaskTrace = z.object({
   task_id: z.string(), split: Split, attempts: z.number(), blocked_by: z.array(z.string()), false_blocks: z.number(), verdict: Verdict,
 });
 
+/** What Raindrop knows about this run: the interaction (traces + signals) and, with a Query SDK key, the eval run + before/after comparison. */
+export const RaindropRun = z.object({
+  interaction_id: z.string().optional(),            // Raindrop event id of the harness.run interaction (= run_id)
+  eval_status: z.enum(['off', 'pending', 'complete', 'failed']).default('off'),
+  eval_run_id: z.string().optional(),               // Raindrop eval run id (replay of this run through the eval suite)
+  eval_url: z.string().optional(),
+  compare_url: z.string().optional(),               // Raindrop before/after comparison with the previous run
+  compare_with: z.string().optional(),              // previous run_id
+  verdicts: z.object({ passed: z.number(), failed: z.number(), total: z.number() }).optional(),
+  error: z.string().optional(),
+  at: z.string().optional(),
+});
+export type RaindropRun = z.infer<typeof RaindropRun>;
+
 export const RunResult = z.object({
   run_id: z.string(), at: z.string(), rules_active: z.array(z.string()),
   train: SplitMetrics, heldout: SplitMetrics,
   paid_attempts: z.number(), blocks: z.number(), false_blocks: z.number(),
   proposed: z.array(z.string()), traces: z.array(TaskTrace),
+  raindrop: RaindropRun.optional(),
 });
 export type RunResult = z.infer<typeof RunResult>;
 

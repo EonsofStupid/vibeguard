@@ -4,7 +4,8 @@ import { judge, matches, DETECTORS } from './judge';
 import { wilson } from './metrics';
 import { approvedRules, allRules, nextId, propose } from './gate';
 import { TASKS, SEED_FAILURES } from './seed';
-import { raindrop } from './raindrop';
+import { raindrop, beginRun, AGENT } from './raindrop';
+import { evalRun } from './raindrop-evals';
 import { RunResult, type EvalTask, type GuardrailRule, type Verdict } from './schemas';
 
 const NUDGE: Record<string, string> = {
@@ -70,22 +71,31 @@ export async function proposeRules(runId: string, verdicts: Verdict[], maxNew = 
     const evidence = evidenceFor(TASKS.find((t) => t.task_id === first.task_id), category);
     const prior = reverted.get(category)?.slice(-1)[0];
     const narrowed = prior && evidence ? { type: 'regex' as const, pattern: escapeRe(evidence.matched) } : null;
-    out.push(await propose({
+    const rule = await propose({
       rule_id: await nextId(), version: 1, status: 'proposed', direction: 'tighten', category,
       trigger: narrowed ?? { type: 'regex', pattern: DETECTORS[category] }, action: narrowed ? 'warn' : 'block_and_explain',
       user_message: narrowed
         ? `${NUDGE[category]} (Narrower than ${prior!.rule_id}, which you reverted: this only matches the exact pattern that failed.)`
         : `${NUDGE[category]} ${WHY[category]}`,
       origin: { run_id: runId, task_id: first.task_id, failure_category: category, evidence, ...(prior ? { derived_from: `reverted:${prior.rule_id}` } : {}) },
-      proposed_by: 'agent:vibeguard', approved_by: null, created_at: t, updated_at: t,
-    }, 'agent:vibeguard'));
+      proposed_by: AGENT, approved_by: null, created_at: t, updated_at: t,
+    }, AGENT);
+    if (prior) void raindrop.narrowed(rule, prior.rule_id);   // RRFlow: the NEGATIVE signal shaped this edit
+    out.push(rule);
   }
   return out;
 }
 
 export async function runOnce(runId: string, agent: Agent = scriptedAgent, maxNewRules = 1): Promise<RunResult> {
   const rules = await approvedRules();
-  const traces = TASKS.map((t) => runTask(t, agent, rules));
+  // one Raindrop interaction per run: a tool span per task, the judge's verdict on each, the metric as the output
+  const trace = await beginRun(runId, rules);
+  const traces: ReturnType<typeof runTask>[] = [];
+  for (const t of TASKS) {
+    const tr = await trace.task(t, () => runTask(t, agent, rules));
+    trace.judge(t, tr.verdict, tr.attempts);
+    traces.push(tr);
+  }
   const trainFails = traces.filter((t) => t.split === 'train' && !t.verdict.passed).map((t) => t.verdict);
   const proposed = await proposeRules(runId, trainFails, maxNewRules);
   const result: RunResult = {
@@ -93,12 +103,23 @@ export async function runOnce(runId: string, agent: Agent = scriptedAgent, maxNe
     train: split(traces, 'train'), heldout: split(traces, 'heldout'),
     paid_attempts: traces.reduce((a, t) => a + t.attempts, 0), blocks: traces.reduce((a, t) => a + t.blocked_by.length, 0),
     false_blocks: traces.reduce((a, t) => a + t.false_blocks, 0), proposed: proposed.map((r) => r.rule_id), traces,
+    raindrop: { interaction_id: runId, eval_status: raindrop.evalsEnabled() ? 'pending' : 'off' },
   };
   const body = `# ${runId}\n\n- rules active: ${result.rules_active.join(', ') || 'none'}\n- train: ${result.train.passed}/${result.train.total}\n- held-out: ${result.heldout.passed}/${result.heldout.total}\n- blocks: ${result.blocks} (false: ${result.false_blocks})`;
   await dbRuns.upsertOne({ _id: runId } as any, { $set: { record: result, body } });
-  void raindrop.run(result);
-  // self-grading: compare with the previous run and emit the verdict as a signal (RSI you can chart)
+  await trace.finish(result);
+  // the agent diagnoses its own training failures, one signal per (task, category) — Raindrop's Self Diagnostics tab
+  for (const t of traces) if (t.split === 'train' && !t.verdict.passed) {
+    const task = TASKS.find((x) => x.task_id === t.task_id);
+    for (const c of t.verdict.failures) {
+      const ev = evidenceFor(task, c);
+      void raindrop.diagnose(runId, c, `${t.task_id} "${task?.prompt ?? ''}": ${ev?.matched ?? (c === 'correctness.failed_tests' ? `missing ${task?.required.join(', ')}` : c)}`, { task_id: t.task_id, attempts: t.attempts, blocked_by: t.blocked_by.join(',') });
+    }
+  }
+  // self-grading: compare with the previous run and emit the verdict as an agent signal (RSI you can chart)
   const prev: any = (await dbRuns.fetch({ _id: { $ne: runId } } as any, { sort: { 'record.at': -1 }, limit: 1 }))[0];
   if (prev?.record) void raindrop.selfGrade(result, RunResult.parse(prev.record));
+  // replay the run as a Raindrop eval run (+ before/after comparison) in the background; the run record is patched when it lands
+  void evalRun(runId, rules, agent, runTask);
   return result;
 }

@@ -68,3 +68,18 @@ export function overlapResolve(text: string, k = 3, entries: LexiconEntry[] = SE
     .map((e) => { const p = tokens(`${e.phrase} ${e.canonical_label}`); const inter = [...q].filter((w) => p.has(w)).length; const union = new Set([...q, ...p]).size; return { record: e, score: union ? +(inter / union).toFixed(4) : 0 }; })
     .filter((x) => x.score > 0).sort((a, b) => b.score - a.score).slice(0, k);
 }
+
+/** Where the data actually lives: cluster host, database, collection counts — read from the MongoDB driver at request time. */
+export async function storageFacts(stores: { name: string; coll: () => any }[]): Promise<{ host: string; database: string; atlas: boolean; collections: { name: string; documents: number }[] }> {
+  const first = stores[0].coll();
+  const db: any = first.s?.db ?? first.db;
+  const database: string = first.dbName ?? db?.databaseName ?? 'unknown';
+  let host = 'unknown';
+  try {
+    const hello = await db.admin().command({ hello: 1 });
+    host = hello.me ?? (hello.hosts?.[0] ?? 'unknown');
+  } catch { /* keep unknown */ }
+  const collections = [];
+  for (const s of stores) collections.push({ name: s.name, documents: await s.coll().countDocuments({}) });
+  return { host, database, atlas: /mongodb\.net$/i.test(host.split(':')[0]), collections };
+}

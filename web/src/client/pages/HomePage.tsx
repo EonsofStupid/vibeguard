@@ -1,14 +1,15 @@
 /**
- * VibeGuard — the inspection ledger. The harness loop, live from Atlas:
- * attempt → judge → propose → human decides → next run loads the rules.
+ * VibeGuard judges' view: the harness loop, live from Atlas.
+ * run → judge → propose rule → human gate → next run loads it.
  */
-import { useCallback, useEffect, useMemo, useState, type ButtonHTMLAttributes, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ButtonHTMLAttributes, type CSSProperties, type ReactNode } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { modelenceMutation, modelenceQuery } from '@modelence/react-query';
 import { useSession } from 'modelence/client';
 import { toast } from 'react-hot-toast';
 import Page from '@/client/components/Page';
 import { cn } from '@/client/lib/utils';
+import SelfImprovementPanel, { Tip, type RaindropStatus } from '@/client/components/SelfImprovement';
 
 // ---- wire types (mirror src/server/harness/schemas.ts) ----
 type Metrics = { passed: number; total: number; pass_rate: number; ci95: [number, number] };
@@ -16,18 +17,18 @@ type Run = {
   run_id: string; at: string; rules_active: string[]; train: Metrics; heldout: Metrics;
   paid_attempts: number; blocks: number; false_blocks: number; proposed: string[];
 };
-type Evidence = { prompt: string; matched: string; snippet: string; detector: string };
 type Rule = {
   rule_id: string; version: number; status: 'proposed' | 'approved' | 'reverted'; direction: 'tighten' | 'loosen';
   category: string; trigger: { type: string; pattern: string }; action: string; user_message: string;
-  origin: { run_id: string; task_id: string; failure_category: string; evidence?: Evidence; derived_from?: string }; proposed_by: string;
+  origin: { run_id: string; task_id: string; failure_category: string; evidence?: { prompt: string; matched: string; snippet: string; detector: string }; derived_from?: string }; proposed_by: string;
   approved_by?: string | null; created_at: string; updated_at: string;
 };
 type Audit = { at: string; event: string; rule_id: string; version: number; status: string; actor: string; reason?: string };
 type Summary = { runs: Run[]; rules: Rule[]; audit: Audit[] };
 type Trace = { task_id: string; split: 'train' | 'heldout'; attempts: number; blocked_by: string[]; false_blocks: number; verdict: { passed: boolean; failures: string[] } };
 type RunDetail = Run & { traces: Trace[] };
-type MemoryTypes = { procedural: number; episodic: number; semantic: number; taxonomic: number; receipts: number; knowledge?: number; raindrop?: string };
+type MemoryTypes = { procedural: number; episodic: number; semantic: number; taxonomic: number; receipts: number; knowledge?: number; raindrop?: RaindropStatus };
+type Storage = { host: string; database: string; atlas: boolean; collections: { name: string; documents: number }[] };
 type Explanation = { id: string; kind: string; title: string; text: string; path?: string; swebok: string; layman?: string; score: number };
 type UiCard = { id: string; question: string; options: { label: string; text: string }[]; freeText: boolean };
 type Costar = {
@@ -39,30 +40,35 @@ type Costar = {
 };
 
 const pct = (x: number) => `${Math.round(x * 100)}%`;
-const when = (iso: string) => iso.replace('T', ' ').slice(0, 16);
-const STATUS: Record<Rule['status'], { word: string; cls: string }> = {
-  proposed: { word: 'Needs a decision', cls: 'text-flag' },
-  approved: { word: 'In force', cls: 'text-pass' },
-  reverted: { word: 'Reverted', cls: 'text-stop' },
+const STATUS_CLASS: Record<Rule['status'], string> = {
+  proposed: 'bg-signal/15 text-signal border-signal/40',
+  approved: 'bg-verdant/15 text-verdant border-verdant/40',
+  reverted: 'bg-ember/15 text-ember border-ember/40',
 };
 
-function H2({ children, aside }: { children: ReactNode; aside?: ReactNode }) {
-  return (
-    <div className="flex items-baseline justify-between gap-4 border-b border-ink pb-2">
-      <h2 className="wide text-base font-semibold">{children}</h2>
-      {aside && <div className="text-sm text-mute">{aside}</div>}
-    </div>
-  );
+function Label({ children }: { children: ReactNode }) {
+  return <div className="text-[11px] uppercase tracking-[0.14em] text-muted">{children}</div>;
 }
-
-function Btn({ className, kind = 'quiet', ...props }: ButtonHTMLAttributes<HTMLButtonElement> & { kind?: 'primary' | 'quiet' | 'approve' | 'revert' }) {
-  const kinds = {
-    primary: 'bg-ink text-paper hover:bg-ink/90',
-    quiet: 'border border-ink/40 bg-sheet text-ink hover:border-ink',
-    approve: 'bg-pass text-sheet hover:bg-pass/90',
-    revert: 'border border-stop/60 bg-sheet text-stop hover:bg-stop/10',
+function Card({ className, children, style }: { className?: string; children: ReactNode; style?: CSSProperties }) {
+  return <section style={style} className={cn('animate-fade-up rounded-xl border border-line bg-surface/90 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.03),0_8px_30px_rgba(0,0,0,0.25)] backdrop-blur transition-colors hover:border-muted/60 md:p-5', className)}>{children}</section>;
+}
+function Btn({ className, tone = 'neutral', ...props }: ButtonHTMLAttributes<HTMLButtonElement> & { tone?: 'neutral' | 'go' | 'stop' | 'accent' }) {
+  const tones = {
+    neutral: 'border-line bg-raised text-text hover:border-muted',
+    go: 'border-verdant/50 bg-verdant/15 text-verdant hover:bg-verdant/25',
+    stop: 'border-ember/50 bg-ember/10 text-ember hover:bg-ember/20',
+    accent: 'border-cobalt/60 bg-cobalt/20 text-text hover:bg-cobalt/30',
   };
-  return <button type="button" {...props} className={cn('inline-flex items-center gap-1.5 rounded-sm px-3 py-1.5 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-45', kinds[kind], className)} />;
+  return (
+    <button
+      type="button"
+      {...props}
+      className={cn(
+        'inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cobalt',
+        tones[tone], className,
+      )}
+    />
+  );
 }
 
 export default function HomePage() {
@@ -73,203 +79,250 @@ export default function HomePage() {
 
   const summary = useQuery({ ...modelenceQuery<Summary>('harness.summary'), refetchInterval: 6000 });
   const memory = useQuery({ ...modelenceQuery<MemoryTypes>('harness.memoryTypes'), refetchInterval: 6000 });
+  const storage = useQuery({ ...modelenceQuery<Storage>('harness.storage'), refetchInterval: 15000 });
 
-  const runEval = useMutation({ ...modelenceMutation<Run>('harness.runEvaluation'), onSuccess: (r) => { toast.success(`${r.run_id}: held-out ${r.heldout.passed} of ${r.heldout.total}`); refresh(); } });
-  const seed = useMutation({ ...modelenceMutation<{ failures: number; lexiconEmbedded: number }>('harness.seed'), onSuccess: (r) => { toast.success(`Seeded ${r.failures} failure categories, ${r.lexiconEmbedded} lexicon entries`); refresh(); } });
-  const reset = useMutation({ ...modelenceMutation('harness.reset'), onSuccess: () => { toast('Rules, runs and receipts cleared'); setArmed(false); refresh(); } });
-  const approve = useMutation({ ...modelenceMutation<Rule>('harness.approveRule'), onSuccess: (r) => { toast.success(`${r.rule_id} approved`); refresh(); } });
-  const revert = useMutation({ ...modelenceMutation<Rule>('harness.revertRule'), onSuccess: (r) => { toast(`${r.rule_id} reverted`); refresh(); } });
+  const runEval = useMutation({ ...modelenceMutation<Run>('harness.runEvaluation'), onSuccess: (r) => { toast.success(`${r.run_id}: held-out ${r.heldout.passed}/${r.heldout.total}`); refresh(); } });
+  const seed = useMutation({ ...modelenceMutation<{ failures: number; lexiconEmbedded: number }>('harness.seed'), onSuccess: (r) => { toast.success(`seeded ${r.failures} failure categories, embedded ${r.lexiconEmbedded} lexicon entries`); refresh(); } });
+  const reset = useMutation({ ...modelenceMutation('harness.reset'), onSuccess: () => { toast('rules, runs, receipts cleared'); setArmed(false); refresh(); } });
+  const approve = useMutation({ ...modelenceMutation<Rule>('harness.approveRule'), onSuccess: (r) => { toast.success(`${r.rule_id} approved by ${actor} (v${r.version})`); refresh(); } });
+  const revert = useMutation({ ...modelenceMutation<Rule>('harness.revertRule'), onSuccess: (r) => { toast(`${r.rule_id} reverted (v${r.version})`); refresh(); } });
   const [armed, setArmed] = useState(false);
-  const [tab, setTab] = useState<'runs' | 'receipts' | 'prompt'>('runs');
+  const [openRun, setOpenRun] = useState<string | null>(null);
 
   const runs = summary.data?.runs ?? [];
   const rules = summary.data?.rules ?? [];
   const audit = summary.data?.audit ?? [];
   const latest = runs[runs.length - 1];
   const first = runs[0];
-  const proposed = rules.filter((r) => r.status === 'proposed');
-  const next = !runs.length
-    ? 'Seed memory, then run an evaluation. The first run has no rules; its failures are the training signal.'
-    : proposed.length ? `${proposed.length} proposed rule${proposed.length > 1 ? 's' : ''} waiting for you. Approve or revert, then run again.`
-    : latest.heldout.pass_rate < 1 ? 'Run again. Rules in force load automatically; the held-out line shows whether they generalise.'
-    : 'Held-out at 100%. Revert a rule and run again to see the harness propose a narrower one.';
+  const proposedCount = rules.filter((r) => r.status === 'proposed').length;
 
   return (
-    <Page seo={{ title: 'Ledger' }}>
-      {/* statement */}
-      <section className="grid gap-6 md:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] md:items-end">
+    <Page seo={{ title: 'Harness' }}>
+      {/* headline */}
+      <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
-          <h1 className="display max-w-[14ch] text-[2.1rem] md:text-[3rem]">
-            Guardrails the agent writes from its own failures. <span className="text-mute">Only a human switches one on.</span>
-          </h1>
-          <p className="mt-4 max-w-[62ch] text-[15px] leading-relaxed text-ink/85">
-            Sixteen frozen coding tasks. A fixed judge grades every attempt. Each failure on a training task becomes a proposed rule with its evidence attached.
-            You approve or revert; the next run loads only rules in force. Held-out tasks are measured, never used to write rules.
+          <div className="mb-2 flex flex-wrap items-center gap-2 text-[11px] font-mono uppercase tracking-[0.14em] text-muted">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-verdant/40 bg-verdant/10 px-2 py-0.5 text-verdant"><span className="size-1.5 animate-pulse-soft rounded-full bg-verdant" />live</span>
+            <span>MongoDB Atlas</span><span className="text-line">·</span><span>Atlas Agent Engine memory</span><span className="text-line">·</span><span>Modelence Cloud</span><span className="text-line">·</span><span>Raindrop</span>
+          </div>
+          <h1 className="font-display text-2xl font-bold tracking-tight md:text-4xl">Recursive harness, <span className="text-verdant">governed</span>.</h1>
+          <p className="mt-1 max-w-2xl text-sm text-muted">
+            The agent attempts coding tasks → a deterministic judge scores them → each failure category writes a <em>proposed</em> guardrail →
+            a human approves or reverts → the next run loads the approved rules. Agents may tighten their own leash; only humans loosen it.
           </p>
         </div>
-        <div className="md:justify-self-end">
-          <div className="flex flex-wrap gap-2 md:justify-end">
-            <Btn kind="primary" onClick={() => runEval.mutate({})} disabled={runEval.isPending}>{runEval.isPending ? 'Running…' : 'Run evaluation'}</Btn>
-            <Btn onClick={() => seed.mutate({})} disabled={seed.isPending}>Seed memory</Btn>
-            {armed ? <Btn kind="revert" onClick={() => reset.mutate({})} disabled={reset.isPending}>Confirm reset</Btn> : <Btn onClick={() => setArmed(true)}>Reset</Btn>}
-          </div>
-          <p className="mt-3 max-w-[48ch] text-sm text-mute md:text-right">{next}</p>
-        </div>
-      </section>
-
-      {/* hero: the curve */}
-      <section className="mt-8 border-y border-ink bg-sheet">
-        <div className="grid gap-0 md:grid-cols-[minmax(0,8fr)_minmax(0,4fr)]">
-          <div className="p-4 md:p-6">
-            <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <h2 className="wide text-base font-semibold">Held-out pass rate by run</h2>
-              <span className="text-sm text-mute">95% Wilson interval on every point</span>
-            </div>
-            <PassRateChart runs={runs} />
-            <p className="mt-1 text-xs text-mute">Solid line: held-out tasks. Dashed: training tasks. Labels mark rules added (+) or removed (−) before that run.</p>
-          </div>
-          <dl className="ledger border-t border-ink/80 md:border-l md:border-t-0">
-            <Fact label="Held-out now" value={latest ? pct(latest.heldout.pass_rate) : '—'} note={latest ? `${latest.heldout.passed} of ${latest.heldout.total}, interval ${pct(latest.heldout.ci95[0])} to ${pct(latest.heldout.ci95[1])}` : 'no runs yet'} />
-            <Fact label="Change since run 1" value={runs.length > 1 ? `${latest.heldout.pass_rate >= first.heldout.pass_rate ? '+' : ''}${Math.round((latest.heldout.pass_rate - first.heldout.pass_rate) * 100)} pts` : '—'} note={runs.length > 1 ? `${first.run_id} to ${latest.run_id}` : 'needs two runs'} />
-            <Fact label="Correct answers blocked" value={latest ? String(latest.false_blocks) : '—'} note={latest ? `${latest.blocks} blocks across ${latest.paid_attempts} paid attempts` : ''} tone={latest && latest.false_blocks > 0 ? 'text-stop' : 'text-pass'} />
-            <Fact label="Rules in force" value={String(rules.filter((r) => r.status === 'approved').length)} note={`${proposed.length} proposed, ${rules.filter((r) => r.status === 'reverted').length} reverted`} tone={proposed.length ? 'text-flag' : undefined} />
-          </dl>
-        </div>
-      </section>
-
-      {/* workbench: decisions | memory */}
-      <section className="mt-10 grid gap-10 md:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
-        <div>
-          <H2 aside={<>deciding as <span className="text-ink">{actor}</span></>}>Decisions</H2>
-          {rules.length === 0 ? (
-            <p className="py-6 text-sm text-mute">No rules yet. Run an evaluation; failures on the training split propose the first one.</p>
+        <div className="flex flex-wrap gap-2">
+          <Btn tone="accent" onClick={() => runEval.mutate({})} disabled={runEval.isPending}>
+            {runEval.isPending ? <span className="animate-pulse-soft">running…</span> : '▶ Run evaluation'}
+          </Btn>
+          <Btn onClick={() => seed.mutate({})} disabled={seed.isPending}>Seed memory</Btn>
+          {armed ? (
+            <Btn tone="stop" onClick={() => reset.mutate({})} disabled={reset.isPending}>Confirm reset</Btn>
           ) : (
-            <ol className="ledger">
-              {[...rules].sort((a, b) => (a.status === 'proposed' ? -1 : 1) - (b.status === 'proposed' ? -1 : 1) || a.rule_id.localeCompare(b.rule_id)).map((r) => (
-                <li key={r.rule_id} className="grid gap-3 py-4 md:grid-cols-[8.5rem_minmax(0,1fr)_auto]">
-                  <div>
-                    <div className={cn('text-sm font-semibold', STATUS[r.status].cls)}>{STATUS[r.status].word}</div>
-                    <div className="mt-1 font-mono text-xs text-mute">{r.rule_id} v{r.version}</div>
-                    <div className="mt-1 text-xs text-mute">{r.category.replace('.', ' / ').replace(/_/g, ' ')}</div>
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-[15px] leading-snug">{r.user_message}</p>
-                    <p className="mt-1.5 text-xs text-mute">
-                      Proposed by the agent from {r.origin.run_id}, task {r.origin.task_id}
-                      {r.approved_by ? <>; approved by <span className="text-ink">{r.approved_by}</span></> : null}
-                      {r.origin.derived_from ? <>; narrowed after <span className="text-ink">{r.origin.derived_from.replace('reverted:', '')}</span> was reverted</> : null}.
-                      {' '}Action: {r.action.replace(/_/g, ' ')}.
-                    </p>
-                    <Evidence rule={r} />
-                  </div>
-                  <div className="flex gap-2 md:flex-col md:items-stretch">
-                    {r.status === 'proposed' && <Btn kind="approve" onClick={() => approve.mutate({ ruleId: r.rule_id, actor })} disabled={approve.isPending}>Approve</Btn>}
-                    {r.status !== 'reverted' && <Btn kind="revert" onClick={() => revert.mutate({ ruleId: r.rule_id, actor, reason: 'reverted from the ledger' })} disabled={revert.isPending}>Revert</Btn>}
-                  </div>
-                </li>
-              ))}
-            </ol>
+            <Btn onClick={() => setArmed(true)}>Reset</Btn>
           )}
         </div>
+      </div>
 
-        <div className="space-y-10">
-          <div>
-            <H2 aside={memory.data?.raindrop === 'on' ? 'mirrored to Raindrop' : undefined}>What the agent remembers</H2>
-            <MemoryTable m={memory.data} />
+      {/* operator guidance: the harness tells the human what the loop needs next */}
+      <NextStep runs={runs} proposed={proposedCount} />
+
+      {/* the loop, as a strip: observe → judge → propose → govern → reload */}
+      <LoopStrip runs={runs} rules={rules} audit={audit} />
+
+      {/* KPIs */}
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <Kpi label={<Tip tip="Pass rate on the 6 held-out tasks — never used to write rules, only measured. Wilson 95% interval because N is small.">Held-out pass rate</Tip>} value={latest ? pct(latest.heldout.pass_rate) : '—'} sub={latest ? `${latest.heldout.passed}/${latest.heldout.total} · CI ${pct(latest.heldout.ci95[0])}–${pct(latest.heldout.ci95[1])}` : 'no runs yet'} tone="cobalt" />
+        <Kpi label={<Tip tip="Held-out pass rate, first run → latest run. Rules are only ever added by human approval, so this is the human-governed effect of the loop.">Improvement</Tip>} value={latest && first && runs.length > 1 ? `${latest.heldout.pass_rate >= first.heldout.pass_rate ? '+' : ''}${Math.round((latest.heldout.pass_rate - first.heldout.pass_rate) * 100)} pts` : '—'} sub={runs.length > 1 ? `${first.run_id} → ${latest.run_id}` : 'needs ≥2 runs'} tone="verdant" />
+        <Kpi label={<Tip tip="A false block = a guardrail stopped an attempt the judge would have passed. The cost of an over-broad rule; zero is the target.">False blocks</Tip>} value={latest ? String(latest.false_blocks) : '—'} sub={latest ? `${latest.blocks} blocks · ${latest.paid_attempts} paid attempts` : ''} tone={latest && latest.false_blocks > 0 ? 'ember' : 'verdant'} />
+        <Kpi label={<Tip tip="Procedural memory: proposed by the agent, approved or reverted only by a human, never deleted (revert sets status and writes a receipt).">Rules</Tip>} value={`${rules.filter((r) => r.status === 'approved').length} live`} sub={`${proposedCount} proposed · ${rules.filter((r) => r.status === 'reverted').length} reverted`} tone="signal" />
+      </div>
+
+      {/* chart + memory */}
+      <div className="grid gap-3 lg:grid-cols-[2fr_1fr]">
+        <Card>
+          <div className="flex items-baseline justify-between">
+            <Label>Pass rate over runs · Wilson 95% CI</Label>
+            <div className="flex gap-3 text-xs text-muted">
+              <span><i className="mr-1 inline-block h-2 w-3 bg-cobalt align-middle" />held-out</span>
+              <span><i className="mr-1 inline-block h-2 w-3 bg-muted align-middle" />train</span>
+              <span><i className="mr-1 inline-block size-2 rotate-45 bg-signal align-middle" />rule approved</span>
+            </div>
           </div>
-          <LearnPanel />
-        </div>
-      </section>
+          <PassRateChart runs={runs} />
+        </Card>
+        <Card>
+          <Label>Memory types · Atlas collections</Label>
+          <MemoryStrip m={memory.data} />
+          {storage.data && (
+            <div className="mt-3 rounded-md border border-line bg-ink/60 px-3 py-2 font-mono text-[11px] text-muted">
+              <div><span className={storage.data.atlas ? 'text-verdant' : 'text-ember'}>{storage.data.atlas ? '● MongoDB Atlas' : '● not Atlas'}</span> {storage.data.host}</div>
+              <div>db <span className="text-text">{storage.data.database}</span> · {storage.data.collections.map((c) => `${c.name} ${c.documents}`).join(' · ')}</div>
+              <div className="text-[10px]">read from the driver on every refresh, not from this page</div>
+            </div>
+          )}
+          <p className="mt-3 text-xs text-muted">
+            procedural = versioned rules · episodic = run traces · semantic = lexicon (Voyage <span className="font-mono">voyage-code-4</span>, 1024-d, <span className="font-mono">$vectorSearch</span>) · taxonomic = failure categories · receipts = audit log · knowledge = the harness's own code + learned rules, vector-indexed (dogfooding)
+          </p>
+        </Card>
+      </div>
 
-      {/* detail tabs */}
-      <section className="mt-12">
-        <div className="flex gap-6 border-b border-ink">
-          {([['runs', 'Runs'], ['receipts', 'Receipts'], ['prompt', 'Prompt check']] as const).map(([k, label]) => (
-            <button key={k} type="button" onClick={() => setTab(k)} className={cn('-mb-px border-b-2 pb-2 text-sm font-medium', tab === k ? 'border-ink text-ink' : 'border-transparent text-mute hover:text-ink')}>{label}</button>
-          ))}
-        </div>
-        {tab === 'runs' && <RunsTable runs={runs} />}
-        {tab === 'receipts' && <Receipts audit={audit} />}
-        {tab === 'prompt' && <CostarPanel />}
-      </section>
+      {/* RRFlow on Raindrop: the harness's own improvement, observed and replayed */}
+      <SelfImprovementPanel />
 
-      <p className="mt-12 max-w-[72ch] text-xs leading-relaxed text-mute">
-        What this does not show: the agent is a scripted replay of recorded attempts, not a live model; the judge and the rule writer share the same detectors, so the loop proves governance and held-out generalisation, not detector discovery; six held-out tasks is a small sample, hence the intervals. State is MongoDB Atlas, mirrored into Atlas Agent Engine memory; the governance pattern follows RRFlow ADR-0002, governed durable effects.
+      {/* rule queue */}
+      <Card>
+        <div className="flex items-center justify-between">
+          <Label>Rule queue · the human gate</Label>
+          <span className="text-xs text-muted">acting as <span className="font-mono text-verdant">{actor}</span></span>
+        </div>
+        {rules.length === 0 ? (
+          <p className="mt-3 text-sm text-muted">No rules yet. Run an evaluation — failures on the train split propose the first one.</p>
+        ) : (
+          <ul className="mt-3 divide-y divide-line">
+            {[...rules].sort((a, b) => (a.status === 'proposed' ? -1 : 1) - (b.status === 'proposed' ? -1 : 1) || a.rule_id.localeCompare(b.rule_id)).map((r) => (
+              <li key={r.rule_id} className={cn('my-2 flex flex-col gap-2 rounded-lg border-l-2 bg-raised/40 px-3 py-3 md:flex-row md:items-start md:justify-between', r.status === 'approved' ? 'border-verdant' : r.status === 'reverted' ? 'border-ember' : 'border-signal')}>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-mono text-sm">{r.rule_id}</span>
+                    <span className={cn('rounded-full border px-2 py-0.5 text-[11px] font-medium', STATUS_CLASS[r.status])}>{r.status}</span>
+                    <span className="font-mono text-xs text-muted">v{r.version} · {r.direction} · {r.action}</span>
+                    <span className="rounded bg-raised px-1.5 py-0.5 font-mono text-[11px] text-muted">{r.category}</span>
+                    {r.origin.derived_from && <span className="rounded-full border border-cobalt/40 bg-cobalt/10 px-2 py-0.5 text-[11px] text-cobalt" title="shaped by a human revert signal">narrowed after {r.origin.derived_from.replace('reverted:', '')} was reverted</span>}
+                  </div>
+                  <p className="mt-1 text-sm">{r.user_message}</p>
+                  <div className="mt-1 truncate font-mono text-[11px] text-muted" title={r.trigger.pattern}>
+                    {r.trigger.type}: {r.trigger.pattern}
+                  </div>
+                  <div className="mt-0.5 text-[11px] text-muted">
+                    origin {r.origin.run_id} / {r.origin.task_id} · proposed by <span className="font-mono">{r.proposed_by}</span>
+                    {r.approved_by ? <> · approved by <span className="font-mono text-verdant">{r.approved_by}</span></> : null}
+                  </div>
+                  {r.origin.evidence && <Evidence e={r.origin.evidence} />}
+                </div>
+                <div className="flex shrink-0 gap-2">
+                  {r.status === 'proposed' && (
+                    <Btn tone="go" onClick={() => approve.mutate({ ruleId: r.rule_id, actor })} disabled={approve.isPending}>Approve</Btn>
+                  )}
+                  {r.status !== 'reverted' && (
+                    <Btn tone="stop" onClick={() => revert.mutate({ ruleId: r.rule_id, actor, reason: 'reverted from dashboard' })} disabled={revert.isPending}>Revert</Btn>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
+
+      {/* costar + audit */}
+      <div className="grid gap-3 lg:grid-cols-2">
+        <CostarPanel />
+        <Card>
+          <Label>Receipts · append-only audit</Label>
+          {audit.length === 0 ? (
+            <p className="mt-3 text-sm text-muted">Every propose / approve / revert writes a receipt here. Nothing is ever deleted.</p>
+          ) : (
+            <ul className="mt-3 max-h-80 space-y-1 overflow-auto font-mono text-xs">
+              {[...audit].reverse().map((a, i) => (
+                <li key={`${a.at}-${i}`} className="flex flex-wrap gap-x-2 border-b border-line/60 py-1">
+                  <span className="text-muted">{a.at.replace('T', ' ').slice(0, 19)}</span>
+                  <span className={cn(a.event === 'approve' ? 'text-verdant' : a.event === 'revert' ? 'text-ember' : 'text-signal')}>{a.event}</span>
+                  <span>{a.rule_id}</span>
+                  <span className="text-muted">v{a.version} → {a.status}</span>
+                  <span className="text-muted">{a.actor}</span>
+                  {a.reason ? <span className="text-muted">“{a.reason}”</span> : null}
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
+      </div>
+
+      {/* dogfooding: the harness explains itself in plain terms */}
+      <LearnPanel />
+
+      {/* runs table */}
+      <Card>
+        <Label>Episodic memory · runs</Label>
+        {runs.length === 0 ? (
+          <p className="mt-3 text-sm text-muted">No runs recorded.</p>
+        ) : (
+          <div className="mt-3 overflow-x-auto">
+            <table className="w-full text-left font-mono text-xs">
+              <thead className="text-muted">
+                <tr>{['run', 'at', 'rules active', 'train', 'held-out', 'CI (held-out)', 'blocks', 'false', 'proposed'].map((h) => <th key={h} className="pb-2 pr-3 font-normal">{h}</th>)}</tr>
+              </thead>
+              <tbody>
+                {runs.map((r) => (
+                  <RunRow key={r.run_id} r={r} open={openRun === r.run_id} onToggle={() => setOpenRun(openRun === r.run_id ? null : r.run_id)} />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
+
+      <p className="pb-6 text-xs text-muted">
+        Honest limits: the judge and the rule writer share the same regex detectors (the loop proves the governance ratchet and
+        held-out generalisation, not detector discovery); the agent is a scripted replay, not a live model; N is small, so every
+        pass rate carries a Wilson interval. Governance pattern cites RRFlow ADR-0002 (governed durable effects).
       </p>
     </Page>
   );
 }
 
-function Fact({ label, value, note, tone }: { label: string; value: string; note?: string; tone?: string }) {
+function LoopStrip({ runs, rules, audit }: { runs: Run[]; rules: Rule[]; audit: Audit[] }) {
+  const latest = runs[runs.length - 1];
+  const stages: { k: string; label: string; value: string; sub: string; tone: string }[] = [
+    { k: '1', label: 'Attempt', value: String(runs.reduce((a, r) => a + r.paid_attempts, 0)), sub: 'paid attempts replayed', tone: 'text-text' },
+    { k: '2', label: 'Judge', value: latest ? `${latest.train.passed + latest.heldout.passed}/16` : '—', sub: 'tasks passing now', tone: 'text-cobalt' },
+    { k: '3', label: 'Propose', value: String(rules.length), sub: 'rules written from failures', tone: 'text-signal' },
+    { k: '4', label: 'Govern', value: String(audit.filter((a) => a.event === 'approve' || a.event === 'revert').length), sub: 'human decisions, receipted', tone: 'text-verdant' },
+    { k: '5', label: 'Reload', value: latest ? String(latest.rules_active.length) : '0', sub: 'rules live next run', tone: 'text-text' },
+  ];
   return (
-    <div className="px-4 py-3 md:px-5">
-      <dt className="text-xs text-mute">{label}</dt>
-      <dd className={cn('display mt-0.5 text-2xl', tone)}>{value}</dd>
-      {note && <dd className="mt-0.5 text-xs text-mute">{note}</dd>}
-    </div>
+    <ol className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+      {stages.map((st, i) => (
+        <li key={st.k} className="relative rounded-lg border border-line bg-surface px-3 py-2">
+          <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.14em] text-muted"><span className="font-mono text-signal">{st.k}</span>{st.label}{i < stages.length - 1 && <span className="ml-auto text-line">→</span>}</div>
+          <div className={cn('font-display text-xl font-bold', st.tone)}>{st.value}</div>
+          <div className="truncate text-[11px] text-muted">{st.sub}</div>
+        </li>
+      ))}
+    </ol>
   );
 }
 
-function Evidence({ rule }: { rule: Rule }) {
+function Evidence({ e }: { e: { prompt: string; matched: string; snippet: string; detector: string } }) {
   const [open, setOpen] = useState(false);
-  const e = rule.origin.evidence;
-  const i = e ? e.snippet.indexOf(e.matched) : -1;
+  const i = e.snippet.indexOf(e.matched);
   return (
-    <div className="mt-2 text-xs">
-      <button type="button" onClick={() => setOpen(!open)} className="text-ink underline decoration-rule underline-offset-4 hover:decoration-ink">
-        {open ? 'Hide evidence' : e ? 'Show the evidence' : 'Show the trigger'}
-      </button>
+    <div className="mt-2">
+      <button type="button" onClick={() => setOpen(!open)} className="text-[11px] text-cobalt underline-offset-2 hover:underline">{open ? '▾ hide' : '▸ why this rule exists'} — evidence from the failing attempt</button>
       {open && (
-        <div className="mt-2 space-y-2 border-l-2 border-flag pl-3">
-          {e && <p>The builder asked: <span className="text-ink/85">“{e.prompt}”</span></p>}
-          {e && (
-            <pre className="overflow-x-auto whitespace-pre-wrap bg-wash p-2 font-mono text-[11px] leading-snug text-ink">
-              {i >= 0 ? <>{e.snippet.slice(0, i)}<mark>{e.matched}</mark>{e.snippet.slice(i + e.matched.length)}</> : e.snippet}
-            </pre>
-          )}
-          <p className="break-all font-mono text-[11px] text-mute">trigger {rule.trigger.type}: {rule.trigger.pattern}</p>
+        <div className="mt-1.5 space-y-1.5 rounded-md border border-line bg-ink p-2.5 text-xs">
+          <div><span className="text-muted">vibecoder asked:</span> “{e.prompt}”</div>
+          <pre className="overflow-x-auto whitespace-pre-wrap rounded bg-raised p-2 font-mono text-[11px] leading-snug">
+            {i >= 0 ? <>{e.snippet.slice(0, i)}<mark className="rounded bg-ember/30 px-0.5 text-text">{e.matched}</mark>{e.snippet.slice(i + e.matched.length)}</> : e.snippet}
+          </pre>
+          <div className="truncate font-mono text-[10px] text-muted" title={e.detector}>detector: {e.detector}</div>
         </div>
       )}
     </div>
   );
 }
 
-function MemoryTable({ m }: { m?: MemoryTypes }) {
-  const rows: [keyof MemoryTypes, string, string][] = [
-    ['procedural', 'Rules', 'versioned guardrails, the leash'],
-    ['episodic', 'Runs', 'every attempt, graded'],
-    ['semantic', 'Lexicon', "the builder's words to engineering terms"],
-    ['taxonomic', 'Failure categories', 'what can go wrong, one signal each'],
-    ['receipts', 'Receipts', 'every decision, never deleted'],
-    ['knowledge', 'Knowledge', 'its own code and lessons, vector-indexed'],
-  ];
+function NextStep({ runs, proposed }: { runs: Run[]; proposed: number }) {
+  const latest = runs[runs.length - 1];
+  let step: string, tone: string;
+  if (!runs.length) { step = 'Seed memory, then Run evaluation. The first run has no rules: expect failures — they are the training signal.'; tone = 'text-cobalt'; }
+  else if (proposed > 0) { step = `${proposed} proposed rule${proposed > 1 ? 's' : ''} waiting on a human. Approve (or revert) in the queue, then run again — the next run loads only approved rules.`; tone = 'text-signal'; }
+  else if (latest.heldout.pass_rate < 1) { step = 'Run evaluation. Approved rules are live now; the held-out curve shows whether they generalise.'; tone = 'text-cobalt'; }
+  else { step = 'Held-out at 100%. Revert a rule and run again to see the gate loosen only by human action — and the curve drop.'; tone = 'text-verdant'; }
   return (
-    <table className="ledger mt-1 w-full text-sm">
-      <tbody className="ledger">
-        {rows.map(([k, label, note]) => (
-          <tr key={k}>
-            <td className="py-2 pr-3 align-top"><div className="font-medium">{label}</div><div className="text-xs text-mute">{note}</div></td>
-            <td className="py-2 text-right align-top text-base">{m ? (m[k] ?? 0) : '…'}</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  );
-}
-
-function RunsTable({ runs }: { runs: Run[] }) {
-  const [open, setOpen] = useState<string | null>(null);
-  if (!runs.length) return <p className="py-6 text-sm text-mute">No runs recorded.</p>;
-  return (
-    <div className="overflow-x-auto">
-      <table className="mt-3 w-full min-w-[760px] text-sm">
-        <thead>
-          <tr className="text-left text-xs text-mute">{['Run', 'When', 'Rules in force', 'Train', 'Held-out', 'Interval', 'Blocks', 'Wrongly blocked', 'Proposed'].map((h) => <th key={h} className="pb-2 pr-4 font-normal">{h}</th>)}</tr>
-        </thead>
-        <tbody className="ledger">
-          {runs.map((r) => <RunRow key={r.run_id} r={r} open={open === r.run_id} onToggle={() => setOpen(open === r.run_id ? null : r.run_id)} />)}
-        </tbody>
-      </table>
+    <div className="flex items-start gap-2 rounded-md border border-line bg-surface/60 px-3 py-2 text-sm">
+      <span className={cn('mt-0.5 font-mono text-[11px] uppercase tracking-[0.14em]', tone)}>next</span>
+      <span>{step}</span>
     </div>
   );
 }
@@ -278,91 +331,39 @@ function RunRow({ r, open, onToggle }: { r: Run; open: boolean; onToggle: () => 
   const detail = useQuery({ ...modelenceQuery<RunDetail>('harness.run', { runId: r.run_id }), enabled: open, staleTime: Infinity });
   return (
     <>
-      <tr className="cursor-pointer hover:bg-sheet" onClick={onToggle}>
-        <td className="py-2 pr-4 font-medium">{r.run_id.replace('run_', 'Run ')}</td>
-        <td className="py-2 pr-4 text-mute">{when(r.at)}</td>
-        <td className="py-2 pr-4">{r.rules_active.join(', ') || 'none'}</td>
-        <td className="py-2 pr-4">{r.train.passed}/{r.train.total}</td>
-        <td className="py-2 pr-4 font-semibold">{r.heldout.passed}/{r.heldout.total}</td>
-        <td className="py-2 pr-4 text-mute">{pct(r.heldout.ci95[0])}–{pct(r.heldout.ci95[1])}</td>
-        <td className="py-2 pr-4">{r.blocks}</td>
-        <td className={cn('py-2 pr-4', r.false_blocks > 0 ? 'text-stop' : 'text-pass')}>{r.false_blocks}</td>
-        <td className="py-2 pr-4 text-flag">{r.proposed.join(', ') || '—'}</td>
+      <tr className="cursor-pointer border-t border-line/60 hover:bg-raised/60" onClick={onToggle} title="show task traces">
+        <td className="py-1.5 pr-3"><span className="mr-1 inline-block w-3 text-muted">{open ? '▾' : '▸'}</span>{r.run_id}</td>
+        <td className="py-1.5 pr-3 text-muted">{r.at.replace('T', ' ').slice(0, 19)}</td>
+        <td className="py-1.5 pr-3">{r.rules_active.join(', ') || '—'}</td>
+        <td className="py-1.5 pr-3">{r.train.passed}/{r.train.total}</td>
+        <td className="py-1.5 pr-3 text-cobalt">{r.heldout.passed}/{r.heldout.total}</td>
+        <td className="py-1.5 pr-3 text-muted">{pct(r.heldout.ci95[0])}–{pct(r.heldout.ci95[1])}</td>
+        <td className="py-1.5 pr-3">{r.blocks}</td>
+        <td className={cn('py-1.5 pr-3', r.false_blocks > 0 ? 'text-ember' : 'text-verdant')}>{r.false_blocks}</td>
+        <td className="py-1.5 pr-3 text-signal">{r.proposed.join(', ') || '—'}</td>
       </tr>
       {open && (
-        <tr><td colSpan={9} className="bg-sheet px-3 py-3">
-          {detail.isLoading ? <span className="text-mute">Loading traces…</span> : (
-            <div className="grid gap-x-6 gap-y-1 text-xs md:grid-cols-2">
-              {(detail.data?.traces ?? []).map((t) => (
-                <div key={t.task_id} className="flex flex-wrap items-baseline gap-x-2 border-b border-rule py-1">
-                  <span className="font-medium">{t.task_id}</span>
-                  <span className="text-mute">{t.split === 'heldout' ? 'held-out' : 'train'}</span>
-                  <span className={t.verdict.passed ? 'text-pass' : 'text-stop'}>{t.verdict.passed ? 'pass' : 'fail'}</span>
-                  <span className="text-mute">{t.attempts} attempt{t.attempts === 1 ? '' : 's'}</span>
-                  {t.blocked_by.length > 0 && <span className="text-flag">blocked by {t.blocked_by.join(', ')}</span>}
-                  {t.false_blocks > 0 && <span className="text-stop">wrongly blocked ×{t.false_blocks}</span>}
-                  {t.verdict.failures.length > 0 && <span className="basis-full text-mute">{t.verdict.failures.join(', ')}</span>}
-                </div>
-              ))}
-            </div>
-          )}
-        </td></tr>
+        <tr className="border-t border-line/40 bg-ink/40">
+          <td colSpan={9} className="px-3 py-2">
+            {detail.isLoading ? <span className="text-muted">loading traces…</span> : (
+              <div className="grid gap-1 md:grid-cols-2">
+                {(detail.data?.traces ?? []).map((t) => (
+                  <div key={t.task_id} className="flex flex-wrap items-center gap-x-2 rounded bg-raised px-2 py-1">
+                    <span>{t.task_id}</span>
+                    <span className={cn('rounded px-1 text-[10px]', t.split === 'heldout' ? 'bg-cobalt/20 text-cobalt' : 'bg-line text-muted')}>{t.split}</span>
+                    <span className={t.verdict.passed ? 'text-verdant' : 'text-ember'}>{t.verdict.passed ? 'pass' : 'fail'}</span>
+                    <span className="text-muted">{t.attempts} attempt{t.attempts === 1 ? '' : 's'}</span>
+                    {t.blocked_by.length > 0 && <span className="text-signal">blocked by {t.blocked_by.join(', ')}</span>}
+                    {t.false_blocks > 0 && <span className="text-ember">false block ×{t.false_blocks}</span>}
+                    {t.verdict.failures.length > 0 && <span className="basis-full text-[11px] text-muted">{t.verdict.failures.join(' · ')}</span>}
+                  </div>
+                ))}
+              </div>
+            )}
+          </td>
+        </tr>
       )}
     </>
-  );
-}
-
-function Receipts({ audit }: { audit: Audit[] }) {
-  if (!audit.length) return <p className="py-6 text-sm text-mute">Every propose, approve and revert writes a receipt here. Nothing is ever deleted.</p>;
-  return (
-    <ol className="ledger mt-1 text-sm">
-      {[...audit].reverse().map((a, i) => (
-        <li key={`${a.at}-${i}`} className="grid gap-x-4 py-2 md:grid-cols-[9rem_6rem_minmax(0,1fr)]">
-          <span className="text-mute">{when(a.at)}</span>
-          <span className={cn('font-medium', a.event === 'approve' ? 'text-pass' : a.event === 'revert' ? 'text-stop' : 'text-flag')}>{a.event === 'approve' ? 'Approved' : a.event === 'revert' ? 'Reverted' : 'Proposed'}</span>
-          <span>{a.rule_id} v{a.version} by {a.actor}{a.reason ? <span className="text-mute"> — {a.reason}</span> : null}</span>
-        </li>
-      ))}
-    </ol>
-  );
-}
-
-function PassRateChart({ runs }: { runs: Run[] }) {
-  const W = 720, H = 260, L = 40, R = 16, T = 34, B = 30;
-  const n = runs.length;
-  const x = (i: number) => (n <= 1 ? (L + W - R) / 2 : L + (i * (W - L - R)) / (n - 1));
-  const y = (p: number) => T + (1 - p) * (H - T - B);
-  const path = (sel: (r: Run) => Metrics) => runs.map((r, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(sel(r).pass_rate).toFixed(1)}`).join(' ');
-  const changes = useMemo(() => runs.map((r, i) => {
-    const prev = new Set(i ? runs[i - 1].rules_active : []);
-    const added = r.rules_active.filter((id) => !prev.has(id));
-    const removed = i ? runs[i - 1].rules_active.filter((id) => !new Set(r.rules_active).has(id)) : [];
-    return { added, removed };
-  }), [runs]);
-  if (!n) return <div className="graph mt-3 flex h-56 items-center justify-center border border-rule text-sm text-mute">Run an evaluation to plot the first point.</div>;
-  return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="mt-3 w-full" role="img" aria-label="Held-out pass rate per run with 95% intervals">
-      {[0, 0.25, 0.5, 0.75, 1].map((g) => (
-        <g key={g}>
-          <line x1={L} x2={W - R} y1={y(g)} y2={y(g)} stroke="var(--color-rule)" />
-          <text x={L - 8} y={y(g) + 4} textAnchor="end" fontSize={11} fill="var(--color-mute)">{pct(g)}</text>
-        </g>
-      ))}
-      <path d={path((r) => r.train)} fill="none" stroke="var(--color-mute)" strokeWidth={1.25} strokeDasharray="3 4" />
-      <path d={path((r) => r.heldout)} fill="none" stroke="var(--color-ink)" strokeWidth={2.5} strokeLinejoin="round" pathLength={1} strokeDasharray={1} className="animate-draw" />
-      {runs.map((r, i) => (
-        <g key={r.run_id}>
-          <line x1={x(i)} x2={x(i)} y1={y(r.heldout.ci95[0])} y2={y(r.heldout.ci95[1])} stroke="var(--color-ink)" strokeOpacity={0.35} />
-          <line x1={x(i) - 4} x2={x(i) + 4} y1={y(r.heldout.ci95[0])} y2={y(r.heldout.ci95[0])} stroke="var(--color-ink)" strokeOpacity={0.35} />
-          <line x1={x(i) - 4} x2={x(i) + 4} y1={y(r.heldout.ci95[1])} y2={y(r.heldout.ci95[1])} stroke="var(--color-ink)" strokeOpacity={0.35} />
-          <circle cx={x(i)} cy={y(r.heldout.pass_rate)} r={4} fill="var(--color-sheet)" stroke="var(--color-ink)" strokeWidth={2} />
-          <circle cx={x(i)} cy={y(r.train.pass_rate)} r={2.5} fill="var(--color-mute)" />
-          <text x={x(i)} y={H - 10} textAnchor="middle" fontSize={11} fill="var(--color-mute)">{r.run_id.replace('run_0', 'run ').replace('run_', 'run ')}</text>
-          {changes[i].added.length > 0 && <text x={x(i)} y={T - 16} textAnchor="middle" fontSize={11} fill="var(--color-pass)">+ {changes[i].added.join(' ')}</text>}
-          {changes[i].removed.length > 0 && <text x={x(i)} y={T - (changes[i].added.length ? 3 : 16)} textAnchor="middle" fontSize={11} fill="var(--color-stop)">− {changes[i].removed.join(' ')}</text>}
-        </g>
-      ))}
-    </svg>
   );
 }
 
@@ -370,34 +371,121 @@ function LearnPanel() {
   const qc = useQueryClient();
   const [draft, setDraft] = useState('why did it block my retry loop?');
   const [query, setQuery] = useState('');
-  const q = useQuery({ ...modelenceQuery<{ hits: Explanation[]; resolver: string }>('harness.explain', { query, k: 4 }), enabled: query.length > 0, staleTime: Infinity });
-  const index = useMutation({ ...modelenceMutation<{ indexed: number; kinds: Record<string, number> }>('harness.indexKnowledge'), onSuccess: (r) => { toast.success(`Indexed ${r.indexed} units`); qc.invalidateQueries({ predicate: (x) => String(x.queryKey[0]).startsWith('harness.') }); } });
-  const KIND: Record<string, string> = { module: 'its own code', export: 'its own code', rule: 'a rule it learned', lexicon: 'vocabulary', failure: 'a failure category' };
+  const q = useQuery({ ...modelenceQuery<{ hits: Explanation[]; resolver: string }>('harness.explain', { query, k: 5 }), enabled: query.length > 0, staleTime: Infinity });
+  const index = useMutation({ ...modelenceMutation<{ indexed: number; kinds: Record<string, number> }>('harness.indexKnowledge'), onSuccess: (r) => { toast.success(`indexed ${r.indexed} units: ${Object.entries(r.kinds).map(([k, v]) => `${k} ${v}`).join(', ')}`); qc.invalidateQueries({ predicate: (x) => String(x.queryKey[0]).startsWith('harness.') }); } });
+  const KIND: Record<string, string> = { module: 'bg-cobalt/20 text-cobalt', export: 'bg-raised text-muted', rule: 'bg-verdant/15 text-verdant', lexicon: 'bg-signal/15 text-signal', failure: 'bg-ember/15 text-ember' };
   return (
-    <div>
-      <H2 aside={<button type="button" onClick={() => index.mutate({})} disabled={index.isPending} className="underline decoration-rule underline-offset-4 hover:decoration-ink">{index.isPending ? 'Indexing…' : 'Re-index its code'}</button>}>Ask the harness about itself</H2>
+    <Card>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <Label>Learn · the harness explains itself (own code + learned rules, vector-indexed)</Label>
+        <Btn onClick={() => index.mutate({})} disabled={index.isPending}>{index.isPending ? 'indexing…' : 'Index my codebase'}</Btn>
+      </div>
       <form className="mt-3 flex gap-2" onSubmit={(e) => { e.preventDefault(); if (draft.trim()) setQuery(draft.trim()); }}>
-        <input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="ask in your own words"
-          className="min-w-0 flex-1 rounded-sm border border-ink/40 bg-sheet px-3 py-1.5 text-sm placeholder:text-mute focus:border-ink focus:outline-none" />
-        <Btn kind="primary" type="submit" disabled={!draft.trim() || q.isFetching}>{q.isFetching ? 'Searching…' : 'Explain'}</Btn>
+        <input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="ask in your own words…"
+          className="min-w-0 flex-1 rounded-md border border-line bg-raised px-3 py-2 text-sm text-text placeholder:text-muted focus:border-cobalt focus:outline-none" />
+        <Btn tone="accent" type="submit" disabled={!draft.trim() || q.isFetching}>{q.isFetching ? 'searching…' : 'Explain'}</Btn>
       </form>
-      <p className="mt-1.5 text-xs text-mute">It answers from its own source code, its vocabulary and every rule it has learned, by vector search over Atlas.</p>
       {q.data && (
-        <ol className="ledger mt-3">
-          {q.data.hits.length === 0 && <li className="py-3 text-sm text-mute">Nothing indexed yet. Use “Re-index its code”.</li>}
+        <div className="mt-3 space-y-2">
+          <div className="font-mono text-[11px] text-muted">resolver: {q.data.resolver}</div>
+          {q.data.hits.length === 0 && <p className="text-sm text-muted">Nothing indexed yet — click “Index my codebase”.</p>}
           {q.data.hits.map((h) => (
-            <li key={h.id} className="py-3">
-              <div className="flex items-baseline justify-between gap-3">
-                <span className="text-sm font-semibold">{h.title}</span>
-                <span className="shrink-0 text-xs text-mute">{KIND[h.kind] ?? h.kind}</span>
+            <div key={h.id} className="rounded-md border border-line bg-raised/60 p-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className={cn('rounded px-1.5 py-0.5 font-mono text-[10px]', KIND[h.kind] ?? 'bg-raised text-muted')}>{h.kind}</span>
+                <span className="text-sm font-medium">{h.title}</span>
+                <span className="ml-auto font-mono text-[11px] text-muted">{h.score.toFixed(3)}</span>
               </div>
-              {h.layman && <p className="mt-1 text-sm leading-snug">{h.layman}</p>}
-              <p className="mt-1 text-xs text-mute">{h.path ? `${h.path} — ` : ''}{h.swebok}</p>
-            </li>
+              {h.layman && <p className="mt-1.5 text-sm">{h.layman}</p>}
+              <p className="mt-1 text-xs text-muted">{h.text.length > 240 ? `${h.text.slice(0, 240)}…` : h.text}</p>
+              <div className="mt-1.5 flex flex-wrap gap-x-3 font-mono text-[10px] text-muted">
+                {h.path && <span>{h.path}</span>}
+                <span>SWEBOK: {h.swebok}</span>
+              </div>
+            </div>
           ))}
-        </ol>
+        </div>
       )}
-    </div>
+    </Card>
+  );
+}
+
+function Kpi({ label, value, sub, tone }: { label: ReactNode; value: string; sub?: string; tone: 'cobalt' | 'verdant' | 'ember' | 'signal' }) {
+  const color = { cobalt: 'text-cobalt', verdant: 'text-verdant', ember: 'text-ember', signal: 'text-signal' }[tone];
+  return (
+    <Card className="p-3 md:p-4">
+      <Label>{label}</Label>
+      <div className={cn('mt-1 font-display text-2xl font-bold tracking-tight md:text-3xl', color)}>{value}</div>
+      {sub ? <div className="mt-0.5 truncate font-mono text-[11px] text-muted">{sub}</div> : null}
+    </Card>
+  );
+}
+
+function MemoryStrip({ m }: { m?: MemoryTypes }) {
+  const rows: [Exclude<keyof MemoryTypes, 'raindrop'>, string][] = [
+    ['procedural', 'rules'], ['episodic', 'runs'], ['semantic', 'lexicon'], ['taxonomic', 'failures'], ['receipts', 'audit'], ['knowledge', 'knowledge'],
+  ];
+  return (
+    <ul className="mt-3 space-y-1.5">
+      {rows.map(([k, coll]) => (
+        <li key={k} className="flex items-center justify-between rounded-md bg-raised px-3 py-1.5 text-sm">
+          <span>{k} <span className="font-mono text-xs text-muted">· {coll}</span></span>
+          <span className="font-mono">{m ? (m[k] ?? 0) : '…'}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function PassRateChart({ runs }: { runs: Run[] }) {
+  const W = 640, H = 236, L = 36, R = 12, T = 40, B = 28;
+  const n = runs.length;
+  const x = (i: number) => (n <= 1 ? (L + W - R) / 2 : L + (i * (W - L - R)) / (n - 1));
+  const y = (p: number) => T + (1 - p) * (H - T - B);
+  const path = (sel: (r: Run) => Metrics) => runs.map((r, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(sel(r).pass_rate).toFixed(1)}`).join(' ');
+  const approvals = useMemo(() => runs.map((r, i) => {
+    const prev = i ? new Set(runs[i - 1].rules_active) : new Set<string>();
+    return r.rules_active.filter((id) => !prev.has(id));
+  }), [runs]);
+
+  if (!n) {
+    return <div className="mt-3 flex h-48 items-center justify-center rounded-md border border-dashed border-line text-sm text-muted">Run an evaluation to start the curve.</div>;
+  }
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="mt-3 w-full" role="img" aria-label="Pass rate per run with 95% confidence intervals">
+      {[0, 0.25, 0.5, 0.75, 1].map((g) => (
+        <g key={g}>
+          <line x1={L} x2={W - R} y1={y(g)} y2={y(g)} stroke="var(--color-line)" strokeWidth={1} />
+          <text x={L - 6} y={y(g) + 3} textAnchor="end" fontSize={10} fill="var(--color-muted)" fontFamily="var(--font-mono)">{pct(g)}</text>
+        </g>
+      ))}
+      <defs>
+        <linearGradient id="heldoutFill" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0%" stopColor="var(--color-cobalt)" stopOpacity={0.35} />
+          <stop offset="100%" stopColor="var(--color-cobalt)" stopOpacity={0} />
+        </linearGradient>
+        <filter id="glow"><feGaussianBlur stdDeviation="2.5" result="b" /><feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge></filter>
+      </defs>
+      {n > 1 && <path d={`${path((r) => r.heldout)} L${x(n - 1).toFixed(1)},${y(0).toFixed(1)} L${x(0).toFixed(1)},${y(0).toFixed(1)} Z`} fill="url(#heldoutFill)" />}
+      <path d={path((r) => r.train)} fill="none" stroke="var(--color-muted)" strokeWidth={1.5} strokeDasharray="4 3" />
+      <path d={path((r) => r.heldout)} fill="none" stroke="var(--color-cobalt)" strokeWidth={2.5} strokeLinejoin="round" filter="url(#glow)" />
+      {runs.map((r, i) => (
+        <g key={r.run_id}>
+          <line x1={x(i)} x2={x(i)} y1={y(r.heldout.ci95[0])} y2={y(r.heldout.ci95[1])} stroke="var(--color-cobalt)" strokeOpacity={0.55} strokeWidth={1.5} />
+          <line x1={x(i) - 4} x2={x(i) + 4} y1={y(r.heldout.ci95[0])} y2={y(r.heldout.ci95[0])} stroke="var(--color-cobalt)" strokeOpacity={0.55} />
+          <line x1={x(i) - 4} x2={x(i) + 4} y1={y(r.heldout.ci95[1])} y2={y(r.heldout.ci95[1])} stroke="var(--color-cobalt)" strokeOpacity={0.55} />
+          <circle cx={x(i)} cy={y(r.heldout.pass_rate)} r={4} fill="var(--color-ink)" stroke="var(--color-cobalt)" strokeWidth={2} />
+          <circle cx={x(i)} cy={y(r.train.pass_rate)} r={2.5} fill="var(--color-muted)" />
+          <text x={x(i)} y={H - 10} textAnchor="middle" fontSize={10} fill="var(--color-muted)" fontFamily="var(--font-mono)">{r.run_id.replace('run_', 'r')}</text>
+          {approvals[i].length > 0 && (
+            <g>
+              <rect x={x(i) - 4} y={T - 14} width={8} height={8} transform={`rotate(45 ${x(i)} ${T - 10})`} fill="var(--color-signal)" />
+              <text x={x(i)} y={T - 18} textAnchor="middle" fontSize={9} fill="var(--color-signal)" fontFamily="var(--font-mono)">{approvals[i].join(' ')}</text>
+            </g>
+          )}
+        </g>
+      ))}
+    </svg>
   );
 }
 
@@ -409,66 +497,94 @@ function CostarPanel() {
   const q = useQuery({ ...modelenceQuery<Costar>('harness.costar', { prompt }), enabled: prompt.length > 0, staleTime: Infinity });
   const d = q.data;
   const present = d ? d.scores.filter((s) => s.p_present >= 0.5).length : 0;
-  useEffect(() => { if (d && prompt) setTrail((t) => (t.length && t[t.length - 1].prompt === prompt ? t : [...t, { prompt, present }])); }, [d, prompt, present]);
-  const submit = (text: string) => { const n = text.trim(); setDraft(n); setPrompt(n); };
+  // record each scored prompt once (completeness trail: before -> after each answer)
+  useEffect(() => {
+    if (d && prompt) setTrail((t) => (t.length && t[t.length - 1].prompt === prompt ? t : [...t, { prompt, present }]));
+  }, [d, prompt, present]);
+  const submit = (text: string) => { const next = text.trim(); setDraft(next); setPrompt(next); };
   const answer = (text: string) => submit(`${prompt} ${text}`);
   return (
-    <div className="mt-4 grid gap-8 md:grid-cols-[minmax(0,6fr)_minmax(0,6fr)]">
-      <div>
-        <p className="max-w-[60ch] text-sm text-ink/85">Before the agent spends anything, the harness scores the request on six dimensions and asks at most two questions, most expensive gap first. Each answer re-scores it.</p>
-        <textarea value={draft} onChange={(e) => setDraft(e.target.value)} rows={2} placeholder="paste what you would type to the agent"
-          className="mt-3 w-full resize-y rounded-sm border border-ink/40 bg-sheet p-2.5 text-sm placeholder:text-mute focus:border-ink focus:outline-none" />
-        <div className="mt-2 flex flex-wrap items-center gap-3">
-          <Btn kind="primary" onClick={() => submit(draft)} disabled={!draft.trim() || q.isFetching}>{q.isFetching ? 'Scoring…' : 'Check the request'}</Btn>
-          {trail.length > 0 && <span className="text-sm text-mute">complete: {trail.map((t, i) => <span key={i}>{i ? ' → ' : ''}<span className={t.present >= 6 ? 'text-pass' : 'text-flag'}>{t.present}/6</span></span>)}</span>}
-          {trail.length > 0 && <button type="button" className="text-xs text-mute underline underline-offset-4" onClick={() => { setTrail([]); setPrompt(''); }}>start over</button>}
-        </div>
-        {d && (
-          <ul className="ledger mt-4 text-sm">
+    <Card>
+      <Label>COSTAR completeness · agent-generated side-conversation</Label>
+      <textarea
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        rows={2}
+        className="mt-3 w-full resize-y rounded-md border border-line bg-raised p-2.5 font-mono text-sm text-text placeholder:text-muted focus:border-cobalt focus:outline-none"
+        placeholder="paste the vibecoder's prompt…"
+      />
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        <Btn tone="accent" onClick={() => submit(draft)} disabled={!draft.trim() || q.isFetching}>{q.isFetching ? 'scoring…' : 'Check prompt'}</Btn>
+        {trail.length > 0 && (
+          <span className="font-mono text-[11px] text-muted">
+            completeness {trail.map((t, i) => <span key={i}>{i ? ' → ' : ''}<span className={cn(t.present >= 6 ? 'text-verdant' : 'text-signal')}>{t.present}/6</span></span>)}
+          </span>
+        )}
+        {trail.length > 0 && <button type="button" className="text-[11px] text-muted underline-offset-2 hover:underline" onClick={() => { setTrail([]); setPrompt(''); }}>clear</button>}
+        {d ? <span className="basis-full truncate font-mono text-[11px] text-muted">resolver: {d.resolver}</span> : null}
+      </div>
+      {d && (
+        <div className="mt-3 space-y-3">
+          <ul className="grid grid-cols-2 gap-x-4 gap-y-1.5 md:grid-cols-3">
             {d.scores.map((s) => (
-              <li key={s.dimension} className="flex items-center gap-3 py-1.5">
-                <span className="w-24 capitalize">{s.dimension}</span>
-                <span className="h-1.5 flex-1 bg-wash"><span className={cn('block h-full', s.p_present < 0.5 ? 'bg-flag' : 'bg-pass')} style={{ width: pct(s.p_present) }} /></span>
-                <span className={cn('w-10 text-right text-xs', s.p_present < 0.5 ? 'text-flag' : 'text-pass')}>{s.p_present.toFixed(2)}</span>
+              <li key={s.dimension} className="text-xs">
+                <div className="flex justify-between"><span className="capitalize">{s.dimension}</span><span className={cn('font-mono', s.p_present < 0.5 ? 'text-signal' : 'text-verdant')}>{s.p_present.toFixed(2)}</span></div>
+                <div className="mt-0.5 h-1.5 overflow-hidden rounded bg-raised"><div className={cn('h-full transition-all', s.p_present < 0.5 ? 'bg-signal' : 'bg-verdant')} style={{ width: pct(s.p_present) }} /></div>
               </li>
             ))}
           </ul>
-        )}
-      </div>
-      <div>
-        {d && (d.ui.done ? (
-          <p className="text-sm text-pass">Complete enough to start. No questions needed.</p>
-        ) : (
-          <ol className="ledger">
-            {d.ui.cards.map((c) => (
-              <li key={c.id} className="py-3">
-                <p className="text-sm">{c.question}</p>
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {c.options.map((o) => <button key={o.label} type="button" onClick={() => answer(o.text)} disabled={q.isFetching} className="rounded-sm border border-ink/40 bg-sheet px-2.5 py-1 text-xs hover:border-ink disabled:opacity-50">{o.label}</button>)}
-                  {c.freeText && (
-                    <form className="flex min-w-[10rem] flex-1 gap-1" onSubmit={(e) => { e.preventDefault(); if (freeText[c.id]?.trim()) { answer(freeText[c.id]); setFreeText((f) => ({ ...f, [c.id]: '' })); } }}>
-                      <input value={freeText[c.id] ?? ''} onChange={(e) => setFreeText((f) => ({ ...f, [c.id]: e.target.value }))} placeholder="or type it" className="min-w-0 flex-1 rounded-sm border border-ink/40 bg-sheet px-2.5 py-1 text-xs placeholder:text-mute focus:border-ink focus:outline-none" />
-                    </form>
-                  )}
-                </div>
-              </li>
-            ))}
-          </ol>
-        ))}
-        {d && d.lexicon.length > 0 && (
-          <div className="mt-6">
-            <p className="text-xs text-mute">What the words mean, from the lexicon ({d.resolver.startsWith('atlas') ? 'vector search' : 'word overlap'})</p>
-            <ol className="ledger mt-1 text-sm">
-              {d.lexicon.map((l) => (
-                <li key={l.entry_id} className="py-2">
-                  <span className="text-mute">“{l.phrase}”</span> means <span className="font-medium">{l.canonical_label}</span>
-                  {l.teach && <p className="mt-0.5 text-xs text-mute">{l.teach}</p>}
-                </li>
-              ))}
-            </ol>
-          </div>
-        )}
-      </div>
-    </div>
+          {d.ui.done ? (
+            <p className="text-sm text-verdant">Complete enough to start. No side-conversation needed — the agent gets to work.</p>
+          ) : (
+            <div>
+              <div className="flex items-baseline justify-between">
+                <Label>Rendered from the server's form spec · {d.ui.cards.length} card{d.ui.cards.length === 1 ? '' : 's'}, priority order</Label>
+                <span className="font-mono text-[10px] text-muted">ui.v{d.ui.version}</span>
+              </div>
+              <ul className="mt-1.5 space-y-2">
+                {d.ui.cards.map((c) => (
+                  <li key={c.id} className="rounded-md border border-line bg-raised p-2.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm">{c.question}</span>
+                      <span className="shrink-0 rounded bg-ink px-1.5 py-0.5 font-mono text-[10px] text-signal">{c.id}</span>
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {c.options.map((o) => (
+                        <button key={o.label} type="button" onClick={() => answer(o.text)} disabled={q.isFetching}
+                          className="rounded-full border border-line bg-ink px-2.5 py-1 text-xs transition-colors hover:border-cobalt hover:text-text disabled:opacity-50">
+                          {o.label}
+                        </button>
+                      ))}
+                      {c.freeText && (
+                        <form className="flex min-w-[12rem] flex-1 gap-1" onSubmit={(e) => { e.preventDefault(); if (freeText[c.id]?.trim()) { answer(freeText[c.id]); setFreeText((f) => ({ ...f, [c.id]: '' })); } }}>
+                          <input value={freeText[c.id] ?? ''} onChange={(e) => setFreeText((f) => ({ ...f, [c.id]: e.target.value }))} placeholder="or type it…"
+                            className="min-w-0 flex-1 rounded-full border border-line bg-ink px-2.5 py-1 text-xs text-text placeholder:text-muted focus:border-cobalt focus:outline-none" />
+                        </form>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {d.lexicon.length > 0 && (
+            <div>
+              <Label>Lexicon hits · canonical labels</Label>
+              <ul className="mt-1 space-y-1 text-xs">
+                {d.lexicon.map((l) => (
+                  <li key={l.entry_id} className="flex flex-wrap items-center gap-x-2 rounded-md bg-raised px-2.5 py-1.5">
+                    <span className="text-muted">“{l.phrase}”</span><span>→</span>
+                    <span className="font-mono text-cobalt">{l.canonical_label}</span>
+                    {l.stack ? <span className="font-mono text-muted">[{l.stack}]</span> : null}
+                    <span className="ml-auto font-mono text-muted">{l.score.toFixed(3)}</span>
+                    {l.teach ? <span className="basis-full text-muted">{l.teach}</span> : null}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
+    </Card>
   );
 }

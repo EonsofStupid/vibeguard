@@ -30,6 +30,10 @@
     "RAINDROP_API_KEY": {
       "type": "secret",
       "required": false
+    },
+    "RAINDROP_QUERY_KEY": {
+      "type": "secret",
+      "required": false
     }
   }
 }
