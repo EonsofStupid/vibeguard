@@ -1,14 +1,16 @@
 /** The VibeGuard harness as a Modelence module: queries for the judges' view, mutations for the human gate. */
 import z from 'zod';
 import { Module } from 'modelence/server';
-import { dbRules, dbRuns, dbLexicon, dbFailures, dbAudit, dbCostar } from './db';
+import { dbRules, dbRuns, dbLexicon, dbFailures, dbAudit, dbCostar, dbRaindrop } from './db';
 import { allRules, approve, revert, GateError } from './gate';
-import { runOnce } from './loop';
+import { runOnce, runTask, scriptedAgent } from './loop';
 import { scorePrompt, missing, sideConversation, uiSpec } from './costar';
 import { vectorResolve, embedLexicon, vectorIndexStatus, ensureVectorIndex, overlapResolve, storageFacts } from './semantic';
 import { Actor, RunResult } from './schemas';
 import { SEED_FAILURES, SEED_LEXICON } from './seed';
 import { raindrop } from './raindrop';
+import { evalRun } from './raindrop-evals';
+import { selfImprovement } from './rrflow';
 import { dbKnowledge, indexKnowledge, explain } from './knowledge';
 
 const strip = (d: any) => d.record;
@@ -22,7 +24,7 @@ export default new Module('harness', {
   configSchema: {
     voyageApiKey: { type: 'string', default: '', isPublic: false },
   },
-  stores: [dbRules, dbRuns, dbLexicon, dbFailures, dbAudit, dbCostar, dbKnowledge],
+  stores: [dbRules, dbRuns, dbLexicon, dbFailures, dbAudit, dbCostar, dbKnowledge, dbRaindrop],
 
   queries: {
     summary: async () => {
@@ -48,6 +50,7 @@ export default new Module('harness', {
         resolver = `token-overlap fallback (vector search unavailable: ${String(e?.message ?? e).slice(0, 80)})`;
       }
       await dbCostar.insertOne({ record: { prompt, scores, missing: gaps, at: new Date().toISOString() }, body: '' } as any);
+      void raindrop.costarCheck(prompt, scores, gaps);   // RRFlow: the gaps the agent would have had to guess, as missing_context diagnoses
       return { scores, missing: gaps, ask: sideConversation(gaps), ui: uiSpec(gaps), lexicon, resolver };
     },
     explain: async (args: unknown) => {
@@ -58,14 +61,16 @@ export default new Module('harness', {
       { name: 'rules', coll: () => dbRules.rawCollection() }, { name: 'runs', coll: () => dbRuns.rawCollection() },
       { name: 'lexicon', coll: () => dbLexicon.rawCollection() }, { name: 'failures', coll: () => dbFailures.rawCollection() },
       { name: 'audit', coll: () => dbAudit.rawCollection() }, { name: 'knowledge', coll: () => dbKnowledge.rawCollection() },
-      { name: 'costar', coll: () => dbCostar.rawCollection() },
+      { name: 'costar', coll: () => dbCostar.rawCollection() }, { name: 'raindrop_log', coll: () => dbRaindrop.rawCollection() },
     ]),
+    /** RRFlow on Raindrop: the harness's own improvement, run by run — aggregated in Atlas ($setWindowFields + $lookup). */
+    selfImprovement: async () => selfImprovement(),
     memoryTypes: async () => ({
       procedural: await dbRules.countDocuments({}), episodic: await dbRuns.countDocuments({}),
       semantic: await dbLexicon.countDocuments({}), taxonomic: await dbFailures.countDocuments({}),
       receipts: await dbAudit.countDocuments({}),
       knowledge: await dbKnowledge.countDocuments({}),
-      raindrop: raindrop.enabled() ? 'on' : 'off (RAINDROP_API_KEY unset)',
+      raindrop: await raindrop.status(),
       vectorIndex: await vectorIndexStatus().catch((e: any) => [{ name: 'error', status: String(e?.message ?? e) }]),
     }),
   },
@@ -91,9 +96,17 @@ export default new Module('harness', {
       return { failures: SEED_FAILURES.length, lexiconEmbedded: embedded, vectorIndex: index };
     },
     ensureIndexes: async () => ensureVectorIndex(),
+    /** Replay runs without a Raindrop eval run through the eval suite, oldest first, so before/after comparisons exist (needs RAINDROP_QUERY_KEY). */
+    raindropBackfill: async () => {
+      if (!raindrop.evalsEnabled()) throw new Error('RAINDROP_QUERY_KEY (Query SDK key) is not set — evals, datasets and comparisons need it.');
+      const rules = await allRules();
+      const runs = (await dbRuns.fetch({}, { sort: { 'record.at': 1 } })).map(strip).filter((r: any) => !r.raindrop?.eval_run_id);
+      for (const r of runs) await evalRun(r.run_id, rules.filter((x) => r.rules_active.includes(x.rule_id)), scriptedAgent, runTask);
+      return { replayed: runs.map((r: any) => r.run_id) };
+    },
     indexKnowledge: async () => indexKnowledge(),
     reset: async () => {
-      for (const s of [dbRules, dbRuns, dbAudit, dbCostar]) await s.deleteMany({});
+      for (const s of [dbRules, dbRuns, dbAudit, dbCostar, dbRaindrop]) await s.deleteMany({});
       return { ok: true };
     },
   },

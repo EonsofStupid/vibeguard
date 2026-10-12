@@ -9,6 +9,7 @@ import { useSession } from 'modelence/client';
 import { toast } from 'react-hot-toast';
 import Page from '@/client/components/Page';
 import { cn } from '@/client/lib/utils';
+import SelfImprovementPanel, { Tip, type RaindropStatus } from '@/client/components/SelfImprovement';
 
 // ---- wire types (mirror src/server/harness/schemas.ts) ----
 type Metrics = { passed: number; total: number; pass_rate: number; ci95: [number, number] };
@@ -26,7 +27,7 @@ type Audit = { at: string; event: string; rule_id: string; version: number; stat
 type Summary = { runs: Run[]; rules: Rule[]; audit: Audit[] };
 type Trace = { task_id: string; split: 'train' | 'heldout'; attempts: number; blocked_by: string[]; false_blocks: number; verdict: { passed: boolean; failures: string[] } };
 type RunDetail = Run & { traces: Trace[] };
-type MemoryTypes = { procedural: number; episodic: number; semantic: number; taxonomic: number; receipts: number; knowledge?: number };
+type MemoryTypes = { procedural: number; episodic: number; semantic: number; taxonomic: number; receipts: number; knowledge?: number; raindrop?: RaindropStatus };
 type Storage = { host: string; database: string; atlas: boolean; collections: { name: string; documents: number }[] };
 type Explanation = { id: string; kind: string; title: string; text: string; path?: string; swebok: string; layman?: string; score: number };
 type UiCard = { id: string; question: string; options: { label: string; text: string }[]; freeText: boolean };
@@ -102,7 +103,7 @@ export default function HomePage() {
         <div>
           <div className="mb-2 flex flex-wrap items-center gap-2 text-[11px] font-mono uppercase tracking-[0.14em] text-muted">
             <span className="inline-flex items-center gap-1.5 rounded-full border border-verdant/40 bg-verdant/10 px-2 py-0.5 text-verdant"><span className="size-1.5 animate-pulse-soft rounded-full bg-verdant" />live</span>
-            <span>MongoDB Atlas</span><span className="text-line">·</span><span>Atlas Agent Engine memory</span><span className="text-line">·</span><span>Modelence Cloud</span>
+            <span>MongoDB Atlas</span><span className="text-line">·</span><span>Atlas Agent Engine memory</span><span className="text-line">·</span><span>Modelence Cloud</span><span className="text-line">·</span><span>Raindrop</span>
           </div>
           <h1 className="font-display text-2xl font-bold tracking-tight md:text-4xl">Recursive harness, <span className="text-verdant">governed</span>.</h1>
           <p className="mt-1 max-w-2xl text-sm text-muted">
@@ -131,10 +132,10 @@ export default function HomePage() {
 
       {/* KPIs */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Kpi label="Held-out pass rate" value={latest ? pct(latest.heldout.pass_rate) : '—'} sub={latest ? `${latest.heldout.passed}/${latest.heldout.total} · CI ${pct(latest.heldout.ci95[0])}–${pct(latest.heldout.ci95[1])}` : 'no runs yet'} tone="cobalt" />
-        <Kpi label="Improvement" value={latest && first && runs.length > 1 ? `${latest.heldout.pass_rate >= first.heldout.pass_rate ? '+' : ''}${Math.round((latest.heldout.pass_rate - first.heldout.pass_rate) * 100)} pts` : '—'} sub={runs.length > 1 ? `${first.run_id} → ${latest.run_id}` : 'needs ≥2 runs'} tone="verdant" />
-        <Kpi label="False blocks" value={latest ? String(latest.false_blocks) : '—'} sub={latest ? `${latest.blocks} blocks · ${latest.paid_attempts} paid attempts` : ''} tone={latest && latest.false_blocks > 0 ? 'ember' : 'verdant'} />
-        <Kpi label="Rules" value={`${rules.filter((r) => r.status === 'approved').length} live`} sub={`${proposedCount} proposed · ${rules.filter((r) => r.status === 'reverted').length} reverted`} tone="signal" />
+        <Kpi label={<Tip tip="Pass rate on the 6 held-out tasks — never used to write rules, only measured. Wilson 95% interval because N is small.">Held-out pass rate</Tip>} value={latest ? pct(latest.heldout.pass_rate) : '—'} sub={latest ? `${latest.heldout.passed}/${latest.heldout.total} · CI ${pct(latest.heldout.ci95[0])}–${pct(latest.heldout.ci95[1])}` : 'no runs yet'} tone="cobalt" />
+        <Kpi label={<Tip tip="Held-out pass rate, first run → latest run. Rules are only ever added by human approval, so this is the human-governed effect of the loop.">Improvement</Tip>} value={latest && first && runs.length > 1 ? `${latest.heldout.pass_rate >= first.heldout.pass_rate ? '+' : ''}${Math.round((latest.heldout.pass_rate - first.heldout.pass_rate) * 100)} pts` : '—'} sub={runs.length > 1 ? `${first.run_id} → ${latest.run_id}` : 'needs ≥2 runs'} tone="verdant" />
+        <Kpi label={<Tip tip="A false block = a guardrail stopped an attempt the judge would have passed. The cost of an over-broad rule; zero is the target.">False blocks</Tip>} value={latest ? String(latest.false_blocks) : '—'} sub={latest ? `${latest.blocks} blocks · ${latest.paid_attempts} paid attempts` : ''} tone={latest && latest.false_blocks > 0 ? 'ember' : 'verdant'} />
+        <Kpi label={<Tip tip="Procedural memory: proposed by the agent, approved or reverted only by a human, never deleted (revert sets status and writes a receipt).">Rules</Tip>} value={`${rules.filter((r) => r.status === 'approved').length} live`} sub={`${proposedCount} proposed · ${rules.filter((r) => r.status === 'reverted').length} reverted`} tone="signal" />
       </div>
 
       {/* chart + memory */}
@@ -165,6 +166,9 @@ export default function HomePage() {
           </p>
         </Card>
       </div>
+
+      {/* RRFlow on Raindrop: the harness's own improvement, observed and replayed */}
+      <SelfImprovementPanel />
 
       {/* rule queue */}
       <Card>
@@ -406,7 +410,7 @@ function LearnPanel() {
   );
 }
 
-function Kpi({ label, value, sub, tone }: { label: string; value: string; sub?: string; tone: 'cobalt' | 'verdant' | 'ember' | 'signal' }) {
+function Kpi({ label, value, sub, tone }: { label: ReactNode; value: string; sub?: string; tone: 'cobalt' | 'verdant' | 'ember' | 'signal' }) {
   const color = { cobalt: 'text-cobalt', verdant: 'text-verdant', ember: 'text-ember', signal: 'text-signal' }[tone];
   return (
     <Card className="p-3 md:p-4">
@@ -418,7 +422,7 @@ function Kpi({ label, value, sub, tone }: { label: string; value: string; sub?: 
 }
 
 function MemoryStrip({ m }: { m?: MemoryTypes }) {
-  const rows: [keyof MemoryTypes, string][] = [
+  const rows: [Exclude<keyof MemoryTypes, 'raindrop'>, string][] = [
     ['procedural', 'rules'], ['episodic', 'runs'], ['semantic', 'lexicon'], ['taxonomic', 'failures'], ['receipts', 'audit'], ['knowledge', 'knowledge'],
   ];
   return (
