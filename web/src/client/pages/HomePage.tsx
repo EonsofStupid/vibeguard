@@ -19,7 +19,7 @@ type Run = {
 type Rule = {
   rule_id: string; version: number; status: 'proposed' | 'approved' | 'reverted'; direction: 'tighten' | 'loosen';
   category: string; trigger: { type: string; pattern: string }; action: string; user_message: string;
-  origin: { run_id: string; task_id: string; failure_category: string; evidence?: { prompt: string; matched: string; snippet: string; detector: string } }; proposed_by: string;
+  origin: { run_id: string; task_id: string; failure_category: string; evidence?: { prompt: string; matched: string; snippet: string; detector: string }; derived_from?: string }; proposed_by: string;
   approved_by?: string | null; created_at: string; updated_at: string;
 };
 type Audit = { at: string; event: string; rule_id: string; version: number; status: string; actor: string; reason?: string };
@@ -175,6 +175,7 @@ export default function HomePage() {
                     <span className={cn('rounded-full border px-2 py-0.5 text-[11px] font-medium', STATUS_CLASS[r.status])}>{r.status}</span>
                     <span className="font-mono text-xs text-muted">v{r.version} · {r.direction} · {r.action}</span>
                     <span className="rounded bg-raised px-1.5 py-0.5 font-mono text-[11px] text-muted">{r.category}</span>
+                    {r.origin.derived_from && <span className="rounded-full border border-cobalt/40 bg-cobalt/10 px-2 py-0.5 text-[11px] text-cobalt" title="shaped by a human revert signal">narrowed after {r.origin.derived_from.replace('reverted:', '')} was reverted</span>}
                   </div>
                   <p className="mt-1 text-sm">{r.user_message}</p>
                   <div className="mt-1 truncate font-mono text-[11px] text-muted" title={r.trigger.pattern}>

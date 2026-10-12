@@ -12,6 +12,7 @@ type Client = {
   trackSignal: (s: Record<string, unknown>) => Promise<unknown> | unknown;
 };
 let client: Client | null | undefined;
+const sleep = (ms: number) => new Promise((res) => setTimeout(res, ms));
 
 async function get(): Promise<Client | null> {
   if (client !== undefined) return client;
@@ -38,14 +39,23 @@ export const raindrop = {
     eventId: rule.rule_id, event: 'rule_proposed', userId: rule.proposed_by, model: 'vibeguard-harness/regex-judge',
     input: rule.origin.evidence ? `${rule.origin.evidence.prompt}\n\n${rule.origin.evidence.snippet}` : `${rule.origin.run_id}/${rule.origin.task_id}`,
     output: `${rule.rule_id} v${rule.version} [${rule.category}] ${rule.user_message}`,
-    properties: { category: rule.category, pattern: rule.trigger.pattern, run_id: rule.origin.run_id, task_id: rule.origin.task_id, direction: rule.direction },
+    properties: { category: rule.category, pattern: rule.trigger.pattern, run_id: rule.origin.run_id, task_id: rule.origin.task_id, direction: rule.direction, action: rule.action, derived_from: rule.origin.derived_from ?? '' },
   })),
 
-  decided: (rule: GuardrailRule, decision: 'approve' | 'revert', actor: string, reason = '') => safe((c) => c.trackSignal({
+  decided: (rule: GuardrailRule, decision: 'approve' | 'revert', actor: string, reason = '') => safe(async (c) => { await sleep(1500); return c.trackSignal({
     eventId: rule.rule_id, name: decision === 'approve' ? 'rule_approved' : 'rule_reverted',
     sentiment: decision === 'approve' ? 'POSITIVE' : 'NEGATIVE',
     comment: `${actor}${reason ? `: ${reason}` : ''} (v${rule.version})`,
-  })),
+  }); }),
+
+  /** The harness grades its own run against the previous one: POSITIVE = held-out improved with no false blocks. */
+  selfGrade: (r: RunResult, prev: RunResult) => safe(async (c) => {
+    await sleep(1500);
+    const improved = r.heldout.pass_rate > prev.heldout.pass_rate, regressed = r.heldout.pass_rate < prev.heldout.pass_rate;
+    const name = r.false_blocks > 0 ? 'false_block' : improved ? 'heldout_improved' : regressed ? 'heldout_regressed' : 'heldout_flat';
+    return c.trackSignal({ eventId: r.run_id, name, sentiment: r.false_blocks > 0 || regressed ? 'NEGATIVE' : 'POSITIVE',
+      comment: `held-out ${prev.heldout.passed}/${prev.heldout.total} -> ${r.heldout.passed}/${r.heldout.total}; false blocks ${r.false_blocks}` });
+  }),
 
   run: (r: RunResult) => safe((c) => c.trackAi({
     eventId: r.run_id, event: 'harness_run', userId: 'agent:vibeguard', model: 'vibeguard-harness/scripted-replay',
