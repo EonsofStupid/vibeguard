@@ -1,0 +1,538 @@
+[
+ {
+  "id": "code:costar",
+  "kind": "module",
+  "title": "costar.ts",
+  "path": "src/server/harness/costar.ts",
+  "swebok": "Software Requirements",
+  "text": "COSTAR completeness: cheap features + a hand-set decision boundary (Phase 1). Phase 2 = trained classifier, same signature."
+ },
+ {
+  "id": "code:costar.DIMENSIONS",
+  "kind": "export",
+  "title": "DIMENSIONS (costar.ts)",
+  "path": "src/server/harness/costar.ts",
+  "swebok": "Software Requirements",
+  "text": "COSTAR completeness: cheap features + a hand-set decision boundary (Phase 1). Phase 2 = trained classifier, same signature."
+ },
+ {
+  "id": "code:costar.uiSpec",
+  "kind": "export",
+  "title": "uiSpec (costar.ts)",
+  "path": "src/server/harness/costar.ts",
+  "swebok": "Software Requirements",
+  "text": "Quick-pick answers per dimension. The server decides which cards exist and in what order; the client only renders. */\nconst QUICK_PICKS: Record<Dimension, { label: string; text: string }[]> = {\n  context: [\n    { label: 'Next.js on Vercel', text: \"I'm using Next.js on Vercel.\" },\n    { label: 'React + Supabase', text: 'My app is React with Supabase.' },\n    { label: 'Python / Flask', text: 'My app is Python with Flask.' },\n    { label: 'No code yet', text: 'I have no existing code yet.' },\n  ],\n  objective: [\n    { label: 'Customers can pay', text: 'so that a customer can pay and I see the order.' },\n    { label: 'Fix a bug', text: 'I need to fix a bug so that the feature works again.' },\n    { label: 'Ship a prototype', text: 'I want to build a prototype I can show people.' },\n  ],\n  audience: [\n    { label: 'My customers', text: 'This is for my customers, non-technical end users.' },\n    { label: 'Just me', text: 'This is just for me.' },\n    { label: 'My team', text: 'This is for my team.' },\n  ],\n  response: [\n    { label: 'Whole file', text: 'Give me the whole file.' },\n    { label: 'Just the changes', text: 'Give me just the changes as a diff.' },\n    { label: 'Step-by-step', text: 'Walk me through it step by step.' },\n  ],\n  style: [\n    { label: 'Match my code', text: 'Follow the existing style and patterns in my code.' },\n    { label: 'Keep it simple', text: 'Keep it simple, no new dependencies.' },\n  ],\n  tone: [\n    { label: 'Friendly', text: 'Any words users see should sound friendly.' },\n    { label: 'Formal', text: 'Any words users see should sound formal.' },\n    { label: 'Plain', text: 'Keep user-facing text in plain English.' },\n  ],\n};\n\nexport interface UiCard { id: Dimension; question: string; options: { label: string; text: string }[]; freeText: boolean }\nexport interface UiSpec { type: 'form'; version: 1; cards: UiCard[]; done: boolean }\n\n/** Agent-generated UI: a declarative form spec for the gaps, most expensive gap first, at most two cards per turn."
+ },
+ {
+  "id": "code:costar.TAU",
+  "kind": "export",
+  "title": "TAU (costar.ts)",
+  "path": "src/server/harness/costar.ts",
+  "swebok": "Software Requirements",
+  "text": "TAU= 0.5;"
+ },
+ {
+  "id": "code:costar.scorePrompt",
+  "kind": "export",
+  "title": "scorePrompt (costar.ts)",
+  "path": "src/server/harness/costar.ts",
+  "swebok": "Software Requirements",
+  "text": "scorePrompt(prompt: string) {"
+ },
+ {
+  "id": "code:costar.missing",
+  "kind": "export",
+  "title": "missing (costar.ts)",
+  "path": "src/server/harness/costar.ts",
+  "swebok": "Software Requirements",
+  "text": "missing(scores: ReturnType<typeof scorePrompt>, tau = TAU): Dimension[] {"
+ },
+ {
+  "id": "code:costar.sideConversation",
+  "kind": "export",
+  "title": "sideConversation (costar.ts)",
+  "path": "src/server/harness/costar.ts",
+  "swebok": "Software Requirements",
+  "text": "sideConversation(gaps: Dimension[], max = 2): string[] {"
+ },
+ {
+  "id": "code:db",
+  "kind": "module",
+  "title": "db.ts",
+  "path": "src/server/harness/db.ts",
+  "swebok": "Software Design · Software Engineering Operations (persistence)",
+  "text": "Atlas collections = Agent Engine memory types. Documents keep the shape the Python harness\nalready wrote today ({_id, record, body}) so both engines read the same data."
+ },
+ {
+  "id": "code:db.dbRules",
+  "kind": "export",
+  "title": "dbRules (db.ts)",
+  "path": "src/server/harness/db.ts",
+  "swebok": "Software Design · Software Engineering Operations (persistence)",
+  "text": "dbRules= new Store('rules', {          // procedural memory"
+ },
+ {
+  "id": "code:db.dbRuns",
+  "kind": "export",
+  "title": "dbRuns (db.ts)",
+  "path": "src/server/harness/db.ts",
+  "swebok": "Software Design · Software Engineering Operations (persistence)",
+  "text": "dbRuns= new Store('runs', {            // episodic memory"
+ },
+ {
+  "id": "code:db.dbLexicon",
+  "kind": "export",
+  "title": "dbLexicon (db.ts)",
+  "path": "src/server/harness/db.ts",
+  "swebok": "Software Design · Software Engineering Operations (persistence)",
+  "text": "dbLexicon= new Store('lexicon', {      // semantic memory (Voyage embeddings, 1024-d)"
+ },
+ {
+  "id": "code:db.dbFailures",
+  "kind": "export",
+  "title": "dbFailures (db.ts)",
+  "path": "src/server/harness/db.ts",
+  "swebok": "Software Design · Software Engineering Operations (persistence)",
+  "text": "dbFailures= new Store('failures', {    // taxonomic memory"
+ },
+ {
+  "id": "code:db.dbAudit",
+  "kind": "export",
+  "title": "dbAudit (db.ts)",
+  "path": "src/server/harness/db.ts",
+  "swebok": "Software Design · Software Engineering Operations (persistence)",
+  "text": "dbAudit= new Store('audit', {          // receipts, append-only"
+ },
+ {
+  "id": "code:db.dbCostar",
+  "kind": "export",
+  "title": "dbCostar (db.ts)",
+  "path": "src/server/harness/db.ts",
+  "swebok": "Software Design · Software Engineering Operations (persistence)",
+  "text": "dbCostar= new Store('costar', {        // short-term: prompt captures"
+ },
+ {
+  "id": "code:gate",
+  "kind": "module",
+  "title": "gate.ts",
+  "path": "src/server/harness/gate.ts",
+  "swebok": "Software Configuration Management · Software Engineering Management",
+  "text": "The governance gate: a one-way ratchet with human release.\nAgents may PROPOSE tightening. Only humans APPROVE. Loosening/revert is human-only. Nothing is deleted.\nEvery transition writes the rule and its receipt (ADR-0002: governed durable effects)."
+ },
+ {
+  "id": "code:gate.GateError",
+  "kind": "export",
+  "title": "GateError (gate.ts)",
+  "path": "src/server/harness/gate.ts",
+  "swebok": "Software Configuration Management · Software Engineering Management",
+  "text": "GateErrorextends Error {}"
+ },
+ {
+  "id": "code:gate.allRules",
+  "kind": "export",
+  "title": "allRules (gate.ts)",
+  "path": "src/server/harness/gate.ts",
+  "swebok": "Software Configuration Management · Software Engineering Management",
+  "text": "allRules(): Promise<Rule[]> {"
+ },
+ {
+  "id": "code:gate.approvedRules",
+  "kind": "export",
+  "title": "approvedRules (gate.ts)",
+  "path": "src/server/harness/gate.ts",
+  "swebok": "Software Configuration Management · Software Engineering Management",
+  "text": "approvedRules(): Promise<Rule[]> {"
+ },
+ {
+  "id": "code:gate.nextId",
+  "kind": "export",
+  "title": "nextId (gate.ts)",
+  "path": "src/server/harness/gate.ts",
+  "swebok": "Software Configuration Management · Software Engineering Management",
+  "text": "nextId(): Promise<string> {"
+ },
+ {
+  "id": "code:gate.propose",
+  "kind": "export",
+  "title": "propose (gate.ts)",
+  "path": "src/server/harness/gate.ts",
+  "swebok": "Software Configuration Management · Software Engineering Management",
+  "text": "propose(rule: Rule, actor: string): Promise<Rule> {"
+ },
+ {
+  "id": "code:gate.approve",
+  "kind": "export",
+  "title": "approve (gate.ts)",
+  "path": "src/server/harness/gate.ts",
+  "swebok": "Software Configuration Management · Software Engineering Management",
+  "text": "approve(ruleId: string, actor: string): Promise<Rule> {"
+ },
+ {
+  "id": "code:gate.revert",
+  "kind": "export",
+  "title": "revert (gate.ts)",
+  "path": "src/server/harness/gate.ts",
+  "swebok": "Software Configuration Management · Software Engineering Management",
+  "text": "revert(ruleId: string, actor: string, reason = ''): Promise<Rule> {"
+ },
+ {
+  "id": "code:index",
+  "kind": "module",
+  "title": "index.ts",
+  "path": "src/server/harness/index.ts",
+  "swebok": "Software Architecture (API surface)",
+  "text": "The VibeGuard harness as a Modelence module: queries for the judges' view, mutations for the human gate."
+ },
+ {
+  "id": "code:judge",
+  "kind": "module",
+  "title": "judge.ts",
+  "path": "src/server/harness/judge.ts",
+  "swebok": "Software Testing · Software Quality",
+  "text": "Deterministic judge: one binary detector per failure category (Raindrop-style signals) + required substrings."
+ },
+ {
+  "id": "code:judge.DETECTORS",
+  "kind": "export",
+  "title": "DETECTORS (judge.ts)",
+  "path": "src/server/harness/judge.ts",
+  "swebok": "Software Testing · Software Quality",
+  "text": "DETECTORS: Record<string, string> = {"
+ },
+ {
+  "id": "code:judge.detect",
+  "kind": "export",
+  "title": "detect (judge.ts)",
+  "path": "src/server/harness/judge.ts",
+  "swebok": "Software Testing · Software Quality",
+  "text": "detect(code: string): string[] {"
+ },
+ {
+  "id": "code:judge.judge",
+  "kind": "export",
+  "title": "judge (judge.ts)",
+  "path": "src/server/harness/judge.ts",
+  "swebok": "Software Testing · Software Quality",
+  "text": "judge(task: EvalTask, code: string): Verdict {"
+ },
+ {
+  "id": "code:judge.matches",
+  "kind": "export",
+  "title": "matches (judge.ts)",
+  "path": "src/server/harness/judge.ts",
+  "swebok": "Software Testing · Software Quality",
+  "text": "matches(trigger: { type: string; pattern: string }, text: string): boolean {"
+ },
+ {
+  "id": "code:loop",
+  "kind": "module",
+  "title": "loop.ts",
+  "path": "src/server/harness/loop.ts",
+  "swebok": "Software Testing · Software Engineering Process",
+  "text": "One harness run: attempt → guard → judge → (train only) propose rules. Writes an episodic record to `runs`."
+ },
+ {
+  "id": "code:loop.scriptedAgent",
+  "kind": "export",
+  "title": "scriptedAgent (loop.ts)",
+  "path": "src/server/harness/loop.ts",
+  "swebok": "Software Testing · Software Engineering Process",
+  "text": "scriptedAgent: Agent = { attempt: (t, n) => (n < t.candidates.length ? t.candidates[n] : null) };"
+ },
+ {
+  "id": "code:loop.runTask",
+  "kind": "export",
+  "title": "runTask (loop.ts)",
+  "path": "src/server/harness/loop.ts",
+  "swebok": "Software Testing · Software Engineering Process",
+  "text": "runTask(task: EvalTask, agent: Agent, rules: GuardrailRule[]) {"
+ },
+ {
+  "id": "code:loop.proposeRules",
+  "kind": "export",
+  "title": "proposeRules (loop.ts)",
+  "path": "src/server/harness/loop.ts",
+  "swebok": "Software Testing · Software Engineering Process",
+  "text": "proposeRules(runId: string, verdicts: Verdict[], maxNew = 1): Promise<GuardrailRule[]> {"
+ },
+ {
+  "id": "code:loop.runOnce",
+  "kind": "export",
+  "title": "runOnce (loop.ts)",
+  "path": "src/server/harness/loop.ts",
+  "swebok": "Software Testing · Software Engineering Process",
+  "text": "runOnce(runId: string, agent: Agent = scriptedAgent, maxNewRules = 1): Promise<RunResult> {"
+ },
+ {
+  "id": "code:metrics",
+  "kind": "module",
+  "title": "metrics.ts",
+  "path": "src/server/harness/metrics.ts",
+  "swebok": "Engineering Foundations (statistics)",
+  "text": "Small-N metrics: pass rates always travel with a Wilson 95% interval."
+ },
+ {
+  "id": "code:metrics.wilson",
+  "kind": "export",
+  "title": "wilson (metrics.ts)",
+  "path": "src/server/harness/metrics.ts",
+  "swebok": "Engineering Foundations (statistics)",
+  "text": "Small-N metrics: pass rates always travel with a Wilson 95% interval."
+ },
+ {
+  "id": "code:metrics.recallAtK",
+  "kind": "export",
+  "title": "recallAtK (metrics.ts)",
+  "path": "src/server/harness/metrics.ts",
+  "swebok": "Engineering Foundations (statistics)",
+  "text": "recallAtK(ranked: string[], gold: Set<string>, k: number): number {"
+ },
+ {
+  "id": "code:raindrop",
+  "kind": "module",
+  "title": "raindrop.ts",
+  "path": "src/server/harness/raindrop.ts",
+  "swebok": "Software Engineering Operations (observability)",
+  "text": "Raindrop AI instrumentation for the RSI loop.\n  proposed rule  -> trackAi  (eventId = rule_id; input = the evidence; output = the rule the agent wrote)\n  approve/revert -> trackSignal on that eventId (the human's verdict, POSITIVE / NEGATIVE)\n  run            -> trackAi  (input = rules active; output = held-out metric)\nNo-op when RAINDROP_API_KEY is unset; never throws into the loop."
+ },
+ {
+  "id": "code:raindrop.raindrop",
+  "kind": "export",
+  "title": "raindrop (raindrop.ts)",
+  "path": "src/server/harness/raindrop.ts",
+  "swebok": "Software Engineering Operations (observability)",
+  "text": "raindrop= {"
+ },
+ {
+  "id": "code:schemas",
+  "kind": "module",
+  "title": "schemas.ts",
+  "path": "src/server/harness/schemas.ts",
+  "swebok": "Software Design (data modelling)",
+  "text": "VibeGuard typed contracts. One source of truth for records in Atlas and over the wire.\nCollections mirror Agent Engine memory types: rules=procedural, runs=episodic,\nlexicon=semantic, failures=taxonomic, audit=receipts."
+ },
+ {
+  "id": "code:schemas.RuleStatus",
+  "kind": "export",
+  "title": "RuleStatus (schemas.ts)",
+  "path": "src/server/harness/schemas.ts",
+  "swebok": "Software Design (data modelling)",
+  "text": "RuleStatus= z.enum(['proposed', 'approved', 'reverted']);"
+ },
+ {
+  "id": "code:schemas.Direction",
+  "kind": "export",
+  "title": "Direction (schemas.ts)",
+  "path": "src/server/harness/schemas.ts",
+  "swebok": "Software Design (data modelling)",
+  "text": "Direction= z.enum(['tighten', 'loosen']);"
+ },
+ {
+  "id": "code:schemas.RuleAction",
+  "kind": "export",
+  "title": "RuleAction (schemas.ts)",
+  "path": "src/server/harness/schemas.ts",
+  "swebok": "Software Design (data modelling)",
+  "text": "RuleAction= z.enum(['block_and_explain', 'warn', 'ask']);"
+ },
+ {
+  "id": "code:schemas.Split",
+  "kind": "export",
+  "title": "Split (schemas.ts)",
+  "path": "src/server/harness/schemas.ts",
+  "swebok": "Software Design (data modelling)",
+  "text": "Split= z.enum(['train', 'heldout']);"
+ },
+ {
+  "id": "code:schemas.Trigger",
+  "kind": "export",
+  "title": "Trigger (schemas.ts)",
+  "path": "src/server/harness/schemas.ts",
+  "swebok": "Software Design (data modelling)",
+  "text": "Trigger= z.object({"
+ },
+ {
+  "id": "code:schemas.Evidence",
+  "kind": "export",
+  "title": "Evidence (schemas.ts)",
+  "path": "src/server/harness/schemas.ts",
+  "swebok": "Software Design (data modelling)",
+  "text": "Evidence= z.object({"
+ },
+ {
+  "id": "code:schemas.Origin",
+  "kind": "export",
+  "title": "Origin (schemas.ts)",
+  "path": "src/server/harness/schemas.ts",
+  "swebok": "Software Design (data modelling)",
+  "text": "Origin= z.object({"
+ },
+ {
+  "id": "code:schemas.GuardrailRule",
+  "kind": "export",
+  "title": "GuardrailRule (schemas.ts)",
+  "path": "src/server/harness/schemas.ts",
+  "swebok": "Software Design (data modelling)",
+  "text": "GuardrailRule= z.object({"
+ },
+ {
+  "id": "code:schemas.FailureCategory",
+  "kind": "export",
+  "title": "FailureCategory (schemas.ts)",
+  "path": "src/server/harness/schemas.ts",
+  "swebok": "Software Design (data modelling)",
+  "text": "FailureCategory= z.object({"
+ },
+ {
+  "id": "code:schemas.LexiconEntry",
+  "kind": "export",
+  "title": "LexiconEntry (schemas.ts)",
+  "path": "src/server/harness/schemas.ts",
+  "swebok": "Software Design (data modelling)",
+  "text": "LexiconEntry= z.object({"
+ },
+ {
+  "id": "code:schemas.EvalTask",
+  "kind": "export",
+  "title": "EvalTask (schemas.ts)",
+  "path": "src/server/harness/schemas.ts",
+  "swebok": "Software Design (data modelling)",
+  "text": "EvalTask= z.object({"
+ },
+ {
+  "id": "code:schemas.Verdict",
+  "kind": "export",
+  "title": "Verdict (schemas.ts)",
+  "path": "src/server/harness/schemas.ts",
+  "swebok": "Software Design (data modelling)",
+  "text": "Verdict= z.object({ task_id: z.string(), passed: z.boolean(), failures: z.array(z.string()) });"
+ },
+ {
+  "id": "code:schemas.SplitMetrics",
+  "kind": "export",
+  "title": "SplitMetrics (schemas.ts)",
+  "path": "src/server/harness/schemas.ts",
+  "swebok": "Software Design (data modelling)",
+  "text": "SplitMetrics= z.object({ passed: z.number(), total: z.number(), pass_rate: z.number(), ci95: z.tuple([z.number(), z.number()]) });"
+ },
+ {
+  "id": "code:schemas.TaskTrace",
+  "kind": "export",
+  "title": "TaskTrace (schemas.ts)",
+  "path": "src/server/harness/schemas.ts",
+  "swebok": "Software Design (data modelling)",
+  "text": "TaskTrace= z.object({"
+ },
+ {
+  "id": "code:schemas.RunResult",
+  "kind": "export",
+  "title": "RunResult (schemas.ts)",
+  "path": "src/server/harness/schemas.ts",
+  "swebok": "Software Design (data modelling)",
+  "text": "RunResult= z.object({"
+ },
+ {
+  "id": "code:schemas.Actor",
+  "kind": "export",
+  "title": "Actor (schemas.ts)",
+  "path": "src/server/harness/schemas.ts",
+  "swebok": "Software Design (data modelling)",
+  "text": "Actor= z.string().regex(/^(human|agent):[A-Za-z0-9._-]{1,40}$/);"
+ },
+ {
+  "id": "code:schemas.isHuman",
+  "kind": "export",
+  "title": "isHuman (schemas.ts)",
+  "path": "src/server/harness/schemas.ts",
+  "swebok": "Software Design (data modelling)",
+  "text": "isHuman= (actor: string) => actor.startsWith('human:');"
+ },
+ {
+  "id": "code:seed",
+  "kind": "module",
+  "title": "seed.ts",
+  "path": "src/server/harness/seed.ts",
+  "swebok": "Software Testing (fixtures)",
+  "text": "Frozen eval set + seed memory. Generated from the Python harness so both engines run identical data."
+ },
+ {
+  "id": "code:seed.TASKS",
+  "kind": "export",
+  "title": "TASKS (seed.ts)",
+  "path": "src/server/harness/seed.ts",
+  "swebok": "Software Testing (fixtures)",
+  "text": "TASKS: EvalTask[] = ["
+ },
+ {
+  "id": "code:seed.SEED_LEXICON",
+  "kind": "export",
+  "title": "SEED_LEXICON (seed.ts)",
+  "path": "src/server/harness/seed.ts",
+  "swebok": "Software Testing (fixtures)",
+  "text": "SEED_LEXICON: LexiconEntry[] = ["
+ },
+ {
+  "id": "code:seed.SEED_FAILURES",
+  "kind": "export",
+  "title": "SEED_FAILURES (seed.ts)",
+  "path": "src/server/harness/seed.ts",
+  "swebok": "Software Testing (fixtures)",
+  "text": "SEED_FAILURES: FailureCategory[] = ["
+ },
+ {
+  "id": "code:semantic",
+  "kind": "module",
+  "title": "semantic.ts",
+  "path": "src/server/harness/semantic.ts",
+  "swebok": "Software Engineering Models and Methods (knowledge representation)",
+  "text": "Semantic memory: Voyage embeddings (MongoDB US endpoint) + Atlas Vector Search via the Store."
+ },
+ {
+  "id": "code:semantic.vectorIndexStatus",
+  "kind": "export",
+  "title": "vectorIndexStatus (semantic.ts)",
+  "path": "src/server/harness/semantic.ts",
+  "swebok": "Software Engineering Models and Methods (knowledge representation)",
+  "text": "Semantic memory: Voyage embeddings (MongoDB US endpoint) + Atlas Vector Search via the Store. */\nimport { getConfig } from 'modelence/server';\nimport { dbLexicon } from './db';\nimport { SEED_LEXICON } from './seed';\nimport { LexiconEntry } from './schemas';\n\n/** MongoDB-issued model keys (`al-…`) talk to MongoDB's endpoint; Voyage AI keys (`pa-…`) only work on Voyage's own. */\nconst MONGODB_BASE = process.env.VOYAGE_BASE_URL || 'https://us.ai.mongodb.com/v1';\nconst VOYAGE_BASE = 'https://api.voyageai.com/v1';\nconst baseFor = (k: string) => (k.startsWith('pa-') ? VOYAGE_BASE : MONGODB_BASE);\nfunction key(): string {\n  const raw = (getConfig('harness.voyageApiKey') as string) || process.env.VOYAGE_API_KEY || '';\n  const k = raw.trim().replace(/^[\"']|[\"']$/g, '');   // dashboard-pasted values sometimes carry quotes or a newline\n  if (!k) throw new Error('VOYAGE_API_KEY is not set');\n  return k;\n}\nexport async function embed(texts: string[], inputType: 'query' | 'document'): Promise<number[][]> {\n  const model = process.env.VOYAGE_MODEL || 'voyage-code-4';\n  const k = key();\n  const res = await fetch(`${baseFor(k)}/embeddings`, {\n    method: 'POST', headers: { Authorization: `Bearer ${k}`, 'Content-Type': 'application/json' },\n    body: JSON.stringify({ model, input: texts, input_type: inputType }),\n  });\n  if (!res.ok) throw new Error(`Voyage HTTP ${res.status}: ${(await res.text()).slice(0, 160)}`);\n  const data = (await res.json()) as { data: { embedding: number[] }[] };\n  return data.data.map((d) => d.embedding);\n}\n\nexport async function embedLexicon(entries: LexiconEntry[] = SEED_LEXICON): Promise<number> {\n  const vecs = await embed(entries.map((e) => `${e.phrase} -> ${e.canonical_label}`), 'document');\n  for (let i = 0; i < entries.length; i++) {\n    await dbLexicon.upsertOne({ _id: entries[i].entry_id } as any, { $set: { record: entries[i], body: entries[i].teach, embedding: vecs[i] } });\n  }\n  return entries.length;\n}\n\nexport async function vectorResolve(text: string, k = 3): Promise<{ record: LexiconEntry; score: number }[]> {\n  const [q] = await embed([text], 'query');\n  const cur = await dbLexicon.vectorSearch({ field: 'embedding', embedding: q, numCandidates: 50, limit: k, indexName: 'lexicon_vec',\n    projection: { record: 1, score: { $meta: 'vectorSearchScore' } } });\n  const docs = await cur.toArray();\n  return docs.map((d: any) => ({ record: LexiconEntry.parse(d.record), score: +Number(d.score).toFixed(4) }));\n}\n\n/** Atlas Search index status for the lexicon vector index (name, status, queryable)."
+ },
+ {
+  "id": "code:semantic.ensureVectorIndex",
+  "kind": "export",
+  "title": "ensureVectorIndex (semantic.ts)",
+  "path": "src/server/harness/semantic.ts",
+  "swebok": "Software Engineering Models and Methods (knowledge representation)",
+  "text": "Create the vector index if the startup sync did not (e.g. the collection did not exist yet). Idempotent."
+ },
+ {
+  "id": "code:semantic.embed",
+  "kind": "export",
+  "title": "embed (semantic.ts)",
+  "path": "src/server/harness/semantic.ts",
+  "swebok": "Software Engineering Models and Methods (knowledge representation)",
+  "text": "embed(texts: string[], inputType: 'query' | 'document'): Promise<number[][]> {"
+ },
+ {
+  "id": "code:semantic.embedLexicon",
+  "kind": "export",
+  "title": "embedLexicon (semantic.ts)",
+  "path": "src/server/harness/semantic.ts",
+  "swebok": "Software Engineering Models and Methods (knowledge representation)",
+  "text": "embedLexicon(entries: LexiconEntry[] = SEED_LEXICON): Promise<number> {"
+ },
+ {
+  "id": "code:semantic.vectorResolve",
+  "kind": "export",
+  "title": "vectorResolve (semantic.ts)",
+  "path": "src/server/harness/semantic.ts",
+  "swebok": "Software Engineering Models and Methods (knowledge representation)",
+  "text": "vectorResolve(text: string, k = 3): Promise<{ record: LexiconEntry; score: number }[]> {"
+ },
+ {
+  "id": "code:semantic.overlapResolve",
+  "kind": "export",
+  "title": "overlapResolve (semantic.ts)",
+  "path": "src/server/harness/semantic.ts",
+  "swebok": "Software Engineering Models and Methods (knowledge representation)",
+  "text": "overlapResolve(text: string, k = 3, entries: LexiconEntry[] = SEED_LEXICON): { record: LexiconEntry; score: number }[] {"
+ }
+]

@@ -26,7 +26,8 @@ type Audit = { at: string; event: string; rule_id: string; version: number; stat
 type Summary = { runs: Run[]; rules: Rule[]; audit: Audit[] };
 type Trace = { task_id: string; split: 'train' | 'heldout'; attempts: number; blocked_by: string[]; false_blocks: number; verdict: { passed: boolean; failures: string[] } };
 type RunDetail = Run & { traces: Trace[] };
-type MemoryTypes = { procedural: number; episodic: number; semantic: number; taxonomic: number; receipts: number };
+type MemoryTypes = { procedural: number; episodic: number; semantic: number; taxonomic: number; receipts: number; knowledge?: number };
+type Explanation = { id: string; kind: string; title: string; text: string; path?: string; swebok: string; layman?: string; score: number };
 type UiCard = { id: string; question: string; options: { label: string; text: string }[]; freeText: boolean };
 type Costar = {
   scores: { dimension: string; p_present: number; evidence: string[] }[];
@@ -151,7 +152,7 @@ export default function HomePage() {
           <Label>Memory types · Atlas collections</Label>
           <MemoryStrip m={memory.data} />
           <p className="mt-3 text-xs text-muted">
-            procedural = versioned rules · episodic = run traces · semantic = lexicon (Voyage <span className="font-mono">voyage-code-4</span>, 1024-d, <span className="font-mono">$vectorSearch</span>) · taxonomic = failure categories · receipts = audit log
+            procedural = versioned rules · episodic = run traces · semantic = lexicon (Voyage <span className="font-mono">voyage-code-4</span>, 1024-d, <span className="font-mono">$vectorSearch</span>) · taxonomic = failure categories · receipts = audit log · knowledge = the harness's own code + learned rules, vector-indexed (dogfooding)
           </p>
         </Card>
       </div>
@@ -222,6 +223,9 @@ export default function HomePage() {
           )}
         </Card>
       </div>
+
+      {/* dogfooding: the harness explains itself in plain terms */}
+      <LearnPanel />
 
       {/* runs table */}
       <Card>
@@ -349,6 +353,49 @@ function RunRow({ r, open, onToggle }: { r: Run; open: boolean; onToggle: () => 
   );
 }
 
+function LearnPanel() {
+  const qc = useQueryClient();
+  const [draft, setDraft] = useState('why did it block my retry loop?');
+  const [query, setQuery] = useState('');
+  const q = useQuery({ ...modelenceQuery<{ hits: Explanation[]; resolver: string }>('harness.explain', { query, k: 5 }), enabled: query.length > 0, staleTime: Infinity });
+  const index = useMutation({ ...modelenceMutation<{ indexed: number; kinds: Record<string, number> }>('harness.indexKnowledge'), onSuccess: (r) => { toast.success(`indexed ${r.indexed} units: ${Object.entries(r.kinds).map(([k, v]) => `${k} ${v}`).join(', ')}`); qc.invalidateQueries({ predicate: (x) => String(x.queryKey[0]).startsWith('harness.') }); } });
+  const KIND: Record<string, string> = { module: 'bg-cobalt/20 text-cobalt', export: 'bg-raised text-muted', rule: 'bg-verdant/15 text-verdant', lexicon: 'bg-signal/15 text-signal', failure: 'bg-ember/15 text-ember' };
+  return (
+    <Card>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <Label>Learn · the harness explains itself (own code + learned rules, vector-indexed)</Label>
+        <Btn onClick={() => index.mutate({})} disabled={index.isPending}>{index.isPending ? 'indexing…' : 'Index my codebase'}</Btn>
+      </div>
+      <form className="mt-3 flex gap-2" onSubmit={(e) => { e.preventDefault(); if (draft.trim()) setQuery(draft.trim()); }}>
+        <input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="ask in your own words…"
+          className="min-w-0 flex-1 rounded-md border border-line bg-raised px-3 py-2 text-sm text-text placeholder:text-muted focus:border-cobalt focus:outline-none" />
+        <Btn tone="accent" type="submit" disabled={!draft.trim() || q.isFetching}>{q.isFetching ? 'searching…' : 'Explain'}</Btn>
+      </form>
+      {q.data && (
+        <div className="mt-3 space-y-2">
+          <div className="font-mono text-[11px] text-muted">resolver: {q.data.resolver}</div>
+          {q.data.hits.length === 0 && <p className="text-sm text-muted">Nothing indexed yet — click “Index my codebase”.</p>}
+          {q.data.hits.map((h) => (
+            <div key={h.id} className="rounded-md border border-line bg-raised/60 p-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className={cn('rounded px-1.5 py-0.5 font-mono text-[10px]', KIND[h.kind] ?? 'bg-raised text-muted')}>{h.kind}</span>
+                <span className="text-sm font-medium">{h.title}</span>
+                <span className="ml-auto font-mono text-[11px] text-muted">{h.score.toFixed(3)}</span>
+              </div>
+              {h.layman && <p className="mt-1.5 text-sm">{h.layman}</p>}
+              <p className="mt-1 text-xs text-muted">{h.text.length > 240 ? `${h.text.slice(0, 240)}…` : h.text}</p>
+              <div className="mt-1.5 flex flex-wrap gap-x-3 font-mono text-[10px] text-muted">
+                {h.path && <span>{h.path}</span>}
+                <span>SWEBOK: {h.swebok}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </Card>
+  );
+}
+
 function Kpi({ label, value, sub, tone }: { label: string; value: string; sub?: string; tone: 'cobalt' | 'verdant' | 'ember' | 'signal' }) {
   const color = { cobalt: 'text-cobalt', verdant: 'text-verdant', ember: 'text-ember', signal: 'text-signal' }[tone];
   return (
@@ -362,14 +409,14 @@ function Kpi({ label, value, sub, tone }: { label: string; value: string; sub?: 
 
 function MemoryStrip({ m }: { m?: MemoryTypes }) {
   const rows: [keyof MemoryTypes, string][] = [
-    ['procedural', 'rules'], ['episodic', 'runs'], ['semantic', 'lexicon'], ['taxonomic', 'failures'], ['receipts', 'audit'],
+    ['procedural', 'rules'], ['episodic', 'runs'], ['semantic', 'lexicon'], ['taxonomic', 'failures'], ['receipts', 'audit'], ['knowledge', 'knowledge'],
   ];
   return (
     <ul className="mt-3 space-y-1.5">
       {rows.map(([k, coll]) => (
         <li key={k} className="flex items-center justify-between rounded-md bg-raised px-3 py-1.5 text-sm">
           <span>{k} <span className="font-mono text-xs text-muted">· {coll}</span></span>
-          <span className="font-mono">{m ? m[k] : '…'}</span>
+          <span className="font-mono">{m ? (m[k] ?? 0) : '…'}</span>
         </li>
       ))}
     </ul>

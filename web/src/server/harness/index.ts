@@ -9,6 +9,7 @@ import { vectorResolve, embedLexicon, vectorIndexStatus, ensureVectorIndex, over
 import { Actor, RunResult } from './schemas';
 import { SEED_FAILURES, SEED_LEXICON } from './seed';
 import { raindrop } from './raindrop';
+import { dbKnowledge, indexKnowledge, explain } from './knowledge';
 
 const strip = (d: any) => d.record;
 
@@ -21,7 +22,7 @@ export default new Module('harness', {
   configSchema: {
     voyageApiKey: { type: 'string', default: '', isPublic: false },
   },
-  stores: [dbRules, dbRuns, dbLexicon, dbFailures, dbAudit, dbCostar],
+  stores: [dbRules, dbRuns, dbLexicon, dbFailures, dbAudit, dbCostar, dbKnowledge],
 
   queries: {
     summary: async () => {
@@ -49,10 +50,15 @@ export default new Module('harness', {
       await dbCostar.insertOne({ record: { prompt, scores, missing: gaps, at: new Date().toISOString() }, body: '' } as any);
       return { scores, missing: gaps, ask: sideConversation(gaps), ui: uiSpec(gaps), lexicon, resolver };
     },
+    explain: async (args: unknown) => {
+      const { query, k } = z.object({ query: z.string().min(1).max(2000), k: z.number().int().min(1).max(10).default(5) }).parse(args);
+      return explain(query, k);
+    },
     memoryTypes: async () => ({
       procedural: await dbRules.countDocuments({}), episodic: await dbRuns.countDocuments({}),
       semantic: await dbLexicon.countDocuments({}), taxonomic: await dbFailures.countDocuments({}),
       receipts: await dbAudit.countDocuments({}),
+      knowledge: await dbKnowledge.countDocuments({}),
       raindrop: raindrop.enabled() ? 'on' : 'off (RAINDROP_API_KEY unset)',
       vectorIndex: await vectorIndexStatus().catch((e: any) => [{ name: 'error', status: String(e?.message ?? e) }]),
     }),
@@ -79,6 +85,7 @@ export default new Module('harness', {
       return { failures: SEED_FAILURES.length, lexiconEmbedded: embedded, vectorIndex: index };
     },
     ensureIndexes: async () => ensureVectorIndex(),
+    indexKnowledge: async () => indexKnowledge(),
     reset: async () => {
       for (const s of [dbRules, dbRuns, dbAudit, dbCostar]) await s.deleteMany({});
       return { ok: true };
