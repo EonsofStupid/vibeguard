@@ -6,6 +6,7 @@
 import { dbRules, dbAudit } from './db';
 import { GuardrailRule, isHuman, type GuardrailRule as Rule } from './schemas';
 import { raindrop } from './raindrop';
+import { growFromRule } from './knowledge';
 
 export class GateError extends Error {}
 const now = () => new Date().toISOString();
@@ -43,7 +44,7 @@ export async function approve(ruleId: string, actor: string): Promise<Rule> {
   const rule = await load(ruleId);
   if (rule.status !== 'proposed') throw new GateError(`${ruleId} is ${rule.status}, not proposed.`);
   const r = { ...rule, status: 'approved' as const, approved_by: actor, version: rule.version + 1, updated_at: now() };
-  await save(r, 'approve', actor); void raindrop.decided(r, 'approve', actor); return r;
+  await save(r, 'approve', actor); void raindrop.decided(r, 'approve', actor); void growFromRule(r); return r;
 }
 export async function revert(ruleId: string, actor: string, reason = ''): Promise<Rule> {
   if (!isHuman(actor)) throw new GateError('Reverting loosens the leash; only a human can do it.');
