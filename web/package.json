@@ -4,27 +4,30 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
+    "typecheck": "tsc --noEmit --incremental false",
     "build": "modelence build",
     "start": "node .modelence/build/app.mjs",
     "dev": "modelence dev",
     "dev:mobile": "cd mobile && npm run start",
     "postinstall": "node scripts/postinstall.mjs",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "npm --prefix .. run test:web"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",
     "@modelence/react-query": "^1.2.5",
     "@tanstack/react-query": "^5.104.1",
     "clsx": "^2.1.1",
-    "lucide-react": "^1.53.0",
-    "modelence": "^0.26.2",
+    "lucide-react": "^0.575.0",
+    "modelence": "^0.26.0",
+    "mongodb": "^6.21.0",
     "raindrop-ai": "^1.0.1",
-    "react": "^19.3.0",
-    "react-dom": "^19.3.0",
-    "react-hot-toast": "^2.6.1",
-    "react-router": "^8.4.0",
-    "tailwind-merge": "^3.7.0",
-    "zod": "^4.6.5"
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "react-hot-toast": "^2.6.0",
+    "react-markdown": "10.1.0",
+    "react-router": "^8.3.0",
+    "tailwind-merge": "^3.4.0",
+    "zod": "^4.1.13"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",

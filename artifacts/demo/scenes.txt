@@ -1,7 +1,11 @@
-file '01-chat-memory.png'
-duration 16
+file '06-raindrop-trace.png'
+duration 13
+file '04-context-popup.png'
+duration 8
 file '02-rsi-evidence.png'
-duration 24
-file '03-human-review.png'
-duration 24
-file '03-human-review.png'
+duration 16
+file '05-review-popup.png'
+duration 15
+file '06-raindrop-trace.png'
+duration 6
+file '06-raindrop-trace.png'

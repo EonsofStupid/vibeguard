@@ -1,8 +1,8 @@
 {
-  "checked_at": "2026-10-11T22:54:22.992Z",
+  "checked_at": "2026-10-11T23:43:13.607Z",
   "source": "independent Atlas majority reads",
   "proposal_id": "context-replay-20261011T224404Z-proposal-v1",
-  "proposal_status": "proposed",
+  "proposal_status": "approved",
   "policy_hash": "800fe2e7e50fc730b6c252c758cba7509edf1b0d1e8683cd31418895395b92df",
   "policy": {
     "kind": "memory_recall_cooldown",
@@ -17,5 +17,10 @@
   "verified": false,
   "checks": null,
   "receipt": null,
-  "active_policy": null
+  "active_policy": {
+    "id": "memory-recall-cooldown",
+    "version": 1,
+    "proposal_id": "context-replay-20261011T224404Z-proposal-v1",
+    "policy_hash": "800fe2e7e50fc730b6c252c758cba7509edf1b0d1e8683cd31418895395b92df"
+  }
 }

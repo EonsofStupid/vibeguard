@@ -1,3 +1,5 @@
+import type { CaptureResult } from '../../shared/telemetry';
+
 export type ChatMessage = { id: string; role: 'user' | 'assistant'; content: string };
 export type ChatInput = { sessionId: string; messages: ChatMessage[] };
 export type ChatReceipt = { id: string; sessionId: string; turnSequence: number; acknowledged: true };
@@ -7,6 +9,7 @@ export type ChatReply = {
   model: string;
   responseId: string;
   sessionId: string;
+  telemetry?: CaptureResult;
   memory: {
     mode: 'hosted';
     userId: string;
@@ -16,6 +19,7 @@ export type ChatReply = {
     error: string | null;
     recallLimited: boolean;
     recallReason: string | null;
+    policyWarning?: string | null;
     policy: { id: string; version: number; hash: string; decision: 'recalled' | 'rate_limited' | 'cooldown'; eventId: string } | null;
     contextTruncated: boolean;
     recalled: { id: string; content: string; source: string; timestamp?: string }[];

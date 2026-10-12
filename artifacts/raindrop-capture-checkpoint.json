@@ -1,0 +1,27 @@
+{
+  "checked_at": "2026-10-11T23:40:18.893Z",
+  "event": {
+    "provider": "raindrop",
+    "status": "acknowledged",
+    "eventId": "vibeguard-replay-import-context-replay-20261011T224404Z",
+    "httpStatus": 200,
+    "acknowledgedAt": "2026-10-11T23:40:18.659Z",
+    "acknowledgement": "matching_event_id"
+  },
+  "signal": {
+    "provider": "raindrop",
+    "status": "acknowledged",
+    "eventId": "vibeguard-replay-import-context-replay-20261011T224404Z",
+    "httpStatus": 204,
+    "acknowledgedAt": "2026-10-11T23:40:18.893Z",
+    "acknowledgement": "http_204"
+  },
+  "evidence_type": "historical_incident_replay_import",
+  "source_artifact": "artifacts/improvement/context-replay-20261011T224404Z.json",
+  "source_sha256": "15d8ba7bca0a88c5cceb4ccd831e0edaa6f08ed7365f0c6f95e58e766d976305",
+  "experiment_id": "context-replay-20261011T224404Z",
+  "proposal_id": "context-replay-20261011T224404Z-proposal-v1",
+  "policy_hash": "800fe2e7e50fc730b6c252c758cba7509edf1b0d1e8683cd31418895395b92df",
+  "dashboard_inspected": false,
+  "limitations": "Provider responses, timelines, turn writes and replies were simulated. This imports earlier evidence; no new model run, live savings or approval is claimed."
+}

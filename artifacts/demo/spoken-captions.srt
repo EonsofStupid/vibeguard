@@ -1,0 +1,19 @@
+1
+00:00:00,000 --> 00:00:13,000
+VibeGuard combines chat, durable memory, and measured harness improvement. Atlas stores scoped conversation turns; an independently checked chat also recalled the project's saved goal.
+
+2
+00:00:13,000 --> 00:00:21,000
+Relevant popups explain terms as you build. A retry budget counts every attempt, including retries hidden inside a tool.
+
+3
+00:00:21,000 --> 00:00:37,000
+After a real memory rate limit, a live model proposed a sixty-second recall cooldown. In seven frozen incident replay cases, avoidable recalls fell eight to zero. All fifty-one simulated turns remained recorded.
+
+4
+00:00:37,000 --> 00:00:52,000
+A human reviews the exact policy before it can change future chats. Our approval record needs its matching audit receipt before activation is verified. The approved-version rerun remains next.
+
+5
+00:00:52,000 --> 00:00:58,000
+Raindrop acknowledged this real chat event. Feedback can inform the next proposed improvement.

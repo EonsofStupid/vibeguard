@@ -3,6 +3,7 @@ import { z } from 'zod';
 import type { Proposal, ReviewReceipt } from '@/shared/improvement';
 import { getAgentMemoryHeaders } from '@/server/chat/auth';
 import { evidenceDatabase } from '@/server/storage/atlas';
+import { captureEvent, captureSignal } from '@/server/observability/raindrop';
 
 const id = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$/);
 const hash = z.string().regex(/^[a-f0-9]{64}$/);
@@ -21,6 +22,21 @@ const payloadSchema = z.object({
   replaces_active_policy_version: z.number().int().min(0),
 }).passthrough();
 const pendingRequests = new Map<string, Promise<unknown>>();
+
+function captureReview(review: z.infer<typeof payloadSchema>, sessionId: string) {
+  return captureEvent({
+    eventId: `rrflow-review-${review.proposal_id}-v${review.proposal_version}-${review.policy_hash}`,
+    userId: process.env.VIBEGUARD_MEMORY_USER_ID?.trim() || 'vibeguard-operator',
+    event: 'rrflow.review.proposal_snapshot',
+    properties: {
+      evidence_type: 'review_snapshot', source: 'existing_atlas_proposal', captured_at: new Date().toISOString(),
+      session_id: sessionId, proposal_id: review.proposal_id, proposal_version: review.proposal_version,
+      policy_hash: review.policy_hash, experiment_id: review.experiment_id,
+      policy: review.policy, evidence: review.evidence,
+      note: 'Snapshot of an existing proposal. This is not a new model response or a live improvement measurement.',
+    },
+  });
+}
 
 function target() {
   const configured = process.env.RRFLOW_INVOKE_URL || process.env.MONGODB_AGENTIC_API_URL;
@@ -76,7 +92,7 @@ async function requestReview(value: unknown) {
   const job = (async () => {
     const pending = await pendingReviews();
     const existing = pending.find((review) => review.proposal_id === request.proposal_id && review.proposal_version === request.version && review.policy_hash === request.policy_hash);
-    if (existing) return { status: 'awaiting_review', review: existing };
+    if (existing) return { status: 'awaiting_review', review: existing, telemetry: await captureReview(existing, sessionId) };
     const db = await evidenceDatabase();
     const proposal = await db.collection<Proposal>('harness_proposals').findOne({ _id: request.proposal_id });
     if (!proposal || proposal.status !== 'proposed' || proposal.version !== request.version || proposal.policy_hash !== request.policy_hash) throw new Error('This proposal changed or was already reviewed. Refresh the evidence.');
@@ -84,7 +100,7 @@ async function requestReview(value: unknown) {
     const reviews = await pendingReviews();
     const review = reviews.find((item) => item.session_id === sessionId && item.proposal_id === request.proposal_id);
     if (!review) throw new Error('RRFlow has not exposed a pending review yet. Refresh reviews before sending another request.');
-    return { status: 'awaiting_review', review };
+    return { status: 'awaiting_review', review, telemetry: await captureReview(review, sessionId) };
   })();
   pendingRequests.set(sessionId, job);
   try { return await job; } finally { pendingRequests.delete(sessionId); }
@@ -96,6 +112,7 @@ async function decideReview(value: unknown) {
   const pending = await pendingReviews();
   const review = pending.find((item) => item.execution_id === request.execution_id && item.interrupt_id === request.interrupt_id && item.session_id === request.session_id);
   if (!review || review.proposal_id !== request.proposal_id || review.proposal_version !== request.version || review.policy_hash !== request.policy_hash) throw new Error('The reviewed version is no longer pending. Refresh the review before deciding.');
+  const telemetryEvent = await captureReview(review, request.session_id);
   await platform(target().invoke, {
     session_id: request.session_id,
     resume_map: { [request.interrupt_id]: { decision: request.decision, reviewer_name: request.reviewer_name, reviewer_notes: request.reviewer_notes ?? '' } },
@@ -106,7 +123,14 @@ async function decideReview(value: unknown) {
   if (!receipt || receipt.policy_hash !== request.policy_hash || receipt.status !== (request.decision === 'approved' ? 'approved' : 'rejected')) {
     return { completed: false, message: 'The decision was submitted. RRFlow has not returned a matching committed receipt yet.' };
   }
-  return { completed: true, receipt: { id: receiptId, status: receipt.status, actor: receipt.actor, at: receipt.at, policy_hash: receipt.policy_hash, version: receipt.version, active_policy_version: receipt.active_policy_version } };
+  const telemetrySignal = await captureSignal(telemetryEvent, {
+    name: receipt.event, sentiment: receipt.status === 'approved' ? 'POSITIVE' : 'NEGATIVE', type: 'feedback',
+    properties: { receipt_id: receiptId, proposal_id: request.proposal_id, proposal_version: request.version,
+      policy_hash: receipt.policy_hash, active_policy_version: receipt.active_policy_version, experiment_id: receipt.experiment_id,
+      actor: receipt.actor, reviewed_at: receipt.at, reviewer_notes: receipt.reviewer_notes ?? '',
+      meaning: 'Human authorization decision. Approval is not itself evidence of better model quality.' },
+  });
+  return { completed: true, telemetry: { event: telemetryEvent, signal: telemetrySignal }, receipt: { id: receiptId, status: receipt.status, actor: receipt.actor, at: receipt.at, policy_hash: receipt.policy_hash, version: receipt.version, active_policy_version: receipt.active_policy_version } };
 }
 
 export default new Module('review', {

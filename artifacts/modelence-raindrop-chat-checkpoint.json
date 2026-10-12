@@ -1,0 +1,69 @@
+{
+  "checked_at": "2026-10-11T23:51:00.139Z",
+  "checkpoint": "Statements 1 and 2: real chat with memory turn persistence and Raindrop capture",
+  "evidence_type": "actual_chat_independent_atlas_majority_read",
+  "passed": true,
+  "environment": {
+    "kind": "local_production_build",
+    "url": "http://localhost:53351",
+    "custom_domain_verified": false
+  },
+  "database": "mdb_memory_6acbc84c07e49c5b0f33c510",
+  "collection": "memory_short_term",
+  "session_id": "chat-724e4cb8-0484-40b5-99ee-66acb539951b",
+  "read_concern": "majority",
+  "records": [
+    {
+      "id": "6acc205020b7a8d67bfc1fc6",
+      "role": "user",
+      "turn_seq": 1,
+      "user_id": "vibeguard-operator",
+      "session_id": "chat-724e4cb8-0484-40b5-99ee-66acb539951b",
+      "project_id": "6acbc84c07e49c5b0f33c510",
+      "content": "Help me call a paid API with at most three total attempts. Give me a concise TypeScript example and explain the retry budget in plain language.",
+      "content_sha256": "0aee5ba3d8a20a86e1448f844beac8b2d2040c7f880f935f51c75e07deb8ea59",
+      "timestamp": "2026-10-11T23:48:32.385Z",
+      "metadata": {
+        "source": "vibeguard-modelence-chat"
+      }
+    },
+    {
+      "id": "6acc205920b7a8d67bfc1fc7",
+      "role": "assistant",
+      "turn_seq": 2,
+      "user_id": "vibeguard-operator",
+      "session_id": "chat-724e4cb8-0484-40b5-99ee-66acb539951b",
+      "project_id": "6acbc84c07e49c5b0f33c510",
+      "content": "```ts\n// Node.js 18+\nconst API_URL = \"https://api.example.com/v1/charge\";\nconst API_KEY = process.env.PAID_API_KEY;\n\nif (!API_KEY) throw new Error(\"Missing PAID_API_KEY\");\n\nconst MAX_ATTEMPTS = 3; // 1 initial attempt + at most 2 retries\n\nfunction sleep(ms: number) {\n  return new Promise(resolve => setTimeout(resolve, ms));\n}\n\nfunction retryable(status: number) {\n  return status === 408 || status === 429 || status >= 500;\n}\n\nasync function callPaidApi(payload: unknown) {\n  // Use an idempotency key when the operation can create a charge/order.\n  const idempotencyKey = crypto.randomUUID();\n\n  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {\n    try {\n      const response = await fetch(API_URL, {\n        method: \"POST\",\n        headers: {\n          \"Authorization\": `Bearer ${API_KEY}`,\n          \"Content-Type\": \"application/json\",\n          \"Idempotency-Key\": idempotencyKey,\n        },\n        body: JSON.stringify(payload),\n        signal: AbortSignal.timeout(10_000),\n      });\n\n      if (response.ok) return await response.json();\n\n      const body = await response.text();\n\n      if (!retryable(response.status) || attempt === MAX_ATTEMPTS) {\n        throw new Error(`API failed (${response.status}): ${body}`);\n      }\n\n      // Exponential backoff: 1s, then 2s.\n      await sleep(1000 * 2 ** (attempt - 1));\n    } catch (error) {\n      if (attempt === MAX_ATTEMPTS) throw error;\n\n      // Network/timeout errors may be transient; retry within the budget.\n      await sleep(1000 * 2 ** (attempt - 1));\n    }\n  }\n\n  throw new Error(\"Unreachable\");\n}\n\ncallPaidApi({ amount: 2500, currency: \"usd\" })\n  .then(result => console.log(result))\n  .catch(error => {\n    console.error(\"Request failed:\", error.message);\n    process.exitCode = 1;\n  });\n```\n\n**Retry budget:** the code makes **no more than three total attempts**: the first request plus up to two retries. It retries only likely-transient failures, waits between attempts, and then stops. For paid or non-idempotent operations, keep the same idempotency key so a retry does not accidentally create a duplicate charge.",
+      "content_sha256": "85656a1664af9cb3ae4f294696bb7a4e0309374675cc81852a0a5bbf0af1d93e",
+      "timestamp": "2026-10-11T23:48:41.406Z",
+      "metadata": {
+        "source": "vibeguard-modelence-chat"
+      }
+    }
+  ],
+  "checks": {
+    "both_ids_persisted": true,
+    "identity_scope_matches": true,
+    "roles_match": true,
+    "content_nonempty": true
+  },
+  "browser_observation": {
+    "source": "parent agent actual UI walkthrough",
+    "raindrop_event_id": "vibeguard-chat-ec6a28ed-9b6b-463c-934a-f0ec1aca8be6",
+    "raindrop_http_status": 200,
+    "raindrop_accepted_at": "2026-10-11T23:48:42Z",
+    "model_response_id": "resp_01ac5eea70f044c3006acc2051c50487d098c5382b294210d9",
+    "exact_response_body_compared_to_atlas": false
+  },
+  "limits": [
+    "Raindrop event acknowledgement observed in browser; not independently queried from Raindrop.",
+    "Saved turns do not establish long-term extraction.",
+    "This chat used current-thread integrity fallback; no approved policy activation or rerun is claimed."
+  ],
+  "verification_side_effects": {
+    "atlas_writes": 0,
+    "model_calls": 0,
+    "approvals": 0
+  }
+}

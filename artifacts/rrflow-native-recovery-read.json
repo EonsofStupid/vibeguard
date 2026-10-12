@@ -1,0 +1,60 @@
+{
+  "checked_at": "2026-10-11T23:52:19.527Z",
+  "read_only": true,
+  "responses": [
+    {
+      "path": "/sessions/rrflow-context-replay-20261011T224404Z-proposal-v1-v1/messages?workspace_id=ws-6acc09b7f638d6502445e5d5",
+      "status": 200,
+      "keys": [
+        "messages",
+        "latest_status",
+        "history_status"
+      ],
+      "messages": [
+        {
+          "id": "durable-input:34008f55-5e7a-434e-a3ca-762988bfa269",
+          "role": "user",
+          "content": "{\"proposal_id\":\"context-replay-20261011T224404Z-proposal-v1\",\"version\":1,\"policy_hash\":\"800fe2e7e50fc730b6c252c758cba7509edf1b0d1e8683cd31418895395b92df\"}",
+          "timestamp": "2026-10-11T23:25:12.476Z",
+          "session_id": "rrflow-context-replay-20261011T224404Z-proposal-v1-v1",
+          "name": ""
+        },
+        {
+          "id": "durable-message:34008f55-5e7a-434e-a3ca-762988bfa269:4:0984fb22e73bfb488e142f274fded13933630cfc815c04ccc7d76f125a3dc4f2",
+          "role": "assistant",
+          "content": "{\"service\":\"rrflow\",\"proposal_id\":\"context-replay-20261011T224404Z-proposal-v1\",\"decision\":\"approved\",\"receipt_id\":\"rrflow:context-replay-20261011T224404Z-proposal-v1:v1\",\"policy_hash\":\"800fe2e7e50fc730b6c252c758cba7509edf1b0d1e8683cd31418895395b92df\",\"active_policy_version\":1,\"message\":\"Human approval and the active harness policy committed together in Atlas.\"}",
+          "timestamp": "2026-10-11T23:25:12.476Z",
+          "session_id": "rrflow-context-replay-20261011T224404Z-proposal-v1-v1",
+          "name": ""
+        }
+      ]
+    },
+    {
+      "path": "/executions/34008f55-5e7a-434e-a3ca-762988bfa269?workspace_id=ws-6acc09b7f638d6502445e5d5",
+      "status": 200,
+      "keys": [
+        "success",
+        "execution"
+      ]
+    }
+  ],
+  "approvals_submitted": 0,
+  "execution_detail": {
+    "http_status": 200,
+    "execution_id": "34008f55-5e7a-434e-a3ca-762988bfa269",
+    "status": "completed",
+    "result": {
+      "service": "rrflow",
+      "proposal_id": "context-replay-20261011T224404Z-proposal-v1",
+      "decision": "approved",
+      "receipt_id": "rrflow:context-replay-20261011T224404Z-proposal-v1:v1",
+      "policy_hash": "800fe2e7e50fc730b6c252c758cba7509edf1b0d1e8683cd31418895395b92df",
+      "active_policy_version": 1,
+      "message": "Human approval and the active harness policy committed together in Atlas."
+    },
+    "suspend_context": {
+      "activity_states": []
+    }
+  },
+  "conclusion": "Durable hosted execution records an approved decision and transaction result. It does not retain the full receipt fields through these endpoints. The referenced Atlas audit receipt is missing; no receipt was recreated and no new decision submitted."
+}

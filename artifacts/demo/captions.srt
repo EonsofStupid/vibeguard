@@ -1,11 +1,19 @@
-﻿1
-00:00:00,000 --> 00:00:16,000
-Local Modelence build | Real chat + Atlas memory receipts
+1
+00:00:00,000 --> 00:00:13,000
+REAL CHAT | Both turns saved to Atlas; current reply discloses unavailable long-term recall
 
 2
-00:00:16,000 --> 00:00:40,000
-RSI | Live model proposal, incident replay evaluation
+00:00:13,000 --> 00:00:21,000
+LEARN WHILE BUILDING · Contextual explanations appear when relevant
 
 3
-00:00:40,000 --> 00:01:04,000
-RRFlow | Actual review pending; activation is not claimed
+00:00:21,000 --> 00:00:37,000
+EARLIER SHADOW TRIAL | Avoidable recalls 8 to 0 | Simulated turns retained 51 of 51
+
+4
+00:00:37,000 --> 00:00:52,000
+HUMAN APPROVAL RECORDED | Matching audit receipt missing; activation unverified
+
+5
+00:00:52,000 --> 00:00:58,000
+RAINDROP | Actual chat event acknowledged with HTTP 200

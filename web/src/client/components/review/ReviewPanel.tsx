@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { modelenceMutation, modelenceQuery } from '@modelence/react-query';
 import { Button } from '@/client/components/ui/Button';
 import { Input } from '@/client/components/ui/Input';
 import { Textarea } from '@/client/components/ui/Textarea';
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from '@/client/components/ui/Dialog';
 import type { ImprovementStatus } from '@/shared/improvement';
 
 type PendingReview = {
@@ -62,6 +63,11 @@ function PendingCard({ review, onResolved }: { review: PendingReview; onResolved
 
 export default function ReviewPanel() {
   const [latestDecision, setLatestDecision] = useState<DecisionResult | null>(null);
+  const [selectedExecution, setSelectedExecution] = useState<string | null>(null);
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const surfaced = useRef(new Set<string>());
+  const reviewButtons = useRef(new Map<string, HTMLButtonElement>());
+  const panelTitle = useRef<HTMLHeadingElement>(null);
   const queryClient = useQueryClient();
   const pending = useQuery({ ...modelenceQuery<{ reviews: PendingReview[] }>('review.pending'), refetchInterval: 10000, retry: false });
   const evidence = useQuery({ ...modelenceQuery<ImprovementStatus>('improvement.status'), refetchInterval: 10000 });
@@ -74,14 +80,39 @@ export default function ReviewPanel() {
   const proposal = evidence.data?.proposal;
   const eligible = evidence.data?.experiment?.promotion?.eligible === true;
   const alreadyPending = !!proposal && reviews.some((item) => item.proposal_id === proposal._id);
+  const selectedReview = reviews.find((review) => review.execution_id === selectedExecution);
+  const openReview = (review: PendingReview) => {
+    surfaced.current.add(review.execution_id);
+    try { sessionStorage.setItem(`vibeguard:review-surfaced:${review.execution_id}`, 'true'); } catch { /* In-memory tracking still prevents repeated prompts. */ }
+    setSelectedExecution(review.execution_id);
+    setReviewOpen(true);
+  };
+  useEffect(() => {
+    if (reviewOpen) return;
+    const next = reviews.find((review) => {
+      if (surfaced.current.has(review.execution_id)) return false;
+      try { if (sessionStorage.getItem(`vibeguard:review-surfaced:${review.execution_id}`)) return false; } catch { /* Storage may be unavailable. */ }
+      return true;
+    });
+    if (next) openReview(next);
+  }, [reviews, reviewOpen]);
   return <section id="human-review" aria-labelledby="human-review-title" className="animate-fade-up rounded-xl border border-line bg-surface p-4 md:p-6">
-    <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-[11px] uppercase tracking-[0.14em] text-muted">RRFlow · human review</p><h2 id="human-review-title" className="mt-1 font-display text-xl">You choose what becomes active.</h2><p className="mt-2 text-sm text-muted">A measured proposal waits here until you review and submit your decision.</p></div><Button size="sm" variant="outline" className="border-line bg-raised text-text" onClick={() => pending.refetch()} loading={pending.isFetching}>Refresh reviews</Button></div>
+    <div className="flex flex-wrap items-start justify-between gap-3"><div><p className="text-[11px] uppercase tracking-[0.14em] text-muted">RRFlow · human review</p><h2 ref={panelTitle} tabIndex={-1} id="human-review-title" className="mt-1 font-display text-xl">You choose what becomes active.</h2><p className="mt-2 text-sm text-muted">A measured proposal waits here until you review and submit your decision.</p></div><Button size="sm" variant="outline" className="border-line bg-raised text-text" onClick={() => pending.refetch()} loading={pending.isFetching}>Refresh reviews</Button></div>
     {pending.isPending && <p role="status" className="mt-4 text-sm text-muted">Loading the RRFlow review queue…</p>}
     {pending.error && <p role="alert" className="mt-4 rounded-lg border border-ember/40 p-3 text-sm">{pending.error.message}</p>}
     {!pending.isPending && !pending.error && reviews.length === 0 && <p className="mt-4 text-sm text-muted">No change is waiting for a decision.</p>}
     {proposal?.status === 'proposed' && eligible && !alreadyPending && <div className="mt-4 space-y-2"><Button variant="outline" className="border-signal/50 bg-signal/10 text-signal" loading={request.isPending} onClick={() => request.mutate({ proposal_id: proposal._id, version: proposal.version, policy_hash: proposal.policy_hash })}>{request.isPending ? 'Opening the review in RRFlow…' : 'Review proposed improvement'}</Button><p className="text-xs text-muted">Opening a review does not approve it.</p></div>}
     {request.error && <p role="alert" className="mt-3 text-sm text-ember">{request.error.message}</p>}
     {latestDecision && <div role="status" className="mt-4 rounded-lg border border-verdant/40 bg-verdant/10 p-3 text-sm">{latestDecision.completed ? <><p>Decision saved: <strong>{latestDecision.receipt?.status}</strong>. {latestDecision.receipt?.status === 'approved' ? 'Future chats will use this approved policy.' : 'The active policy is unchanged.'}</p><p className="mt-1 break-all font-mono text-xs">Receipt {latestDecision.receipt?.id} · active version {latestDecision.receipt?.active_policy_version}</p></> : latestDecision.message}</div>}
-    <div className="mt-4 space-y-4">{reviews.map((review) => <PendingCard key={`${review.execution_id}:${review.interrupt_id}`} review={review} onResolved={(result) => { setLatestDecision(result); refresh(); }} />)}</div>
+    <div className="mt-4 space-y-3">{reviews.map((review) => <article key={`${review.execution_id}:${review.interrupt_id}`} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-signal/40 bg-signal/5 p-4">
+      <div><p className="text-sm font-medium text-signal">Ready for your review</p><p className="mt-1 text-sm">{review.policy.kind === 'memory_recall_cooldown' ? 'Pause memory recall briefly after a rate limit' : 'Set an explicit retry budget'} · version {review.proposal_version}</p><p className="mt-1 text-xs text-muted">Nothing changes until you submit a decision.</p></div>
+      <Button ref={(element) => { if (element) reviewButtons.current.set(review.execution_id, element); else reviewButtons.current.delete(review.execution_id); }} variant="outline" className="border-signal/50 bg-signal/10 text-signal" onClick={() => openReview(review)}>Review now</Button>
+    </article>)}</div>
+    <Dialog open={reviewOpen && !!selectedReview} onOpenChange={setReviewOpen}>
+      <DialogContent showClose={false} finalFocus={() => reviewButtons.current.get(selectedExecution ?? '') ?? panelTitle.current} className="max-h-[90dvh] w-[calc(100%-2rem)] max-w-2xl overflow-y-auto border-line bg-surface text-text">
+        <div className="flex items-start justify-between gap-4"><div><DialogTitle className="font-display text-xl">Review this improvement</DialogTitle><DialogDescription className="mt-2 text-muted">Check the proposed change, then choose whether it should apply to future chats.</DialogDescription></div><DialogClose render={<Button size="sm" variant="outline" className="shrink-0 border-line bg-raised text-text" />}>Review later</DialogClose></div>
+        {selectedReview && <PendingCard key={`${selectedReview.execution_id}:${selectedReview.interrupt_id}`} review={selectedReview} onResolved={(result) => { setLatestDecision(result); if (result.completed) setReviewOpen(false); refresh(); }} />}
+      </DialogContent>
+    </Dialog>
   </section>;
 }

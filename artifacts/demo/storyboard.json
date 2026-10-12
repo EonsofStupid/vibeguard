@@ -1,0 +1,46 @@
+{
+  "title": "VibeGuard — chat, memory and a governed improvement",
+  "capture_environment": "local Modelence production build; latest captures on localhost:53351 with real hosted Atlas, Agent Engine and Raindrop services",
+  "policy_status": "human approval recorded on proposal; matching audit receipt missing, activation unverified, approved-version rerun pending",
+  "target_seconds": 58,
+  "final_captures_ready": true,
+  "scenes": [
+    {
+      "id": "chat",
+      "seconds": 13,
+      "image": "06-raindrop-trace.png",
+      "caption": "REAL CHAT | Both turns saved to Atlas; current reply discloses unavailable long-term recall",
+      "narration": "VibeGuard combines chat, durable memory, and measured harness improvement. Atlas stores scoped conversation turns; an independently checked chat also recalled the project's saved goal."
+    },
+    {
+      "id": "learning",
+      "seconds": 8,
+      "image": "04-context-popup.png",
+      "caption": "LEARN WHILE BUILDING · Contextual explanations appear when relevant",
+      "narration": "Relevant popups explain terms as you build. A retry budget counts every attempt, including retries hidden inside a tool."
+    },
+    {
+      "id": "replay",
+      "seconds": 16,
+      "image": "02-rsi-evidence.png",
+      "caption": "EARLIER SHADOW TRIAL | Avoidable recalls 8 to 0 | Simulated turns retained 51 of 51",
+      "narration": "After a real memory rate limit, a live model proposed a sixty-second recall cooldown. In seven frozen incident replay cases, avoidable recalls fell eight to zero. All fifty-one simulated turns remained recorded."
+    },
+    {
+      "id": "review",
+      "seconds": 15,
+      "image": "05-review-popup.png",
+      "caption": "HUMAN APPROVAL RECORDED | Matching audit receipt missing; activation unverified",
+      "narration": "A human reviews the exact policy before it can change future chats. Our approval record needs its matching audit receipt before activation is verified. The approved-version rerun remains next.",
+      "note": "Current RSI summary shows approval recorded, activation evidence needed. This capture is not a pending-review dialog."
+    },
+    {
+      "id": "trace",
+      "seconds": 6,
+      "image": "06-raindrop-trace.png",
+      "caption": "RAINDROP | Actual chat event acknowledged with HTTP 200",
+      "narration": "Raindrop acknowledged this real chat event. Feedback can inform the next proposed improvement.",
+      "note": "Visible actual chat acknowledgement in capture: vibeguard-chat-ec6a28ed-9b6b-463c-934a-f0ec1aca8be6 at 2026-10-11T23:48:42.088Z, HTTP 200. Dashboard inspection not claimed."
+    }
+  ]
+}

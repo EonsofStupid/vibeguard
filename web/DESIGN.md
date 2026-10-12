@@ -15,6 +15,13 @@ status or a better shadow score alone.
 
 ## Learning while building
 
+Pending RRFlow reviews open an accessible dialog once per execution in the
+current browser session. Keep a compact amber summary and a visible "Review
+now" button in the workbench. The dialog contains the exact policy, evidence,
+reviewer name, decision and acknowledgment; opening it never submits a decision.
+"Review later" and Escape dismiss it and return focus to the review control.
+Use a scrollable dark surface on small screens so every form field stays usable.
+
 The first panel speaks to the builder: “Make the next attempt better.” Show the
 real comparison and its review state before the recorded examples. Keep both
 goals visible: adapting the harness and remembering the goal and its results.
@@ -113,3 +120,7 @@ Headings are tight (`tracking-tight`), uppercase micro-labels use
 - `--animate-pulse-soft`: running state indicator (eval in progress).
 - Transitions on hover/focus are 150ms `transition-colors`. No motion on data
   updates besides the fade; charts redraw instantly.
+
+## Context and feedback
+
+Relevant knowledge opens in keyboard-accessible popovers, with a dismissible nonmodal nudge after a completed reply. Pending RRFlow review opens a focus-managed dialog once per execution; Review later dismisses it without deciding. Raindrop delivery receipts use cobalt informational styling, with explicit Helpful and Missed my goal controls. Only acknowledged delivery is labeled accepted; no telemetry status implies human approval.
