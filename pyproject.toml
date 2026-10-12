@@ -12,7 +12,7 @@ dependencies = [
 atlas = ["pymongo>=4.8,<5"]
 voyage = ["voyageai>=0.5.0"]
 memory = ["agent-engine-sdk-memory==0.10.0"]
-api = ["fastapi>=0.115", "uvicorn>=0.30"]
+api = ["fastapi>=0.143.0", "uvicorn>=0.30"]
 dev = ["pytest>=9.1.1", "httpx>=0.27"]
 
 [build-system]
