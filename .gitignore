@@ -20,3 +20,4 @@ artifacts/demo/*.mp4
 artifacts/demo/*.wav
 artifacts/demo/*.png
 .agentengine/
+.runtime-sync.bundle
