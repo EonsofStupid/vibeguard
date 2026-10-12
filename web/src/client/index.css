@@ -1,53 +1,51 @@
-@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,300..800;1,62..125,300..800&family=JetBrains+Mono:wght@400;500&display=swap");
 @import "tailwindcss";
 
 @source "./";
 
-/* VibeGuard design tokens — see DESIGN.md (control room / audit ledger). */
+/* VibeGuard — an inspection ledger for an AI on a leash. See DESIGN.md. */
 @theme {
-  --color-ink: #0f1115;
-  --color-surface: #171a21;
-  --color-raised: #1f232c;
-  --color-line: #2a2f3a;
-  --color-text: #e6e8ee;
-  --color-muted: #8b93a7;
-  --color-signal: #f5b73d;
-  --color-verdant: #3ddc97;
-  --color-ember: #ff5c5c;
-  --color-cobalt: #5b8cff;
+  --color-paper: #edf0f3;   /* page: cool engineering paper */
+  --color-sheet: #ffffff;   /* ledger sheets */
+  --color-ink: #16213a;     /* navy ink: text, the held-out line */
+  --color-rule: #c6ced8;    /* ruled lines */
+  --color-mute: #5b6578;    /* secondary text */
+  --color-flag: #e8590c;    /* safety orange: proposed, needs a human */
+  --color-pass: #1f7a4d;    /* stamp green: approved, pass */
+  --color-stop: #9b1b30;    /* oxblood: reverted, fail, false block */
+  --color-wash: #dde3ea;    /* quiet fill for inputs and table heads */
 
-  --font-display: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
-  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Archivo", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 
-  --animate-fade-up: fade-up 320ms ease-out both;
-  --animate-pulse-soft: pulse-soft 1.6s ease-in-out infinite;
-
-  @keyframes fade-up {
-    from { opacity: 0; transform: translateY(6px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-  @keyframes pulse-soft {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.45; }
+  --animate-draw: draw 1200ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  @keyframes draw {
+    from { stroke-dashoffset: 1; }
+    to { stroke-dashoffset: 0; }
   }
 }
 
-/* Base UI: establish a stacking context at the root so portalled
-   popups (Dialog, Select, Menu, Tooltip) layer above page content. */
-html {
-  isolation: isolate;
-  color-scheme: dark;
-}
+html { color-scheme: light; }
 body {
-  position: relative;
-  background:
-    radial-gradient(1200px 600px at 15% -10%, rgba(91, 140, 255, 0.10), transparent 60%),
-    radial-gradient(900px 500px at 95% 0%, rgba(61, 220, 151, 0.07), transparent 55%),
-    var(--color-ink);
-  background-attachment: fixed;
-  color: var(--color-text);
+  background: var(--color-paper);
+  color: var(--color-ink);
   font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
 }
-mark { color: inherit; }
-::selection { background: rgba(91, 140, 255, 0.35); }
+/* display type: Archivo's wide axis is the page's one typographic flourish */
+.display { font-stretch: 112%; font-weight: 700; letter-spacing: -0.015em; line-height: 1.02; }
+.wide { font-stretch: 112%; }
+.narrow { font-stretch: 88%; }
+/* ledger rows */
+.ledger > * + * { border-top: 1px solid var(--color-rule); }
+/* graph paper behind the chart */
+.graph {
+  background-image: linear-gradient(var(--color-rule) 1px, transparent 1px), linear-gradient(90deg, var(--color-rule) 1px, transparent 1px);
+  background-size: 100% 25%, 12.5% 100%;
+  background-position: 0 0;
+}
+mark { color: inherit; background: rgba(232, 89, 12, 0.22); }
+::selection { background: rgba(22, 33, 58, 0.18); }
+@media (prefers-reduced-motion: reduce) { .animate-draw { animation: none; stroke-dashoffset: 0 !important; } }
+:focus-visible { outline: 2px solid var(--color-ink); outline-offset: 2px; }
