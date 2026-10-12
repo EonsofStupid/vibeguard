@@ -4,7 +4,7 @@
 
 **Live:** https://vibeguard.shippin.ai (= https://vibeguard-mv4df1w6qok-prod.cloud.modelence.app) — deployed on Modelence Cloud, data in MongoDB Atlas, the loop observed and replayed in Raindrop. The deployed build is branch [`live`](https://github.com/EonsofStupid/vibeguard/tree/live); `main` additionally carries the chat panel and the RRFlow review gate (`web/src/server/review/`), not yet deployed.
 
-**Demo video:** `docs/demo/vibeguard-demo.mp4` (55 s screen recording of the live loop) with `docs/demo/vibeguard-demo.srt` captions.
+**Videos:** `docs/demo/vibeguard-pitch.mp4` (3:53 — why, results, the gate, memory, educating the operator, the A2UI goal, Raindrop, limits) · `docs/demo/vibeguard-presentation.mp4` (5:44 full walkthrough) · `docs/demo/vibeguard-demo-narrated.mp4` (73 s screen recording of the live loop). Scripts: `docs/demo/pitch-script.md`, `docs/demo/presentation-script.md`; slides in `docs/demo/slides/`.
 
 [Demo](https://vibeguard.shippin.ai) · [Walkthrough](docs/DEMO.md) · [Problem statements](docs/FOCUS.md) · [Delivery evidence](SCOPE.md) · [Contributing](CONTRIBUTING.md)
 
