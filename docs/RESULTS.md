@@ -57,6 +57,10 @@ The bridge is additive: with the gateway down the loop runs with `context: null`
 | Taxonomic | `failures` | 5 failure categories (seeded from `wiki/`) |
 | Receipts | `audit` | 6 governance events |
 
+## RRFlow on Raindrop (observability of the loop itself)
+
+Every run is a Raindrop interaction with a tool span per task; every training failure a self-diagnosis; every human verdict a feedback signal; every narrowed re-proposal an edit signal; every run a self-grade (agent signal). The mirror in Atlas (`raindrop_log`) is what the Self-improvement panel aggregates; its `sent / failed` counts are shown on the page. With `RAINDROP_QUERY_KEY` set, each run is additionally replayed as a Raindrop eval run over the published `vibeguard-tasks` dataset (local evaluators: deterministic judge, false-block, paid attempts) and compared with the previous run (`compareEvalRuns`), the comparison URL landing on the run record.
+
 ## Limits that apply to every number above
 
 - The agent is a scripted replay of recorded candidates (reproducible; no live model calls).
@@ -80,3 +84,4 @@ for i in range(1,6):
 embed_lexicon(s.db); ensure_vector_index(s.db); print(recall_at_k_eval(s.db,3))
 PY
 ```
+- Raindrop has no read API for events or signals; the loop's feedback source is the human gate in Atlas, mirrored to Raindrop. Eval runs and comparisons are readable (Query SDK key) and are the Raindrop-side record of improvement.

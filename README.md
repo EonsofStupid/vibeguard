@@ -2,7 +2,7 @@
 
 **A self-tightening agent harness that protects vibecoders' money and time.**
 
-**Live:** https://vibeguard-mv4df1w6qok-prod.cloud.modelence.app — deployed on Modelence Cloud, data in MongoDB Atlas.
+**Live:** https://vibeguard.shippin.ai (= https://vibeguard-mv4df1w6qok-prod.cloud.modelence.app) — deployed on Modelence Cloud, data in MongoDB Atlas, the loop observed and replayed in Raindrop.
 
 Most guardrails police the model. VibeGuard's guardrails protect the *user*: the non-technical builder who pays for every retry, every runaway loop and every leaked key. When an agent's output fails an eval, VibeGuard writes a new guardrail rule, a human approves it, and every later run loads it. **Agents may tighten their own leash; only humans loosen it.**
 
@@ -32,9 +32,10 @@ vibecoder prompt ──► COSTAR check ──► agent attempt ──► guard 
 
 | Layer | Where | What |
 | --- | --- | --- |
-| Judges' view + harness API | `web/` — Modelence (TypeScript, React 19) on **Modelence Cloud** | `harness` module: queries `summary`, `costar`, `memoryTypes`; mutations `runEvaluation`, `approveRule`, `revertRule`, `seed`, `reset` |
+| Judges' view + harness API | `web/` — Modelence (TypeScript, React 19) on **Modelence Cloud** | `harness` module: queries `summary`, `costar`, `explain`, `storage`, `selfImprovement`, `memoryTypes`; mutations `runEvaluation`, `approveRule`, `revertRule`, `seed`, `indexKnowledge`, `raindropBackfill`, `reset` |
 | Harness engine (reference) | `src/vibeguard/` — Python | Same schemas, judge, gate and loop; CLI `python -m vibeguard demo --approver human:you --memory` |
-| Data | **MongoDB Atlas** | collections `rules` `runs` `lexicon` (1024-d Voyage embeddings + `$vectorSearch` index `lexicon_vec`) `failures` `audit` |
+| Data | **MongoDB Atlas** | collections `rules` `runs` `lexicon` (1024-d Voyage embeddings + `$vectorSearch` index `lexicon_vec`) `failures` `audit` `knowledge` (`knowledge_vec`) `costar` `raindrop_log` |
+| Observability / RSI loop | **Raindrop** (`raindrop-ai` SDK) | `web/src/server/harness/raindrop.ts` (interactions, diagnostics, signals), `raindrop-evals.ts` (dataset, eval suite, comparisons), `rrflow.ts` (the Atlas aggregation behind the Self-improvement panel) |
 | Platform memory | **Atlas Agent Engine** hosted memory (`agent-engine-sdk-memory`) | `src/vibeguard/memory/agent_engine.py` mirrors rules→procedural, runs→episodic, lexicon→semantic, failures→taxonomic and calls `build_context()` before every attempt |
 
 ### Memory mapping (Atlas Agent Engine types)
@@ -48,6 +49,23 @@ vibecoder prompt ──► COSTAR check ──► agent attempt ──► guard 
 | Receipts | Every propose / approve / revert | `audit` | — (append-only, never deleted) |
 
 The **context policy** is measured, not asserted: `ContextPolicy` (per task) records how many memories of each type `build_context()` selected; `RunResult.context_memories` sums it per run, so the context the agent sees grows as rules are approved.
+
+## RRFlow on Raindrop: the harness's own improvement as a first-class loop
+
+The harness instruments itself with the Raindrop SDK (`raindrop-ai`), so its *own* improvement is observable, signalled and replayable — not asserted from a chart. Every emission is also mirrored to Atlas (`raindrop_log`) and the **Self-improvement** panel on the live page is one aggregation over it (`$setWindowFields` for run-over-run deltas, `$lookup` for the human decisions, proposals and Raindrop records of each run).
+
+| Loop step | Raindrop primitive | What it carries |
+| --- | --- | --- |
+| harness run | `begin()` interaction `harness.run` (eventId = `run_00x`) | a `withTool` span per task (attempt → guard → judge), a `trackTool` judge span per task, the held-out metric as the output |
+| training failure | `selfDiagnose` (Self Diagnostics tab) | category = failure category, description = task + the matched evidence |
+| proposal | `trackAi` event `rule_proposed` (eventId = `VG-000x`) | input = the failing attempt, output = the rule, code attachments (evidence, trigger) |
+| human verdict | `trackSignal` type `feedback` | `rule_approved` POSITIVE / `rule_reverted` NEGATIVE, actor + reason |
+| narrowed re-proposal | `trackSignal` type `edit` on the reverted rule | `after` = the new literal trigger (the NEGATIVE signal shaped it) |
+| self-grade | `trackSignal` type `agent` on the run | `heldout_improved` / `flat` / `regressed` / `false_block`, delta vs the previous run |
+| COSTAR check | `trackAi` event `costar.check` + `selfDiagnose` `missing_context` per gap | what the agent would otherwise have had to guess |
+| eval run (needs Query SDK key) | `publishEvalDataset` (16 frozen tasks) · `defineEvalSuite` with local evaluators (deterministic judge, false-block, paid attempts) · `runEvalSuite` · `compareEvalRuns` | the run replayed in Raindrop, graded by the same judge, compared before/after with the previous run |
+
+Keys: `RAINDROP_API_KEY` (write key: traces, events, signals, diagnostics) and `RAINDROP_QUERY_KEY` (Query SDK key: datasets, eval runs, comparisons). Without the second, the page says `evals: needs Query SDK key` and everything else still runs. Raindrop has no read API for events, which is why the Atlas mirror exists — and why the loop's *feedback source* stays the human gate in Atlas, with Raindrop as the review surface.
 
 ## Deploy / run
 
