@@ -5,7 +5,7 @@ import { wilson } from './metrics';
 import { approvedRules, allRules, nextId, propose } from './gate';
 import { TASKS, SEED_FAILURES } from './seed';
 import { raindrop } from './raindrop';
-import type { EvalTask, GuardrailRule, RunResult, Verdict } from './schemas';
+import { RunResult, type EvalTask, type GuardrailRule, type Verdict } from './schemas';
 
 const NUDGE: Record<string, string> = {
   'cost.unbounded_api_calls': 'This keeps calling a paid service with no stopping point. Want a limit of a few tries?',
@@ -49,18 +49,34 @@ function evidenceFor(task: EvalTask | undefined, category: string) {
   return undefined;
 }
 
+const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/**
+ * Human feedback shapes the next proposal (RRFlow: signals -> proposal -> governed effect).
+ * A reverted rule is a NEGATIVE signal on its category: the harness must not re-propose the same broad detector.
+ * It proposes a NARROWER trigger instead — the exact evidence the judge fired on, as a literal pattern — and records
+ * which revert it learned from. Reverting twice in a category silences proposals for it (the human has spoken).
+ */
 export async function proposeRules(runId: string, verdicts: Verdict[], maxNew = 1): Promise<GuardrailRule[]> {
-  const covered = new Set((await allRules()).filter((r) => r.status !== 'reverted').map((r) => r.category));
+  const rules = await allRules();
+  const covered = new Set(rules.filter((r) => r.status !== 'reverted').map((r) => r.category));
+  const reverted = new Map<string, GuardrailRule[]>();
+  for (const r of rules) if (r.status === 'reverted') reverted.set(r.category, [...(reverted.get(r.category) ?? []), r]);
   const counts = new Map<string, number>();
-  for (const v of verdicts) for (const c of v.failures) if (DETECTORS[c] && !covered.has(c)) counts.set(c, (counts.get(c) ?? 0) + 1);
+  for (const v of verdicts) for (const c of v.failures) if (DETECTORS[c] && !covered.has(c) && (reverted.get(c)?.length ?? 0) < 2) counts.set(c, (counts.get(c) ?? 0) + 1);
   const out: GuardrailRule[] = [];
   for (const [category] of [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, maxNew)) {
     const first = verdicts.find((v) => v.failures.includes(category))!; const t = new Date().toISOString();
+    const evidence = evidenceFor(TASKS.find((t) => t.task_id === first.task_id), category);
+    const prior = reverted.get(category)?.slice(-1)[0];
+    const narrowed = prior && evidence ? { type: 'regex' as const, pattern: escapeRe(evidence.matched) } : null;
     out.push(await propose({
       rule_id: await nextId(), version: 1, status: 'proposed', direction: 'tighten', category,
-      trigger: { type: 'regex', pattern: DETECTORS[category] }, action: 'block_and_explain',
-      user_message: `${NUDGE[category]} ${WHY[category]}`,
-      origin: { run_id: runId, task_id: first.task_id, failure_category: category, evidence: evidenceFor(TASKS.find((t) => t.task_id === first.task_id), category) },
+      trigger: narrowed ?? { type: 'regex', pattern: DETECTORS[category] }, action: narrowed ? 'warn' : 'block_and_explain',
+      user_message: narrowed
+        ? `${NUDGE[category]} (Narrower than ${prior!.rule_id}, which you reverted: this only matches the exact pattern that failed.)`
+        : `${NUDGE[category]} ${WHY[category]}`,
+      origin: { run_id: runId, task_id: first.task_id, failure_category: category, evidence, ...(prior ? { derived_from: `reverted:${prior.rule_id}` } : {}) },
       proposed_by: 'agent:vibeguard', approved_by: null, created_at: t, updated_at: t,
     }, 'agent:vibeguard'));
   }
@@ -81,5 +97,8 @@ export async function runOnce(runId: string, agent: Agent = scriptedAgent, maxNe
   const body = `# ${runId}\n\n- rules active: ${result.rules_active.join(', ') || 'none'}\n- train: ${result.train.passed}/${result.train.total}\n- held-out: ${result.heldout.passed}/${result.heldout.total}\n- blocks: ${result.blocks} (false: ${result.false_blocks})`;
   await dbRuns.upsertOne({ _id: runId } as any, { $set: { record: result, body } });
   void raindrop.run(result);
+  // self-grading: compare with the previous run and emit the verdict as a signal (RSI you can chart)
+  const prev: any = (await dbRuns.fetch({ _id: { $ne: runId } } as any, { sort: { 'record.at': -1 }, limit: 1 }))[0];
+  if (prev?.record) void raindrop.selfGrade(result, RunResult.parse(prev.record));
   return result;
 }

@@ -27,6 +27,7 @@ export const Origin = z.object({
   failure_category: z.string(),
   judge_score: z.number().nullable().optional(),
   evidence: Evidence.optional(),   // passive provenance: why this rule exists, attached at proposal time
+  derived_from: z.string().optional(),   // human-feedback provenance: "reverted:VG-0001" when a NEGATIVE signal shaped this proposal
 });
 
 export const GuardrailRule = z.object({
