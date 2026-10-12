@@ -52,6 +52,12 @@ Caveats observed: the hosted embedding service rate-limits bursts (`retry later`
 
 `web/src/server/harness/raindrop.ts`: `rule_proposed` → `trackAi` (input = the failing attempt + evidence, output = the rule), human approve/revert → `trackSignal` on that event (POSITIVE / NEGATIVE, actor in the comment), `harness_run` → `trackAi` (input = rules active, output = held-out metric). After one replay of the loop the Raindrop project shows 5 `harness_run` + 3 `rule_proposed` events from `agent:vibeguard` and `Rule approved` signals on VG-0002 and VG-0003 (`docs/demo/slides/slide-05-raindrop-events.png`). VG-0001's signal fired before Raindrop had ingested its proposal event and was dropped — signals must trail their event by a beat; fix: delay or retry the signal.
 
+## Human signals shape proposals; the harness indexes itself (verified 18:04 PT, live site)
+
+- `revertRule(VG-0001)` by `human:jesse` → run_007 held-out **6/6 → 4/6** (the gate loosened only by human action) → the harness proposed **VG-0004**: a narrower literal-pattern rule from the exact evidence (`while \(true\) \{ const r = await fetch\(`), `action: warn`, `origin.derived_from: reverted:VG-0001`. Approved → run_008 held-out 4/6, 0 false blocks: the trade-off (narrower = less general) is visible, not hidden. Two reverts in a category silence proposals for it.
+- Every run now self-grades into Raindrop (`heldout_improved` / `heldout_regressed` / `heldout_flat` / `false_block` signals); signals trail their events by 1.5 s (fixes the VG-0001 race).
+- Dogfooding: `scripts/extract-knowledge.mjs` reads the harness's own source (67 documented exports, SWEBOK-tagged); `indexKnowledge` embeds them + lexicon + failure taxonomy (80 units) into `knowledge` with vector index `knowledge_vec`; every approval grows it (`growFromRule`: 80 → 81 after VG-0004). `harness.explain("why did it block my retry loop?")` → `unbounded API usage / rate limiting` 0.542, `VG-0004` 0.542, `Unbounded paid API calls` 0.529, each with a plain-language gloss and the file path.
+
 ## Memory types on Atlas
 
 | Agent Engine type | Collection | Documents after the demo |
