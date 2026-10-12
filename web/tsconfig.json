@@ -1,7 +1,6 @@
 {
   "compilerOptions": {
     "outDir": "./.modelence/",
-    "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]
     },
