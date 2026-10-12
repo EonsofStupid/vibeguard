@@ -5,7 +5,7 @@ import { dbRules, dbRuns, dbLexicon, dbFailures, dbAudit, dbCostar } from './db'
 import { allRules, approve, revert, GateError } from './gate';
 import { runOnce } from './loop';
 import { scorePrompt, missing, sideConversation, uiSpec } from './costar';
-import { vectorResolve, embedLexicon, vectorIndexStatus, ensureVectorIndex, overlapResolve } from './semantic';
+import { vectorResolve, embedLexicon, vectorIndexStatus, ensureVectorIndex, overlapResolve, storageFacts } from './semantic';
 import { Actor, RunResult } from './schemas';
 import { SEED_FAILURES, SEED_LEXICON } from './seed';
 import { raindrop } from './raindrop';
@@ -54,6 +54,12 @@ export default new Module('harness', {
       const { query, k } = z.object({ query: z.string().min(1).max(2000), k: z.number().int().min(1).max(10).default(5) }).parse(args);
       return explain(query, k);
     },
+    storage: async () => storageFacts([
+      { name: 'rules', coll: () => dbRules.rawCollection() }, { name: 'runs', coll: () => dbRuns.rawCollection() },
+      { name: 'lexicon', coll: () => dbLexicon.rawCollection() }, { name: 'failures', coll: () => dbFailures.rawCollection() },
+      { name: 'audit', coll: () => dbAudit.rawCollection() }, { name: 'knowledge', coll: () => dbKnowledge.rawCollection() },
+      { name: 'costar', coll: () => dbCostar.rawCollection() },
+    ]),
     memoryTypes: async () => ({
       procedural: await dbRules.countDocuments({}), episodic: await dbRuns.countDocuments({}),
       semantic: await dbLexicon.countDocuments({}), taxonomic: await dbFailures.countDocuments({}),

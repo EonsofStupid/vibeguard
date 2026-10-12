@@ -27,6 +27,7 @@ type Summary = { runs: Run[]; rules: Rule[]; audit: Audit[] };
 type Trace = { task_id: string; split: 'train' | 'heldout'; attempts: number; blocked_by: string[]; false_blocks: number; verdict: { passed: boolean; failures: string[] } };
 type RunDetail = Run & { traces: Trace[] };
 type MemoryTypes = { procedural: number; episodic: number; semantic: number; taxonomic: number; receipts: number; knowledge?: number };
+type Storage = { host: string; database: string; atlas: boolean; collections: { name: string; documents: number }[] };
 type Explanation = { id: string; kind: string; title: string; text: string; path?: string; swebok: string; layman?: string; score: number };
 type UiCard = { id: string; question: string; options: { label: string; text: string }[]; freeText: boolean };
 type Costar = {
@@ -77,6 +78,7 @@ export default function HomePage() {
 
   const summary = useQuery({ ...modelenceQuery<Summary>('harness.summary'), refetchInterval: 6000 });
   const memory = useQuery({ ...modelenceQuery<MemoryTypes>('harness.memoryTypes'), refetchInterval: 6000 });
+  const storage = useQuery({ ...modelenceQuery<Storage>('harness.storage'), refetchInterval: 15000 });
 
   const runEval = useMutation({ ...modelenceMutation<Run>('harness.runEvaluation'), onSuccess: (r) => { toast.success(`${r.run_id}: held-out ${r.heldout.passed}/${r.heldout.total}`); refresh(); } });
   const seed = useMutation({ ...modelenceMutation<{ failures: number; lexiconEmbedded: number }>('harness.seed'), onSuccess: (r) => { toast.success(`seeded ${r.failures} failure categories, embedded ${r.lexiconEmbedded} lexicon entries`); refresh(); } });
@@ -151,6 +153,13 @@ export default function HomePage() {
         <Card>
           <Label>Memory types · Atlas collections</Label>
           <MemoryStrip m={memory.data} />
+          {storage.data && (
+            <div className="mt-3 rounded-md border border-line bg-ink/60 px-3 py-2 font-mono text-[11px] text-muted">
+              <div><span className={storage.data.atlas ? 'text-verdant' : 'text-ember'}>{storage.data.atlas ? '● MongoDB Atlas' : '● not Atlas'}</span> {storage.data.host}</div>
+              <div>db <span className="text-text">{storage.data.database}</span> · {storage.data.collections.map((c) => `${c.name} ${c.documents}`).join(' · ')}</div>
+              <div className="text-[10px]">read from the driver on every refresh, not from this page</div>
+            </div>
+          )}
           <p className="mt-3 text-xs text-muted">
             procedural = versioned rules · episodic = run traces · semantic = lexicon (Voyage <span className="font-mono">voyage-code-4</span>, 1024-d, <span className="font-mono">$vectorSearch</span>) · taxonomic = failure categories · receipts = audit log · knowledge = the harness's own code + learned rules, vector-indexed (dogfooding)
           </p>
