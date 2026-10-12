@@ -99,8 +99,8 @@ export default function HomePage() {
       {/* statement */}
       <section className="grid gap-6 md:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] md:items-end">
         <div>
-          <h1 className="display text-[2.1rem] leading-none md:text-[3.1rem]">
-            Guardrails the agent writes<br />from its own failures.<br /><span className="text-mute">Only a human switches one on.</span>
+          <h1 className="display max-w-[14ch] text-[2.1rem] md:text-[3rem]">
+            Guardrails the agent writes from its own failures. <span className="text-mute">Only a human switches one on.</span>
           </h1>
           <p className="mt-4 max-w-[62ch] text-[15px] leading-relaxed text-ink/85">
             Sixteen frozen coding tasks. A fixed judge grades every attempt. Each failure on a training task becomes a proposed rule with its evidence attached.
@@ -126,6 +126,7 @@ export default function HomePage() {
               <span className="text-sm text-mute">95% Wilson interval on every point</span>
             </div>
             <PassRateChart runs={runs} />
+            <p className="mt-1 text-xs text-mute">Solid line: held-out tasks. Dashed: training tasks. Labels mark rules added (+) or removed (−) before that run.</p>
           </div>
           <dl className="ledger border-t border-ink/80 md:border-l md:border-t-0">
             <Fact label="Held-out now" value={latest ? pct(latest.heldout.pass_rate) : '—'} note={latest ? `${latest.heldout.passed} of ${latest.heldout.total}, interval ${pct(latest.heldout.ci95[0])} to ${pct(latest.heldout.ci95[1])}` : 'no runs yet'} />
@@ -261,7 +262,7 @@ function RunsTable({ runs }: { runs: Run[] }) {
   if (!runs.length) return <p className="py-6 text-sm text-mute">No runs recorded.</p>;
   return (
     <div className="overflow-x-auto">
-      <table className="mt-3 w-full text-sm">
+      <table className="mt-3 w-full min-w-[760px] text-sm">
         <thead>
           <tr className="text-left text-xs text-mute">{['Run', 'When', 'Rules in force', 'Train', 'Held-out', 'Interval', 'Blocks', 'Wrongly blocked', 'Proposed'].map((h) => <th key={h} className="pb-2 pr-4 font-normal">{h}</th>)}</tr>
         </thead>
@@ -358,10 +359,9 @@ function PassRateChart({ runs }: { runs: Run[] }) {
           <circle cx={x(i)} cy={y(r.train.pass_rate)} r={2.5} fill="var(--color-mute)" />
           <text x={x(i)} y={H - 10} textAnchor="middle" fontSize={11} fill="var(--color-mute)">{r.run_id.replace('run_0', 'run ').replace('run_', 'run ')}</text>
           {changes[i].added.length > 0 && <text x={x(i)} y={T - 16} textAnchor="middle" fontSize={11} fill="var(--color-pass)">+ {changes[i].added.join(' ')}</text>}
-          {changes[i].removed.length > 0 && <text x={x(i)} y={T - (changes[i].added.length ? 2 : 16)} textAnchor="middle" fontSize={11} fill="var(--color-stop)">− {changes[i].removed.join(' ')}</text>}
+          {changes[i].removed.length > 0 && <text x={x(i)} y={T - (changes[i].added.length ? 3 : 16)} textAnchor="middle" fontSize={11} fill="var(--color-stop)">− {changes[i].removed.join(' ')}</text>}
         </g>
       ))}
-      <text x={W - R} y={T - 16} textAnchor="end" fontSize={11} fill="var(--color-mute)">solid: held-out · dashed: train</text>
     </svg>
   );
 }
