@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Self-tightening harness that protects vibecoders' money and time. MongoDB Harness Engineering hackathon, SF Tech Week 2026."
 requires-python = ">=3.11"
 dependencies = [
-  "pydantic>=2.7",
+  "pydantic>=2.14.1",
   "pyyaml>=6.0.3",
 ]
 
